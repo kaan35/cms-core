@@ -1,0 +1,36 @@
+{
+  "name": "@cms/core",
+  "version": "1.0.0",
+  "description": "Core services and plugin loader for CMS",
+  "publishConfig": {
+    "name": "@kaan35/cms-core",
+    "registry": "https://npm.pkg.github.com"
+  },
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ConfigService": "./src/ConfigService.ts",
+    "./LogService": "./src/LogService.ts",
+    "./PluginLoader": "./src/PluginLoader.ts",
+    "./HookManager": "./src/HookManager.ts",
+    "./RedisCacheService": "./src/RedisCacheService.ts",
+    "./AuditLogService": "./src/AuditLogService.ts",
+    "./WebhookService": "./src/WebhookService.ts",
+    "./BackupService": "./src/BackupService.ts",
+    "./types/plugin": "./src/types/plugin.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.712.0",
+    "fastify": "^5",
+    "pino": "^10",
+    "pino-pretty": "^13",
+    "redis": "^6",
+    "zod": "^4",
+    "@cms/db": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25",
+    "typescript": "^6"
+  }
+}
