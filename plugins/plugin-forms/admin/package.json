@@ -1,0 +1,16 @@
+{
+  "name": "@cms/plugin-forms-admin",
+  "version": "1.0.0",
+  "description": "CMS forms plugin — Admin UI pages",
+  "publishConfig": {
+    "name": "@kaan35/cms-plugin-forms-admin",
+    "registry": "https://npm.pkg.github.com"
+  },
+  "private": true,
+  "peerDependencies": {
+    "lucide-react": ">=1",
+    "next": ">=16",
+    "react": ">=19",
+    "react-dom": ">=19"
+  }
+}
