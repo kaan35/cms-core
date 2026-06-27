@@ -1,0 +1,117 @@
+services:
+  # ─── Infrastructure ─────────────────────────────────────────────────────────
+  mongo:
+    image: mongo
+    container_name: cms_mongo
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: cms_dev
+    networks:
+      - cms_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis
+    container_name: cms_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cms_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    container_name: cms_minio
+    restart: unless-stopped
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    networks:
+      - cms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── API (Fastify) ──────────────────────────────────────────────────────────
+  # Build context is monorepo root so @cms/core and @cms/db packages are available
+  api:
+    build:
+      context: .
+      dockerfile: templates/api/Dockerfile
+    container_name: cms_api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-3001}:${API_PORT:-3001}"
+    env_file:
+      - .env
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cms_network
+
+  # ─── Admin Panel (Next.js) ──────────────────────────────────────────────────
+  admin:
+    build:
+      context: .
+      dockerfile: templates/admin/Dockerfile
+    container_name: cms_admin
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_PORT:-3002}:${ADMIN_PORT:-3002}"
+    env_file:
+      - .env
+    depends_on:
+      - api
+    networks:
+      - cms_network
+
+  # ─── Client / Public Site (Next.js) ─────────────────────────────────────────
+  client:
+    build:
+      context: .
+      dockerfile: templates/client/Dockerfile
+    container_name: cms_client
+    restart: unless-stopped
+    ports:
+      - "${CLIENT_PORT:-3003}:${CLIENT_PORT:-3003}"
+    env_file:
+      - .env
+    depends_on:
+      - api
+    networks:
+      - cms_network
+
+networks:
+  cms_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  redis_data:
+  minio_data:
