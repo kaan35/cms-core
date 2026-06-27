@@ -1,0 +1,21 @@
+{
+  "name": "@cms/db",
+  "version": "1.0.0",
+  "description": "MongoDB database service for CMS",
+  "publishConfig": {
+    "name": "@kaan35/cms-db",
+    "registry": "https://npm.pkg.github.com"
+  },
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "mongodb": "^7"
+  },
+  "devDependencies": {
+    "@types/node": "^25",
+    "typescript": "^6"
+  }
+}
