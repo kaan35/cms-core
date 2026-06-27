@@ -1,0 +1,21 @@
+{
+  "name": "cms-core",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "plugins/*/api",
+    "plugins/*/admin",
+    "templates/*",
+    "cli"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=templates/api",
+    "dev:admin": "npm run dev --workspace=templates/admin",
+    "dev:client": "npm run dev --workspace=templates/client"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4",
+    "babel-plugin-react-compiler": "^1"
+  }
+}
