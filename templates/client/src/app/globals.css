@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f9fafb;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-border: #e4e4e7;
+  --muted: #71717a;
+  --input: #ffffff;
+  --input-border: #e4e4e7;
+  --header-bg: rgba(249, 250, 251, 0.8);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --color-muted: var(--muted);
+  --color-input: var(--input);
+  --color-input-border: var(--input-border);
+  --color-header-bg: var(--header-bg);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Dynamic Branding Overrides */
+  --color-blue-600: var(--primary);
+  --color-blue-700: var(--primary-hover);
+  --color-blue-500: var(--primary);
+  --color-blue-400: var(--primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b;
+    --foreground: #f4f4f5;
+    --card: #18181b;
+    --card-border: #27272a;
+    --muted: #a1a1aa;
+    --input: #09090b;
+    --input-border: #27272a;
+    --header-bg: rgba(9, 9, 11, 0.8);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
