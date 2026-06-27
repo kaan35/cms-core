@@ -1,0 +1,18 @@
+FROM node
+
+WORKDIR /app
+
+# Copy everything to ensure all workspaces and package.json files are present for npm install
+COPY . .
+
+# Install workspace dependencies with hoisting (--legacy-peer-deps might help)
+RUN npm install --legacy-peer-deps
+
+WORKDIR /app/templates/admin
+
+# Set NODE_PATH so Node.js can resolve modules from root node_modules
+ENV NODE_PATH=/app/node_modules
+
+EXPOSE 3002
+
+CMD ["npm", "run", "dev"]
