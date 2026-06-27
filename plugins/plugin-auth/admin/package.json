@@ -1,0 +1,16 @@
+{
+  "name": "@cms/plugin-auth-admin",
+  "version": "1.0.0",
+  "description": "CMS auth plugin — Admin UI pages",
+  "publishConfig": {
+    "name": "@kaan35/cms-plugin-auth-admin",
+    "registry": "https://npm.pkg.github.com"
+  },
+  "private": true,
+  "peerDependencies": {
+    "lucide-react": ">=1",
+    "next": ">=16",
+    "react": ">=19",
+    "react-dom": ">=19"
+  }
+}

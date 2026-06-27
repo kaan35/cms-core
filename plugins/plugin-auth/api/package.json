@@ -1,0 +1,20 @@
+{
+  "name": "@cms/plugin-auth-api",
+  "version": "1.0.0",
+  "description": "CMS auth plugin — API (Fastify)",
+  "publishConfig": {
+    "name": "@kaan35/cms-plugin-auth-api",
+    "registry": "https://npm.pkg.github.com"
+  },
+  "type": "module",
+  "main": "index.ts",
+  "dependencies": {
+    "@cms/core": "*",
+    "@cms/db": "*",
+    "bcrypt": "^6",
+    "fastify": "^5",
+    "fastify-plugin": "^6.0.0",
+    "jsonwebtoken": "^9",
+    "zod": "^4"
+  }
+}
