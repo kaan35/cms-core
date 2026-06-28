@@ -8,6 +8,7 @@ import {
   BookOpen,
   ClipboardList,
   FileText,
+  LayoutDashboard,
   LogOut,
   Plug,
   Settings,
@@ -79,6 +80,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const user = authData?.user;
 
   const menuItems = [
+    { name: "Overview", href: "/", icon: LayoutDashboard },
     { name: "Pages", href: "/pages", icon: FileText, plugin: "@cms/plugin-pages-api" },
     { name: "Blog Posts", href: "/blog", icon: BookOpen, plugin: "@cms/plugin-blog-api" },
     {

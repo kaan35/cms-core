@@ -36,13 +36,13 @@ export const Button: React.FC<ButtonProps> = ({
   // Variant styles
   const variants = {
     primary:
-      "border border-blue-500/20 bg-blue-600/20 hover:bg-blue-600/50 text-white shadow-lg shadow-blue-600/10",
+      "border border-blue-500/40 bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/10 transition",
     secondary:
-      "border border-white/10 bg-transparent hover:bg-white/5 text-zinc-300 hover:text-white",
+      "border border-zinc-700/80 bg-zinc-800 hover:bg-zinc-750 text-zinc-200 hover:text-white hover:border-zinc-600 transition shadow-sm",
     danger:
-      "border border-white/10 bg-red-500/10 hover:bg-red-500/20 hover:border-red-500/20 text-zinc-400 hover:text-red-400",
+      "border border-red-500/30 bg-red-950/40 hover:bg-red-900/50 hover:border-red-500/50 text-red-200 hover:text-red-100 transition shadow-sm",
     ghost:
-      "bg-transparent hover:bg-white/5 text-zinc-400 hover:text-white border border-transparent",
+      "bg-transparent hover:bg-white/5 text-zinc-400 hover:text-white border border-transparent transition",
   };
 
   const finalClass = `${baseClass} ${sizes[size]} ${variants[variant]} ${className}`;
