@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { apiFetch, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { useToast } from "@/lib/toast";
+import { useApiQuery } from "@/hooks/useApi";
 import { PageForm } from "@/components/PageForm";
 import { Loading } from "@/components/ui/Loading";
 
@@ -13,40 +14,37 @@ export default function PageEditPage() {
   const { showToast } = useToast();
   const pageId = params.id as string;
 
-  const [isLoading, setIsLoading] = useState(true);
   const [pageData, setPageData] = useState<{
     title: string;
     slug: string;
     blocks: any[];
   } | null>(null);
 
-  useEffect(() => {
-    const fetchPage = async () => {
-      try {
-        const data = await apiFetch(`/pages/${pageId}`);
-        const page = data.page;
-        setPageData({
-          title: page.title,
-          slug: page.slug,
-          blocks: page.blocks || [],
-        });
-        setIsLoading(false);
-      } catch (err: any) {
-        if (err instanceof ApiError && err.status === 404) {
-          showToast({ message: "Page not found", type: "error" });
-        } else if (err instanceof ApiError && err.status === 400) {
-          showToast({ message: err.message || "Invalid page ID", type: "error" });
-        } else {
-          showToast({ message: "Failed to load page", type: "error" });
-          console.error("Failed to load page:", err);
-        }
-        // Redirect after showing error
-        router.push("/pages");
-      }
-    };
+  const { data, error, isLoading } = useApiQuery<any>(`/pages/${pageId}`);
 
-    fetchPage();
-  }, [pageId, router, showToast]);
+  useEffect(() => {
+    if (data?.page) {
+      const page = data.page;
+      setPageData({
+        title: page.title,
+        slug: page.slug,
+        blocks: page.blocks || [],
+      });
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        showToast({ message: "Page not found", type: "error" });
+      } else if (error instanceof ApiError && error.status === 400) {
+        showToast({ message: error.message || "Invalid page ID", type: "error" });
+      } else {
+        showToast({ message: "Failed to load page", type: "error" });
+      }
+      router.push("/pages");
+    }
+  }, [error, router, showToast]);
 
   if (isLoading) {
     return <Loading isFullScreen />;
@@ -58,7 +56,7 @@ export default function PageEditPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit: {pageData.title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Edit Page</h1>
           <p className="text-sm text-zinc-400">Update page structure and block configuration</p>
         </div>
       </div>

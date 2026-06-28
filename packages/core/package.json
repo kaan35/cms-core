@@ -8,6 +8,7 @@
   },
   "type": "module",
   "main": "src/index.ts",
+  "types": "fastify.d.ts",
   "exports": {
     ".": "./src/index.ts",
     "./ConfigService": "./src/ConfigService.ts",
@@ -18,7 +19,8 @@
     "./AuditLogService": "./src/AuditLogService.ts",
     "./WebhookService": "./src/WebhookService.ts",
     "./BackupService": "./src/BackupService.ts",
-    "./types/plugin": "./src/types/plugin.ts"
+    "./types/plugin": "./src/types/plugin.ts",
+    "./fastify": "./fastify.d.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.712.0",

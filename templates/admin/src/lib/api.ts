@@ -4,7 +4,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public data?: any
+    public data?: unknown
   ) {
     super(message);
     this.name = "ApiError";
@@ -14,8 +14,7 @@ export class ApiError extends Error {
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const url = `${API_URL}${path}`;
 
-  // Only set Content-Type for requests with body
-  const headers: HeadersInit = { ...options.headers };
+  const headers = { ...options.headers } as Record<string, string>;
   if (options.body) {
     headers["Content-Type"] = "application/json";
   }

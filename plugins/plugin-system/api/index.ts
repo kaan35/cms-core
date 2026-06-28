@@ -1,28 +1,27 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import fp from "fastify-plugin";
-import { ObjectId } from "mongodb";
+import { z } from "zod";
+import { hooks, pluginLoader, parseObjectId } from "@cms/core";
+
+const settingsSchema = z.object({
+  brandName: z.string().min(1),
+  primaryColor: z.string().min(4),
+  secondaryColor: z.string().min(4),
+});
 
 export const name = "@cms/plugin-system-api";
 export const version = "1.0.0";
 
-async function register(fastify: FastifyInstance, options: any) {
-  const db = (fastify as any).db;
-  const logger = (fastify as any).logger;
-  const authenticate = (fastify as any).authenticate;
+async function register(fastify: FastifyInstance, _options: Record<string, unknown> = {}) {
+  const db = fastify.db;
+  const logger = fastify.logger;
+  const authenticate = fastify.authenticate;
+  const checkPermission = fastify.checkPermission;
 
-  logger.info("🔌 Plugin-System: Initializing plugin management routes...");
+  logger.info("🔌 Plugin-System: Initializing plugin management and settings routes...");
 
   const pluginCol = db.getCollection("cms_plugins");
-
-  // Helper to check permission
-  const checkPermission = (permission: string) => {
-    return async (request: FastifyRequest, reply: FastifyReply) => {
-      const user = (request as any).user;
-      if (!user || !user.permissions.includes(permission)) {
-        reply.status(403).send({ status: "error", message: "Forbidden" });
-      }
-    };
-  };
+  const settingsCol = db.getCollection("cms_settings");
 
   // List all plugins
   fastify.get(
@@ -58,8 +57,8 @@ async function register(fastify: FastifyInstance, options: any) {
 
       let objectId;
       try {
-        objectId = new ObjectId(id);
-      } catch (err) {
+        objectId = parseObjectId(id);
+      } catch {
         reply.status(400).send({ status: "error", message: "Invalid plugin ID" });
         return;
       }
@@ -79,14 +78,59 @@ async function register(fastify: FastifyInstance, options: any) {
       logger.info(`🔌 Plugin [${plugin.name}] ${newStatus ? "enabled" : "disabled"}`);
 
       // Reload plugin states in PluginLoader (no restart needed!)
-      const PluginLoader = (await import("@cms/core")).PluginLoader;
-      await PluginLoader.reloadStates();
+      await pluginLoader.reloadStates();
 
       return {
         status: "success",
         message: `Plugin ${newStatus ? "enabled" : "disabled"}. Changes applied immediately.`,
         isEnabled: newStatus,
       };
+    }
+  );
+
+  // --- GLOBAL SETTINGS ENDPOINTS (Decoupled from Pages Plugin) ---
+
+  // Get settings
+  fastify.get("/settings", async () => {
+    let settings = await settingsCol.findOne({});
+    if (!settings) {
+      // Return defaults if not set in DB yet
+      settings = {
+        brandName: "ModularCMS",
+        primaryColor: "#8b5cf6",
+        secondaryColor: "#4f46e5",
+      };
+    }
+    return { status: "success", settings };
+  });
+
+  // Update settings
+  fastify.put(
+    "/settings",
+    {
+      preHandler: [authenticate, checkPermission("settings:write")],
+      schema: { body: settingsSchema },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = request.body as z.infer<typeof settingsSchema>;
+
+      await settingsCol.updateOne(
+        {},
+        {
+          $set: {
+            brandName: body.brandName,
+            primaryColor: body.primaryColor,
+            secondaryColor: body.secondaryColor,
+            updatedAt: new Date(),
+          },
+        },
+        { upsert: true }
+      );
+
+      // Emit event
+      hooks.emit("settings.updated", body, request.user, request.ip);
+
+      return { status: "success", message: "Settings updated successfully", settings: body };
     }
   );
 }

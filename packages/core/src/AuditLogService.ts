@@ -2,96 +2,153 @@ import { database } from "@cms/db";
 import { logger } from "./LogService.ts";
 import { hooks } from "./HookManager.ts";
 
+interface AuditEventDef {
+  hookName: string;
+  action: string;
+  targetCollection: string;
+  getPayload: (data: any, extra?: any) => any;
+  getUser?: (data: any, extra?: any) => { id: string | null; email: string | null };
+}
+
+const auditDefinitions: AuditEventDef[] = [
+  // 1. Page Actions
+  {
+    hookName: "page.created",
+    action: "PAGE_CREATE",
+    targetCollection: "cms_pages",
+    getPayload: (page) => ({ title: page.title, slug: page.slug }),
+  },
+  {
+    hookName: "page.updated",
+    action: "PAGE_UPDATE",
+    targetCollection: "cms_pages",
+    getPayload: (page) => ({ title: page.title, slug: page.slug }),
+  },
+  {
+    hookName: "page.deleted",
+    action: "PAGE_DELETE",
+    targetCollection: "cms_pages",
+    getPayload: (page) => ({ title: page.title, slug: page.slug }),
+  },
+  // 2. Blog Actions
+  {
+    hookName: "blog.created",
+    action: "BLOG_CREATE",
+    targetCollection: "cms_blog_posts",
+    getPayload: (post) => ({ title: post.title, slug: post.slug }),
+  },
+  {
+    hookName: "blog.updated",
+    action: "BLOG_UPDATE",
+    targetCollection: "cms_blog_posts",
+    getPayload: (post) => ({ title: post.title, slug: post.slug }),
+  },
+  {
+    hookName: "blog.deleted",
+    action: "BLOG_DELETE",
+    targetCollection: "cms_blog_posts",
+    getPayload: (post) => ({ title: post.title, slug: post.slug }),
+  },
+  // 3. Form Submission
+  {
+    hookName: "form.submitted",
+    action: "FORM_SUBMIT",
+    targetCollection: "cms_submissions",
+    getPayload: (submission, formName) => ({ formName, data: submission.data }),
+    getUser: () => ({ id: null, email: "anonymous" }),
+  },
+  // 4. System Settings
+  {
+    hookName: "settings.updated",
+    action: "SETTINGS_UPDATE",
+    targetCollection: "cms_settings",
+    getPayload: (settings) => ({ brandName: settings.brandName }),
+  },
+  // 5. Auth Actions
+  {
+    hookName: "auth.login",
+    action: "AUTH_LOGIN",
+    targetCollection: "cms_users",
+    getPayload: (user) => ({ email: user.email }),
+    getUser: (user) => ({ id: user.id || null, email: user.email }),
+  },
+  {
+    hookName: "auth.logout",
+    action: "AUTH_LOGOUT",
+    targetCollection: "cms_users",
+    getPayload: () => ({}),
+  },
+  // 6. User Management
+  {
+    hookName: "user.created",
+    action: "USER_CREATE",
+    targetCollection: "cms_users",
+    getPayload: (user) => ({ email: user.email, role: user.role }),
+  },
+  {
+    hookName: "user.updated",
+    action: "USER_UPDATE",
+    targetCollection: "cms_users",
+    getPayload: (user) => ({ email: user.email, role: user.role }),
+  },
+  {
+    hookName: "user.deleted",
+    action: "USER_DELETE",
+    targetCollection: "cms_users",
+    getPayload: (user) => ({ email: user.email }),
+  },
+  // 7. Role Management
+  {
+    hookName: "role.created",
+    action: "ROLE_CREATE",
+    targetCollection: "cms_roles",
+    getPayload: (role) => ({ name: role.name }),
+  },
+  {
+    hookName: "role.updated",
+    action: "ROLE_UPDATE",
+    targetCollection: "cms_roles",
+    getPayload: (role) => ({ name: role.name }),
+  },
+  {
+    hookName: "role.deleted",
+    action: "ROLE_DELETE",
+    targetCollection: "cms_roles",
+    getPayload: (role) => ({ name: role.name }),
+  }
+];
+
 export class AuditLogService {
-  static init() {
+  static init(): void {
     logger.info("🛡️ AuditLogService: Initializing audit log listeners...");
 
-    // 1. Page Actions
-    hooks.on("page.created", async (page: any, user: any, ip?: string) => {
-      await this.log({
-        userId: user?.id,
-        userEmail: user?.email,
-        action: "PAGE_CREATE",
-        targetCollection: "cms_pages",
-        targetId: page._id || page.slug,
-        payload: { title: page.title, slug: page.slug },
-        ip: ip || "127.0.0.1",
-      });
-    });
+    for (const def of auditDefinitions) {
+      hooks.on(def.hookName, async (data: any, actorOrExtra: any, ipOrExtra?: any) => {
+        let user: { id: string | null; email: string | null } = { id: null, email: "anonymous" };
+        let ip = "127.0.0.1";
 
-    hooks.on("page.updated", async (page: any, user: any, ip?: string) => {
-      await this.log({
-        userId: user?.id,
-        userEmail: user?.email,
-        action: "PAGE_UPDATE",
-        targetCollection: "cms_pages",
-        targetId: page._id || page.slug,
-        payload: { title: page.title, slug: page.slug },
-        ip: ip || "127.0.0.1",
-      });
-    });
+        if (def.getUser) {
+          user = def.getUser(data, actorOrExtra);
+          ip = ipOrExtra || "127.0.0.1";
+        } else {
+          user = {
+            id: actorOrExtra?.id || null,
+            email: actorOrExtra?.email || "unknown",
+          };
+          ip = ipOrExtra || "127.0.0.1";
+        }
 
-    hooks.on("page.deleted", async (page: any, user: any, ip?: string) => {
-      await this.log({
-        userId: user?.id,
-        userEmail: user?.email,
-        action: "PAGE_DELETE",
-        targetCollection: "cms_pages",
-        targetId: page._id || page.slug,
-        payload: { title: page.title, slug: page.slug },
-        ip: ip || "127.0.0.1",
+        await this.log({
+          userId: user.id,
+          userEmail: user.email,
+          action: def.action,
+          targetCollection: def.targetCollection,
+          targetId: data._id || data.id || data.slug || data.name || data.email || null,
+          payload: def.getPayload(data, actorOrExtra),
+          ip,
+        });
       });
-    });
-
-    // 2. Blog Actions
-    hooks.on("blog.created", async (post: any, user: any, ip?: string) => {
-      await this.log({
-        userId: user?.id,
-        userEmail: user?.email,
-        action: "BLOG_CREATE",
-        targetCollection: "cms_blog_posts",
-        targetId: post._id || post.slug,
-        payload: { title: post.title, slug: post.slug },
-        ip: ip || "127.0.0.1",
-      });
-    });
-
-    hooks.on("blog.updated", async (post: any, user: any, ip?: string) => {
-      await this.log({
-        userId: user?.id,
-        userEmail: user?.email,
-        action: "BLOG_UPDATE",
-        targetCollection: "cms_blog_posts",
-        targetId: post._id || post.slug,
-        payload: { title: post.title, slug: post.slug },
-        ip: ip || "127.0.0.1",
-      });
-    });
-
-    hooks.on("blog.deleted", async (post: any, user: any, ip?: string) => {
-      await this.log({
-        userId: user?.id,
-        userEmail: user?.email,
-        action: "BLOG_DELETE",
-        targetCollection: "cms_blog_posts",
-        targetId: post._id || post.slug,
-        payload: { title: post.title, slug: post.slug },
-        ip: ip || "127.0.0.1",
-      });
-    });
-
-    // 3. Form Submission
-    hooks.on("form.submitted", async (submission: any, formName: string, ip?: string) => {
-      await this.log({
-        userId: null,
-        userEmail: "anonymous",
-        action: "FORM_SUBMIT",
-        targetCollection: "cms_submissions",
-        targetId: submission._id || submission.formId,
-        payload: { formName, data: submission.data },
-        ip: ip || "127.0.0.1",
-      });
-    });
+    }
   }
 
   private static async log(data: {
@@ -102,7 +159,7 @@ export class AuditLogService {
     targetId: any;
     payload: any;
     ip: string;
-  }) {
+  }): Promise<void> {
     try {
       const db = database.getDb();
       if (!db) return;

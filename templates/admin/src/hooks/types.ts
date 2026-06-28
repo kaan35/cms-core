@@ -14,7 +14,7 @@
  *   retryOnError     → retry
  *   staleTime        → staleTime
  */
-export interface ApiQueryOptions<T = any> {
+export interface ApiQueryOptions<T = unknown> {
   /** Disable fetching entirely (e.g. while auth is pending). Default: true */
   enabled?: boolean;
   /** Revalidate when the browser window regains focus. Default: true */
@@ -60,7 +60,7 @@ export interface ApiQueryResult<T> {
  *   path: (id: string) => `/plugins/${id}/toggle`
  *   trigger(plugin._id)
  */
-export interface ApiMutationOptions<T = any, Arg = any> {
+export interface ApiMutationOptions<T = unknown, Arg = unknown> {
   path: string | ((arg: Arg) => string);
   onSuccess?: (data: T) => void;
   onError?: (error: Error) => void;

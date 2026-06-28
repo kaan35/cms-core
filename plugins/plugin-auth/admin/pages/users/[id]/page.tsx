@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiFetch, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { useToast } from "@/lib/toast";
-import { Loader2 } from "lucide-react";
+import { useApiQuery } from "@/hooks/useApi";
 import { UserForm } from "@/components/UserForm";
 import { Loading } from "@/components/ui/Loading";
 
@@ -37,39 +37,42 @@ export default function UserDetailPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<RoleTemplate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const { data: rolesData, isLoading: rolesLoading } = useApiQuery<any>("/auth/roles");
+  const { data: userData, error: userError, isLoading: userLoading } = useApiQuery<any>(`/auth/users/${userId}`);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const rolesData = await apiFetch("/auth/roles");
-        const mappedRoles: RoleTemplate[] =
-          rolesData.roles?.map((r: any) => ({
-            id: r._id?.toString() || r.id,
-            name: r.name,
-            permissions: r.permissions || [],
-          })) || [];
-        setRoles(mappedRoles);
-
-        const userData = await apiFetch(`/auth/users/${userId}`);
-        setUser(userData.user);
-        setIsLoading(false);
-      } catch (err: any) {
-        if (err instanceof ApiError && err.status === 404) {
-          showToast({ message: "User not found", type: "error" });
-        } else if (err instanceof ApiError && err.status === 400) {
-          showToast({ message: err.message || "Invalid user ID", type: "error" });
-        } else {
-          showToast({ message: "Failed to load user", type: "error" });
-          console.error("Failed to load user:", err);
-        }
-        // Redirect after showing error
-        router.push("/users");
-      }
+    if (rolesData?.roles) {
+      const mappedRoles: RoleTemplate[] =
+        rolesData.roles.map((r: any) => ({
+          id: r._id?.toString() || r.id,
+          name: r.name,
+          permissions: r.permissions || [],
+        })) || [];
+      setRoles(mappedRoles);
     }
+  }, [rolesData]);
 
-    loadData();
-  }, [userId, router, showToast]);
+  useEffect(() => {
+    if (userData?.user) {
+      setUser(userData.user);
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    if (userError) {
+      if (userError instanceof ApiError && userError.status === 404) {
+        showToast({ message: "User not found", type: "error" });
+      } else if (userError instanceof ApiError && userError.status === 400) {
+        showToast({ message: userError.message || "Invalid user ID", type: "error" });
+      } else {
+        showToast({ message: "Failed to load user", type: "error" });
+      }
+      router.push("/users");
+    }
+  }, [userError, router, showToast]);
+
+  const isLoading = rolesLoading || userLoading;
 
   if (isLoading) {
     return <Loading isFullScreen />;
@@ -82,7 +85,7 @@ export default function UserDetailPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Manage User: {user.email}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Manage User</h1>
         <p className="text-sm text-zinc-400">
           Configure role templates and granular access control.
         </p>

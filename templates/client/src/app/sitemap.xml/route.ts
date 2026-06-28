@@ -1,12 +1,21 @@
 import { getInternalApiUrl } from "@/lib/config";
-import { NextResponse } from "next/server";
+
+interface SitemapPage {
+  slug: string;
+}
+
+interface SitemapPost {
+  slug: string;
+  createdAt: string;
+  updatedAt?: string;
+}
 
 export async function GET() {
   const baseUrl = "http://localhost:3002";
   const apiBaseUrl = getInternalApiUrl();
 
-  let pages: any[] = [];
-  let posts: any[] = [];
+  let pages: SitemapPage[] = [];
+  let posts: SitemapPost[] = [];
 
   try {
     const pagesRes = await fetch(`${apiBaseUrl}/pages`, { cache: "no-store" });

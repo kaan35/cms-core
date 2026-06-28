@@ -73,12 +73,13 @@ export class BackupService {
   private static async ensureBucketExists(bucketName: string) {
     try {
       await this.s3Client.send(new HeadBucketCommand({ Bucket: bucketName }));
-    } catch (err: any) {
-      if (err.name === "NotFound" || err.$metadata?.httpStatusCode === 404) {
+    } catch (err) {
+      const awsErr = err as { name?: string; $metadata?: { httpStatusCode?: number } };
+      if (awsErr.name === "NotFound" || awsErr.$metadata?.httpStatusCode === 404) {
         logger.info(`📦 BackupService: Creating bucket '${bucketName}'...`);
         try {
           await this.s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
-        } catch (createErr: any) {
+        } catch (createErr) {
           logger.error(createErr, `💥 BackupService failed to create bucket '${bucketName}'`);
           throw createErr;
         }

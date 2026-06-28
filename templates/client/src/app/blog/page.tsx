@@ -3,7 +3,16 @@ import { translate } from "@/lib/i18n";
 import { ArrowRight, BookOpen, Calendar } from "lucide-react";
 import Link from "next/link";
 
-async function getBlogPosts() {
+interface BlogPost {
+  _id: string;
+  title: string | Record<string, string>;
+  slug: string;
+  summary: string | Record<string, string>;
+  status: string;
+  createdAt: string;
+}
+
+async function getBlogPosts(): Promise<BlogPost[] | null> {
   const API_BASE = getInternalApiUrl();
   try {
     const res = await fetch(`${API_BASE}/blog?status=published`, {
@@ -24,6 +33,7 @@ export default async function BlogListPage() {
   if (posts === null) {
     const { notFound } = await import("next/navigation");
     notFound();
+    return null;
   }
 
   return (
@@ -45,7 +55,7 @@ export default async function BlogListPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {posts.map((post: any) => (
+          {posts.map((post) => (
             <Link key={post._id} href={`/blog/${post.slug}`} className="block group">
               <article className="p-6 rounded-xl border border-card-border bg-card hover:border-blue-500/50 transition-all duration-200 space-y-3">
                 {/* Title */}

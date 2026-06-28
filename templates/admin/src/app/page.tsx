@@ -13,7 +13,7 @@ export default function RootPage() {
       try {
         await apiFetch("/auth/me");
         router.push("/pages");
-      } catch (err) {
+      } catch {
         router.push("/login");
       }
     }

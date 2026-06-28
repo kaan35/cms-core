@@ -10,12 +10,14 @@
     "build": "tsc",
     "start": "node --preserve-symlinks --env-file=.env dist/main.js",
     "seed": "node --env-file=.env src/scripts/seed.ts",
-    "generate-test-data": "tsx --env-file=.env src/scripts/generate-test-submissions.ts"
+    "generate-test-data": "tsx --env-file=.env src/scripts/generate-test-submissions.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.712.0",
     "@cms/core": "*",
     "@cms/db": "*",
-    "@aws-sdk/client-s3": "^3.712.0",
     "@fastify/cookie": "^11",
     "@fastify/cors": "^11",
     "@fastify/helmet": "^13",
@@ -31,10 +33,15 @@
     "zod": "^4"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bcrypt": "^6",
     "@types/jsonwebtoken": "^9",
-    "@types/node": "^25",
+    "@types/node": "^26",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
     "pino-pretty": "^13",
-    "typescript": "^6"
+    "typescript": "^6",
+    "typescript-eslint": "^8.62.0"
   }
 }

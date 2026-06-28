@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { useApiQuery } from "@/hooks/useApi";
 import { UserForm } from "@/components/UserForm";
 import { Loading } from "@/components/ui/Loading";
 
@@ -13,28 +13,20 @@ interface RoleTemplate {
 
 export default function UserNewPage() {
   const [roles, setRoles] = useState<RoleTemplate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const { data: rolesData, isLoading } = useApiQuery<any>("/auth/roles");
 
   useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        const data = await apiFetch("/auth/roles");
-        setRoles(
-          data.roles?.map((r: any) => ({
-            id: r._id?.toString() || r.id,
-            name: r.name,
-            permissions: r.permissions || [],
-          })) || []
-        );
-      } catch (err) {
-        console.error("Failed to load roles:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchRoles();
-  }, []);
+    if (rolesData?.roles) {
+      setRoles(
+        rolesData.roles.map((r: any) => ({
+          id: r._id?.toString() || r.id,
+          name: r.name,
+          permissions: r.permissions || [],
+        }))
+      );
+    }
+  }, [rolesData]);
 
   if (isLoading) {
     return <Loading isFullScreen />;

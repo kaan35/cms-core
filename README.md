@@ -61,22 +61,18 @@ A modular, headless CMS framework built with **Fastify**, **Next.js**, and **Mon
   - [x] TypeScript path mapping for cross-package imports
   - [x] Shared ESLint and prettier configs
 
+- [x] **Client Template**
+  - [x] Dynamic page rendering from Pages plugin
+  - [x] Blog post listing and detail pages
+  - [x] Form submission from client
+  - [x] SEO optimization (meta tags, sitemap, RSS)
+
+- [x] **API Documentation**
+  - [x] Swagger/OpenAPI spec generation
+  - [x] Interactive API docs via Swagger UI
+  - [x] Plugin API documentation
+
 ### 🚧 In Progress
-
-- [ ] **Client Template**
-  - [ ] Dynamic page rendering from Pages plugin
-  - [ ] Blog post listing and detail pages
-  - [ ] Form submission from client
-  - [ ] SEO optimization (meta tags, sitemap, RSS)
-
-- [ ] **API Documentation**
-  - [ ] Swagger/OpenAPI spec generation
-  - [ ] Interactive API docs via Swagger UI
-  - [ ] Plugin API documentation
-
-### 📋 Todo
-
-#### High Priority
 
 - [ ] **Testing Infrastructure**
   - [ ] Unit tests for core services
@@ -85,11 +81,11 @@ A modular, headless CMS framework built with **Fastify**, **Next.js**, and **Mon
   - [ ] Test coverage reporting
 
 - [ ] **Security Enhancements**
-  - [ ] Rate limiting per user/IP
+  - [x] Rate limiting per user/IP (Fastify rate-limit integrated)
   - [ ] CSRF protection
   - [ ] Content Security Policy (CSP)
   - [ ] Input sanitization audit
-  - [ ] Helmet.js security headers
+  - [x] Helmet.js security headers (Fastify helmet integrated)
 
 - [ ] **Media Management Plugin**
   - [ ] File upload to MinIO/S3
@@ -106,12 +102,12 @@ A modular, headless CMS framework built with **Fastify**, **Next.js**, and **Mon
 #### Medium Priority
 
 - [ ] **Content Versioning**
-  - [ ] Track content history
+  - [x] Track content history (cms_post_versions snapshot collections implemented)
   - [ ] Revert to previous versions
   - [ ] Diff visualization
 
 - [ ] **Workflow & Publishing**
-  - [ ] Draft/Published status
+  - [x] Draft/Published status (Draft/published option supported)
   - [ ] Scheduled publishing
   - [ ] Content approval workflow
 

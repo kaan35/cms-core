@@ -21,13 +21,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   // Use mutation hook for login
-  const { trigger: login, isMutating } = useApiMutation<any, LoginCredentials>({
+  const { trigger: login, isMutating } = useApiMutation<{ status: string }, LoginCredentials>({
     path: "/auth/login",
     method: "POST",
     onSuccess: () => {
       router.push("/pages");
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       setError(err.message || "Invalid credentials");
     },
   });

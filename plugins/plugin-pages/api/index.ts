@@ -1,8 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
-import { ObjectId } from "mongodb";
-import { hooks } from "@cms/core";
+import { hooks, createPluginGuard, parseObjectId, serializeDocument, serializeDocuments, pluginLoader } from "@cms/core";
 
 // Zod Block Schema
 const blockSchema = z.object({
@@ -22,96 +21,96 @@ const pageSchema = z.object({
   blocks: z.array(blockSchema),
 });
 
+type PageBody = z.infer<typeof pageSchema>;
+
 export const name = "@cms/plugin-pages-api";
 export const version = "1.0.0";
 
-async function register(fastify: FastifyInstance, options: any) {
-  const db = (fastify as any).db;
-  const logger = (fastify as any).logger;
-  const authenticate = (fastify as any).authenticate;
-  const checkPermission = (fastify as any).checkPermission;
+async function register(fastify: FastifyInstance, _options: Record<string, unknown> = {}) {
+  const db = fastify.db;
+  const logger = fastify.logger;
+  const authenticate = fastify.authenticate;
+  const checkPermission = fastify.checkPermission;
 
   logger.info("📄 Plugin-Pages: Initializing dynamic pages routes...");
 
   const pagesCol = db.getCollection("cms_pages");
 
-  // Middleware: Check if plugin is enabled
-  const checkPluginEnabled = async (request: FastifyRequest, reply: FastifyReply) => {
-    const { PluginLoader } = await import("@cms/core");
-    if (!PluginLoader.isEnabled(name)) {
-      reply.status(503).send({ 
-        status: "error", 
-        message: "Pages plugin is currently disabled" 
-      });
-    }
-  };
+  // Hook: Check if plugin is enabled globally for all routes in this plugin
+  fastify.addHook("preHandler", createPluginGuard(name));
 
   // Get all pages list
-  fastify.get("/pages", { preHandler: [checkPluginEnabled] }, async () => {
+  fastify.get("/pages", async () => {
     const pages = await pagesCol.find({}, { projection: { title: 1, slug: 1, createdAt: 1 } }).toArray();
-    
-    // Serialize ObjectId to string
-    const serializedPages = pages.map(page => ({
-      ...page,
-      _id: page._id.toString(),
-    }));
-    
-    return { status: "success", pages: serializedPages };
+    return { status: "success", pages: serializeDocuments(pages) };
   });
 
   // Get page by ID or slug
-  fastify.get("/pages/:idOrSlug", { preHandler: [checkPluginEnabled] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get("/pages/:idOrSlug", async (request: FastifyRequest, reply: FastifyReply) => {
     const { idOrSlug } = request.params as { idOrSlug: string };
-    
+
     let page;
-    
-    // Try as ObjectId first
+
     try {
-      const objectId = new ObjectId(idOrSlug);
-      page = await pagesCol.findOne({ _id: objectId });
-    } catch (err) {
+      page = await pagesCol.findOne({ _id: parseObjectId(idOrSlug) });
+    } catch {
       // Not a valid ObjectId, try as slug
       page = await pagesCol.findOne({ slug: idOrSlug });
     }
-    
+
     if (!page) {
       reply.status(404).send({ status: "error", message: "Page not found" });
       return;
     }
-    
-    // Serialize ObjectId to string
-    const serializedPage = {
-      ...page,
-      _id: page._id.toString(),
-    };
+
+    interface SerializedPage {
+      _id: string;
+      title: string;
+      slug: string;
+      blocks?: Array<{
+        id: string;
+        type: "hero" | "text" | "form" | "blog_posts";
+        title?: string;
+        subtitle?: string;
+        content?: string;
+        formId?: string;
+        count?: number;
+      }>;
+      createdAt: Date;
+      updatedAt: Date;
+    }
+
+    const serializedPage = serializeDocument(page) as unknown as SerializedPage;
 
     // Filter out blocks of disabled plugins for public users (non-admins)
     let isAdmin = false;
     const token = request.cookies?.token;
     if (token) {
       try {
-        const config = (fastify as any).config;
+        const config = fastify.config;
         const jwt = await import("jsonwebtoken");
-        jwt.default.verify(token, config.JWT_SECRET);
-        isAdmin = true;
+        const decoded = jwt.default.verify(token, config.JWT_SECRET) as { permissions?: string[] };
+        // Verify user has read permissions to bypass filters
+        if (decoded && decoded.permissions && decoded.permissions.includes("pages:read")) {
+          isAdmin = true;
+        }
       } catch (err) {
         // Ignore and treat as public user
       }
     }
 
     if (!isAdmin && serializedPage.blocks && Array.isArray(serializedPage.blocks)) {
-      const { PluginLoader } = await import("@cms/core");
-      serializedPage.blocks = serializedPage.blocks.filter((block: any) => {
-        if (block.type === "form" && !PluginLoader.isEnabled("@cms/plugin-forms-api")) {
+      serializedPage.blocks = serializedPage.blocks.filter((block) => {
+        if (block.type === "form" && !pluginLoader.isEnabled("@cms/plugin-forms-api")) {
           return false;
         }
-        if (block.type === "blog_posts" && !PluginLoader.isEnabled("@cms/plugin-blog-api")) {
+        if (block.type === "blog_posts" && !pluginLoader.isEnabled("@cms/plugin-blog-api")) {
           return false;
         }
         return true;
       });
     }
-    
+
     return { status: "success", page: serializedPage };
   });
 
@@ -119,19 +118,12 @@ async function register(fastify: FastifyInstance, options: any) {
   fastify.post(
     "/pages",
     {
-      preHandler: [checkPluginEnabled, authenticate, checkPermission("pages:write")],
-      schema: {
-        body: z.object({
-          title: z.string(),
-          slug: z.string().min(1),
-          blocks: z.array(blockSchema),
-        }),
-      },
+      preHandler: [authenticate, checkPermission("pages:write")],
+      schema: { body: pageSchema },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const body = request.body as any;
-      
-      // Ensure slug uniqueness
+      const body = request.body as PageBody;
+
       const existing = await pagesCol.findOne({ slug: body.slug });
       if (existing) {
         reply.status(400).send({ status: "error", message: "Slug already exists" });
@@ -147,11 +139,10 @@ async function register(fastify: FastifyInstance, options: any) {
       };
 
       const result = await pagesCol.insertOne(newPage);
-      
-      // Emit event
-      hooks.emit("page.created", newPage, (request as any).user, request.ip);
 
-      // Serialize ObjectId to string
+      // Emit event
+      hooks.emit("page.created", newPage, request.user, request.ip);
+
       const serializedPage = {
         ...newPage,
         _id: result.insertedId.toString(),
@@ -165,19 +156,17 @@ async function register(fastify: FastifyInstance, options: any) {
   fastify.put(
     "/pages/:id",
     {
-      preHandler: [checkPluginEnabled, authenticate, checkPermission("pages:write")],
-      schema: {
-        body: pageSchema,
-      },
+      preHandler: [authenticate, checkPermission("pages:write")],
+      schema: { body: pageSchema },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      const body = request.body as z.infer<typeof pageSchema>;
+      const body = request.body as PageBody;
 
       let objectId;
       try {
-        objectId = new ObjectId(id);
-      } catch (err) {
+        objectId = parseObjectId(id);
+      } catch {
         reply.status(400).send({ status: "error", message: "Invalid page ID" });
         return;
       }
@@ -190,7 +179,7 @@ async function register(fastify: FastifyInstance, options: any) {
 
       // Check slug uniqueness (exclude current page)
       if (body.slug !== page.slug) {
-        const existing = await pagesCol.findOne({ 
+        const existing = await pagesCol.findOne({
           slug: body.slug,
           _id: { $ne: objectId }
         });
@@ -208,7 +197,7 @@ async function register(fastify: FastifyInstance, options: any) {
           postId: page._id,
           versionNumber: currentVersionCount + 1,
           data: page,
-          savedBy: (request as any).user ? (request as any).user.id : null,
+          savedBy: request.user?.id ?? null,
           createdAt: new Date(),
         });
       } catch (versionErr) {
@@ -236,7 +225,7 @@ async function register(fastify: FastifyInstance, options: any) {
       );
 
       // Emit event
-      hooks.emit("page.updated", updatedPage, (request as any).user, request.ip);
+      hooks.emit("page.updated", updatedPage, request.user, request.ip);
 
       return { status: "success", message: "Page updated successfully" };
     }
@@ -246,19 +235,19 @@ async function register(fastify: FastifyInstance, options: any) {
   fastify.delete(
     "/pages/:id",
     {
-      preHandler: [checkPluginEnabled, authenticate, checkPermission("pages:delete")],
+      preHandler: [authenticate, checkPermission("pages:delete")],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      
+
       let objectId;
       try {
-        objectId = new ObjectId(id);
-      } catch (err) {
+        objectId = parseObjectId(id);
+      } catch {
         reply.status(400).send({ status: "error", message: "Invalid page ID" });
         return;
       }
-      
+
       const page = await pagesCol.findOne({ _id: objectId });
       if (!page) {
         reply.status(404).send({ status: "error", message: "Page not found" });
@@ -272,63 +261,9 @@ async function register(fastify: FastifyInstance, options: any) {
       }
 
       // Emit event
-      hooks.emit("page.deleted", page, (request as any).user, request.ip);
+      hooks.emit("page.deleted", page, request.user, request.ip);
 
       return { status: "success", message: "Page deleted successfully" };
-    }
-  );
-
-  // --- SETTINGS ENDPOINTS ---
-  const settingsCol = db.getCollection("cms_settings");
-
-  // Get settings
-  fastify.get("/settings", { preHandler: [checkPluginEnabled] }, async () => {
-    let settings = await settingsCol.findOne({});
-    if (!settings) {
-      // Return defaults if not set in DB yet
-      settings = {
-        brandName: "ModularCMS",
-        primaryColor: "#8b5cf6",
-        secondaryColor: "#4f46e5",
-      };
-    }
-    return { status: "success", settings };
-  });
-
-  // Update settings
-  fastify.put(
-    "/settings",
-    {
-      preHandler: [checkPluginEnabled, authenticate, checkPermission("settings:write")],
-      schema: {
-        body: z.object({
-          brandName: z.string().min(1),
-          primaryColor: z.string().min(4),
-          secondaryColor: z.string().min(4),
-        }),
-      },
-    },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const user = (request as any).user;
-      const body = request.body as any;
-
-      await settingsCol.updateOne(
-        {},
-        {
-          $set: {
-            brandName: body.brandName,
-            primaryColor: body.primaryColor,
-            secondaryColor: body.secondaryColor,
-            updatedAt: new Date(),
-          },
-        },
-        { upsert: true }
-      );
-
-      // Emit event
-      hooks.emit("settings.updated", body, user, request.ip);
-
-      return { status: "success", message: "Settings updated successfully", settings: body };
     }
   );
 }

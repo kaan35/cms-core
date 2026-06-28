@@ -12,7 +12,7 @@ export default function DashboardNotFound() {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-white">Resource Not Found</h1>
           <p className="text-zinc-400 max-w-md">
-            The resource you're looking for doesn't exist or has been deleted.
+            The resource you&apos;re looking for doesn&apos;t exist or has been deleted.
           </p>
         </div>
       </div>

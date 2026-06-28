@@ -1,3 +1,13 @@
+import {
+  AuditLogService,
+  BackupService,
+  cache,
+  config,
+  logger,
+  pluginLoader,
+  WebhookService,
+} from "@cms/core";
+import { database } from "@cms/db";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -6,16 +16,6 @@ import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import Fastify from "fastify";
 import { ZodError } from "zod";
-import {
-  PluginLoader,
-  config,
-  logger,
-  cache,
-  AuditLogService,
-  WebhookService,
-  BackupService,
-} from "@cms/core";
-import { database } from "@cms/db";
 
 export async function createServer() {
   const app = Fastify({
@@ -29,10 +29,11 @@ export async function createServer() {
   app.decorate("logger", logger);
 
   // 1. Set Zod Validator Compiler
-  app.setValidatorCompiler(({ schema }: any) => {
-    return (data: any) => {
-      if (schema && typeof schema.safeParse === "function") {
-        const result = schema.safeParse(data);
+  app.setValidatorCompiler(({ schema }: { schema: unknown }) => {
+    return (data: unknown) => {
+      const s = schema as { safeParse?: (d: unknown) => { success: boolean; data?: unknown; error?: Error } };
+      if (s && typeof s.safeParse === "function") {
+        const result = s.safeParse(data);
         if (result.success) return { value: result.data };
         return { error: result.error };
       }
@@ -46,7 +47,7 @@ export async function createServer() {
       reply.status(400).send({
         status: "error",
         message: "Validation Error",
-        details: error.errors.map((e) => ({
+        details: error.issues.map((e) => ({
           path: e.path.join("."),
           message: e.message,
         })),
@@ -54,10 +55,11 @@ export async function createServer() {
       return;
     }
 
-    if (error.statusCode) {
-      reply.status(error.statusCode).send({
+    const statusCode = (error as { statusCode?: number }).statusCode;
+    if (statusCode) {
+      reply.status(statusCode).send({
         status: "error",
-        message: error.message,
+        message: (error as Error).message,
       });
       return;
     }
@@ -114,7 +116,7 @@ export async function createServer() {
   app.get("/health", async (request, reply) => {
     const mongoConnected = database.getDb() ? true : false;
     // We can run a simple ping on cache
-    let redisConnected = false;
+    let redisConnected: boolean;
     try {
       await cache.get("health_ping");
       redisConnected = true;
@@ -134,7 +136,7 @@ export async function createServer() {
   });
 
   // 6. Connect to databases
-  await database.connect();
+  await database.connect(config, logger);
   await cache.connect();
 
   // Initialize core services after DB is ready
@@ -143,7 +145,7 @@ export async function createServer() {
   BackupService.init();
 
   // 7. Load Plugins from DB
-  await PluginLoader.loadAll(app);
+  await pluginLoader.loadAll(app);
 
   return app;
 }

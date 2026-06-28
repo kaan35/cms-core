@@ -55,7 +55,7 @@ export function UserForm({
       router.push("/users");
       router.refresh();
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast({ message: err.message || "Failed to save user", type: "error" });
     },
   });

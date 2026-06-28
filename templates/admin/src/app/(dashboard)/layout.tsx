@@ -30,7 +30,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     data: authData,
     error: authError,
     isLoading: isAuthLoading,
-  } = useApiQuery<{ user: any }>("/auth/me");
+  } = useApiQuery<{ user: { id: string; email: string; role: string } }>("/auth/me");
 
   // Plugins list — revalidateOnFocus keeps the sidebar in sync automatically
   const { data: pluginsData } = useApiQuery<{
@@ -44,9 +44,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     onSuccess: () => {
       router.push("/login");
     },
-    onError: (err: any) => {
-      console.error("Logout failed:", err);
-      showToast({ message: "Logout failed", type: "error" });
+    onError: (err: Error) => {
+      showToast({ message: err.message || "Logout failed", type: "error" });
     },
   });
 

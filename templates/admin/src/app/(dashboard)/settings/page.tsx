@@ -17,19 +17,19 @@ export default function SettingsPage() {
     secondaryColor: "#4f46e5",
   });
 
-  const { data, isLoading, isRefreshing, error, refetch } = useApiQuery<{
+  const { isLoading, isRefreshing, error, refetch } = useApiQuery<{
     settings: {
       brandName: string;
       primaryColor: string;
       secondaryColor: string;
     };
   }>("/settings", {
-    onSuccess: (data) => {
-      if (data.settings) {
+    onSuccess: (fetchedData) => {
+      if (fetchedData.settings) {
         setFormData({
-          brandName: data.settings.brandName || "ModularCMS",
-          primaryColor: data.settings.primaryColor || "#8b5cf6",
-          secondaryColor: data.settings.secondaryColor || "#4f46e5",
+          brandName: fetchedData.settings.brandName || "ModularCMS",
+          primaryColor: fetchedData.settings.primaryColor || "#8b5cf6",
+          secondaryColor: fetchedData.settings.secondaryColor || "#4f46e5",
         });
       }
     },
@@ -42,7 +42,7 @@ export default function SettingsPage() {
       showToast({ message: "Settings updated successfully", type: "success" });
       refetch();
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       const errorMsg = err.message || "Failed to save settings";
       showToast({ message: errorMsg, type: "error" });
     },

@@ -5,6 +5,8 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { ObjectId } from "mongodb";
 
+import { parseObjectId } from "@cms/core";
+
 // Zod login schema
 const loginSchema = z.object({
   email: z.string().email(),
@@ -23,6 +25,18 @@ const userUpdateSchema = z.object({
   permissions: z.array(z.string()),
 });
 
+// Zod Role Schema (shared for create + update)
+const roleSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  permissions: z.array(z.string()),
+});
+
+type LoginBody = z.infer<typeof loginSchema>;
+type UserCreateBody = z.infer<typeof userCreateSchema>;
+type UserUpdateBody = z.infer<typeof userUpdateSchema>;
+type RoleBody = z.infer<typeof roleSchema>;
+
 export const name = "@cms/plugin-auth-api";
 export const version = "1.0.0";
 
@@ -36,10 +50,10 @@ const SYSTEM_PERMISSIONS = [
   "backups:read", "backups:write"
 ];
 
-export async function register(fastify: FastifyInstance, options: any) {
-  const db = (fastify as any).db;
-  const config = (fastify as any).config;
-  const logger = (fastify as any).logger;
+export async function register(fastify: FastifyInstance, _options: Record<string, unknown> = {}) {
+  const db = fastify.db;
+  const config = fastify.config;
+  const logger = fastify.logger;
 
   logger.info("🔑 Plugin-Auth: Initializing authentication routes...");
 
@@ -107,7 +121,7 @@ export async function register(fastify: FastifyInstance, options: any) {
           return;
         }
 
-        (request as any).user = {
+        request.user = {
           id: dbUser._id.toString(),
           email: dbUser.email,
           role: dbUser.role,
@@ -123,7 +137,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   if (!fastify.hasDecorator("checkPermission")) {
     fastify.decorate("checkPermission", (permission: string) => {
       return async (request: FastifyRequest, reply: FastifyReply) => {
-        const user = (request as any).user;
+        const user = request.user;
         if (!user) {
           reply.status(401).send({ status: "error", message: "Unauthorized" });
           return;
@@ -136,7 +150,7 @@ export async function register(fastify: FastifyInstance, options: any) {
     });
   }
 
-  const checkPermission = (fastify as any).checkPermission;
+  const checkPermission = fastify.checkPermission;
 
   // Login Endpoint
   fastify.post(
@@ -205,10 +219,10 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.get(
     "/auth/me",
     {
-      preHandler: [(fastify as any).authenticate],
+      preHandler: [fastify.authenticate],
     },
     async (request: FastifyRequest) => {
-      const user = (request as any).user;
+      const user = request.user;
       return {
         status: "success",
         user,
@@ -220,7 +234,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.get(
     "/auth/permissions",
     {
-      preHandler: [(fastify as any).authenticate],
+      preHandler: [fastify.authenticate],
     },
     async () => {
       return { status: "success", permissions: SYSTEM_PERMISSIONS };
@@ -231,7 +245,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.get(
     "/auth/users",
     {
-      preHandler: [(fastify as any).authenticate, checkPermission("users:read")],
+      preHandler: [fastify.authenticate, checkPermission("users:read")],
     },
     async () => {
       const usersCol = db.getCollection("cms_users");
@@ -252,7 +266,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.post(
     "/auth/users",
     {
-      preHandler: [(fastify as any).authenticate, checkPermission("users:write")],
+      preHandler: [fastify.authenticate, checkPermission("users:write")],
       schema: {
         body: userCreateSchema,
       },
@@ -293,7 +307,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.get(
     "/auth/users/:id",
     {
-      preHandler: [(fastify as any).authenticate, checkPermission("users:read")],
+      preHandler: [fastify.authenticate, checkPermission("users:read")],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
@@ -326,7 +340,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.put(
     "/auth/users/:id",
     {
-      preHandler: [(fastify as any).authenticate, checkPermission("users:write")],
+      preHandler: [fastify.authenticate, checkPermission("users:write")],
       schema: {
         body: userUpdateSchema,
       },
@@ -376,7 +390,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.delete(
     "/auth/users/:id",
     {
-      preHandler: [(fastify as any).authenticate, checkPermission("users:delete")],
+      preHandler: [fastify.authenticate, checkPermission("users:delete")],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
@@ -391,7 +405,7 @@ export async function register(fastify: FastifyInstance, options: any) {
       }
 
       // Check if trying to delete self
-      const currentUser = (request as any).user;
+      const currentUser = request.user;
       if (currentUser.id === id) {
         reply.status(400).send({ status: "error", message: "Cannot delete your own admin account" });
         return;
@@ -412,7 +426,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   // List all roles
   fastify.get(
     "/auth/roles",
-    { preHandler: [(fastify as any).authenticate, checkPermission("users:read")] },
+    { preHandler: [fastify.authenticate, checkPermission("users:read")] },
     async () => {
       const roles = await rolesCol.find({}).sort({ name: 1 }).toArray();
       return { status: "success", roles };
@@ -422,7 +436,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   // Get role by ID
   fastify.get(
     "/auth/roles/:id",
-    { preHandler: [(fastify as any).authenticate, checkPermission("users:read")] },
+    { preHandler: [fastify.authenticate, checkPermission("users:read")] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
       
@@ -454,17 +468,11 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.post(
     "/auth/roles",
     {
-      preHandler: [(fastify as any).authenticate, checkPermission("users:write")],
-      schema: {
-        body: z.object({
-          name: z.string().min(1),
-          description: z.string().optional(),
-          permissions: z.array(z.string()),
-        }),
-      },
+      preHandler: [fastify.authenticate, checkPermission("users:write")],
+      schema: { body: roleSchema },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const body = request.body as any;
+      const body = request.body as RoleBody;
       const existing = await rolesCol.findOne({ name: body.name });
       if (existing) {
         reply.status(400).send({ status: "error", message: "Role name already exists" });
@@ -480,14 +488,8 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.put(
     "/auth/roles/:id",
     {
-      preHandler: [(fastify as any).authenticate, checkPermission("users:write")],
-      schema: {
-        body: z.object({
-          name: z.string().min(1),
-          description: z.string().optional(),
-          permissions: z.array(z.string()),
-        }),
-      },
+      preHandler: [fastify.authenticate, checkPermission("users:write")],
+      schema: { body: roleSchema },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
@@ -495,7 +497,7 @@ export async function register(fastify: FastifyInstance, options: any) {
       try { objId = new ObjectId(id); } catch {
         reply.status(400).send({ status: "error", message: "Invalid role ID" }); return;
       }
-      const body = request.body as any;
+      const body = request.body as RoleBody;
       const result = await rolesCol.updateOne(
         { _id: objId },
         { $set: { name: body.name, description: body.description, permissions: body.permissions, updatedAt: new Date() } }
@@ -510,7 +512,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   // Delete role
   fastify.delete(
     "/auth/roles/:id",
-    { preHandler: [(fastify as any).authenticate, checkPermission("users:delete")] },
+    { preHandler: [fastify.authenticate, checkPermission("users:delete")] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
       let objId: ObjectId;

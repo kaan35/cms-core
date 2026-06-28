@@ -1,11 +1,17 @@
 import { getInternalApiUrl } from "@/lib/config";
-import { NextResponse } from "next/server";
+
+interface FeedPost {
+  title: string;
+  slug: string;
+  summary: string;
+  createdAt: string;
+}
 
 export async function GET() {
   const baseUrl = "http://localhost:3002";
   const apiBaseUrl = getInternalApiUrl();
 
-  let posts: any[] = [];
+  let posts: FeedPost[] = [];
   let brandName = "ModularCMS";
 
   try {

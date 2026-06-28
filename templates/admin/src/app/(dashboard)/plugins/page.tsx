@@ -32,15 +32,15 @@ export default function PluginsPage() {
 
   // path is a function → trigger(plugin._id) injects the ID at call time,
   // same idea as trigger(formData) in blog/[id]/page.tsx but for path params.
-  const { trigger: togglePlugin } = useApiMutation<any, string>({
+  const { trigger: togglePlugin } = useApiMutation<{ message: string }, string>({
     path: (id) => `/plugins/${id}/toggle`,
     method: "PUT",
     onSuccess: (result) => {
-      showToast({ message: result.message, type: "success" });
+      showToast({ message: result?.message || "Plugin toggled successfully", type: "success" });
       refetch();
       setTogglingPluginId(null);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast({ message: err.message || "Failed to toggle plugin", type: "error" });
       setTogglingPluginId(null);
     },

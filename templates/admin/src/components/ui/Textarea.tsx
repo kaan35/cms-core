@@ -15,7 +15,8 @@ export const Textarea: React.FC<TextareaProps> = ({
   rows = 4,
   ...props
 }) => {
-  const textareaId = id || React.useId();
+  const generatedId = React.useId();
+  const textareaId = id || generatedId;
 
   return (
     <div className="w-full space-y-2">

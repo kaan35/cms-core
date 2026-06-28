@@ -41,12 +41,12 @@ export function RoleForm({ mode, roleId, initialData }: RoleFormProps) {
       router.push("/roles");
       router.refresh();
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast({ message: err.message || "Failed to save role", type: "error" });
     },
   });
 
-  const handleChange = (field: keyof typeof formData, value: any) => {
+  const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 

@@ -1,12 +1,20 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import fp from "fastify-plugin";
 import { z } from "zod";
-import { hooks } from "@cms/core";
+import {
+  hooks,
+  createPluginGuard,
+  parsePaginationQuery,
+  buildPaginationMeta,
+} from "@cms/core";
+import type { PaginationQuery } from "@cms/core";
 
 // Zod Form Field Schema
 const fieldSchema = z.object({
   name: z.string(),
   type: z.enum(["text", "email", "textarea", "number"]),
   label: z.string(),
+  placeholder: z.string().optional(),
   required: z.boolean().default(true),
 });
 
@@ -17,39 +25,39 @@ const formSchema = z.object({
   fields: z.array(fieldSchema),
 });
 
+const formUpdateSchema = z.object({
+  name: z.string().min(1),
+  fields: z.array(fieldSchema),
+});
+
+type FormBody = z.infer<typeof formSchema>;
+type FormUpdateBody = z.infer<typeof formUpdateSchema>;
+
 export const name = "@cms/plugin-forms-api";
 export const version = "1.0.0";
 
-export async function register(fastify: FastifyInstance, options: any) {
-  const db = (fastify as any).db;
-  const logger = (fastify as any).logger;
-  const authenticate = (fastify as any).authenticate;
-  const checkPermission = (fastify as any).checkPermission;
+async function register(fastify: FastifyInstance, _options: Record<string, unknown> = {}) {
+  const db = fastify.db;
+  const logger = fastify.logger;
+  const authenticate = fastify.authenticate;
+  const checkPermission = fastify.checkPermission;
 
   logger.info("📋 Plugin-Forms: Initializing forms and submission routes...");
 
   const formsCol = db.getCollection("cms_forms");
   const submissionsCol = db.getCollection("cms_form_submissions");
 
-  // Middleware: Check if plugin is enabled
-  const checkPluginEnabled = async (request: FastifyRequest, reply: FastifyReply) => {
-    const { PluginLoader } = await import("@cms/core");
-    if (!PluginLoader.isEnabled(name)) {
-      reply.status(503).send({ 
-        status: "error", 
-        message: "Forms plugin is currently disabled" 
-      });
-    }
-  };
+  // Check if plugin is enabled globally for all routes in this plugin
+  fastify.addHook("preHandler", createPluginGuard(name));
 
   // Get all forms
-  fastify.get("/forms", { preHandler: [checkPluginEnabled] }, async () => {
+  fastify.get("/forms", async () => {
     const forms = await formsCol.find({}).toArray();
     return { status: "success", forms };
   });
 
   // Get form by ID
-  fastify.get("/forms/:formId", { preHandler: [checkPluginEnabled] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get("/forms/:formId", async (request: FastifyRequest, reply: FastifyReply) => {
     const { formId } = request.params as { formId: string };
     const form = await formsCol.findOne({ formId });
     if (!form) {
@@ -63,13 +71,11 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.post(
     "/forms",
     {
-      preHandler: [checkPluginEnabled, authenticate, checkPermission("forms:write")],
-      schema: {
-        body: formSchema,
-      },
+      preHandler: [authenticate, checkPermission("forms:write")],
+      schema: { body: formSchema },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const body = request.body as z.infer<typeof formSchema>;
+      const body = request.body as FormBody;
 
       const existing = await formsCol.findOne({ formId: body.formId });
       if (existing) {
@@ -77,11 +83,7 @@ export async function register(fastify: FastifyInstance, options: any) {
         return;
       }
 
-      await formsCol.insertOne({
-        ...body,
-        createdAt: new Date(),
-      });
-
+      await formsCol.insertOne({ ...body, createdAt: new Date() });
       return { status: "success", form: body };
     }
   );
@@ -90,17 +92,12 @@ export async function register(fastify: FastifyInstance, options: any) {
   fastify.put(
     "/forms/:formId",
     {
-      preHandler: [checkPluginEnabled, authenticate, checkPermission("forms:write")],
-      schema: {
-        body: z.object({
-          name: z.string().min(1),
-          fields: z.array(fieldSchema),
-        }),
-      },
+      preHandler: [authenticate, checkPermission("forms:write")],
+      schema: { body: formUpdateSchema },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { formId } = request.params as { formId: string };
-      const body = request.body as any;
+      const body = request.body as FormUpdateBody;
 
       const form = await formsCol.findOne({ formId });
       if (!form) {
@@ -110,14 +107,8 @@ export async function register(fastify: FastifyInstance, options: any) {
 
       await formsCol.updateOne(
         { formId },
-        {
-          $set: {
-            name: body.name,
-            fields: body.fields,
-          },
-        }
+        { $set: { name: body.name, fields: body.fields } }
       );
-
       return { status: "success", message: "Form updated successfully" };
     }
   );
@@ -125,9 +116,7 @@ export async function register(fastify: FastifyInstance, options: any) {
   // Delete form
   fastify.delete(
     "/forms/:formId",
-    {
-      preHandler: [checkPluginEnabled, authenticate, checkPermission("forms:delete")],
-    },
+    { preHandler: [authenticate, checkPermission("forms:delete")] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { formId } = request.params as { formId: string };
       const result = await formsCol.deleteOne({ formId });
@@ -140,9 +129,9 @@ export async function register(fastify: FastifyInstance, options: any) {
   );
 
   // Submit form data (PUBLIC endpoint)
-  fastify.post("/forms/:formId/submit", { preHandler: [checkPluginEnabled] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post("/forms/:formId/submit", async (request: FastifyRequest, reply: FastifyReply) => {
     const { formId } = request.params as { formId: string };
-    const inputData = request.body as Record<string, any>;
+    const inputData = request.body as Record<string, unknown>;
 
     const form = await formsCol.findOne({ formId });
     if (!form) {
@@ -150,38 +139,34 @@ export async function register(fastify: FastifyInstance, options: any) {
       return;
     }
 
-    // Dynamic Validation
+    // Dynamic validation
     const errors: Array<{ field: string; message: string }> = [];
-    const sanitizedData: Record<string, any> = {};
+    const sanitizedData: Record<string, unknown> = {};
 
     for (const field of form.fields) {
       const val = inputData[field.name];
 
-      // Required Check
       if (field.required && (val === undefined || val === null || val === "")) {
         errors.push({ field: field.name, message: `${field.label} is required` });
         continue;
       }
 
       if (val !== undefined && val !== null && val !== "") {
-        // Email check
         if (field.type === "email") {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(val)) {
-            errors.push({ field: field.name, message: `Invalid email address` });
+          if (!emailRegex.test(String(val))) {
+            errors.push({ field: field.name, message: "Invalid email address" });
             continue;
           }
         }
-        // Number check
         if (field.type === "number") {
           if (isNaN(Number(val))) {
-            errors.push({ field: field.name, message: `Must be a number` });
+            errors.push({ field: field.name, message: "Must be a number" });
             continue;
           }
           sanitizedData[field.name] = Number(val);
           continue;
         }
-
         sanitizedData[field.name] = val;
       }
     }
@@ -191,43 +176,23 @@ export async function register(fastify: FastifyInstance, options: any) {
       return;
     }
 
-    // Save Submission
-    const submission = {
-      formId,
-      data: sanitizedData,
-      createdAt: new Date(),
-    };
+    const submission = { formId, data: sanitizedData, createdAt: new Date() };
     await submissionsCol.insertOne(submission);
-
-    // Emit event
     hooks.emit("form.submitted", submission, form.name, request.ip);
 
-    return {
-      status: "success",
-      message: "Form submitted successfully",
-    };
+    return { status: "success", message: "Form submitted successfully" };
   });
 
   // Get all submissions for a form (with pagination)
   fastify.get(
     "/forms/:formId/submissions",
-    {
-      preHandler: [checkPluginEnabled, authenticate, checkPermission("forms:read")],
-    },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    { preHandler: [authenticate, checkPermission("forms:read")] },
+    async (request: FastifyRequest) => {
       const { formId } = request.params as { formId: string };
-      const query = request.query as any;
-      
-      // Pagination params
-      const page = parseInt(query.page) || 1;
-      const limit = parseInt(query.limit) || 10;
-      const skip = (page - 1) * limit;
+      const { page, limit, skip } = parsePaginationQuery(request.query as PaginationQuery);
 
-      // Get total count
       const total = await submissionsCol.countDocuments({ formId });
-      
-      // Get paginated submissions
-      const submissions = await submissionsCol
+      const items = await submissionsCol
         .find({ formId })
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -236,13 +201,8 @@ export async function register(fastify: FastifyInstance, options: any) {
 
       return {
         status: "success",
-        items: submissions,
-        meta: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
+        items,
+        meta: buildPaginationMeta(page, limit, total),
       };
     }
   );
@@ -251,5 +211,5 @@ export async function register(fastify: FastifyInstance, options: any) {
 export default {
   name,
   version,
-  register,
+  register: fp(register, { name }),
 };

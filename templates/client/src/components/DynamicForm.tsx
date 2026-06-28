@@ -8,6 +8,7 @@ interface Field {
   name: string;
   type: "text" | "email" | "textarea" | "number";
   label: string;
+  placeholder?: string;
   required: boolean;
 }
 
@@ -18,7 +19,7 @@ interface FormProps {
 }
 
 export default function DynamicForm({ formId, name, fields }: FormProps) {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Array<{ field: string; message: string }>>([]);
   const [success, setSuccess] = useState(false);
@@ -59,7 +60,7 @@ export default function DynamicForm({ formId, name, fields }: FormProps) {
     }
   };
 
-  const handleChange = (fieldName: string, value: any) => {
+  const handleChange = (fieldName: string, value: string) => {
     setFormData({
       ...formData,
       [fieldName]: value,
@@ -111,7 +112,7 @@ export default function DynamicForm({ formId, name, fields }: FormProps) {
                     value={formData[field.name] || ""}
                     onChange={(e) => handleChange(field.name, e.target.value)}
                     className="w-full rounded-lg border border-input-border bg-input px-4 py-2.5 text-sm text-foreground placeholder-muted outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition duration-150"
-                    placeholder={`${field.label} giriniz`}
+                    placeholder={field.placeholder || `${field.label} giriniz`}
                   />
                 ) : (
                   <input
@@ -122,7 +123,7 @@ export default function DynamicForm({ formId, name, fields }: FormProps) {
                     value={formData[field.name] || ""}
                     onChange={(e) => handleChange(field.name, e.target.value)}
                     className="w-full rounded-lg border border-input-border bg-input px-4 py-2.5 text-sm text-foreground placeholder-muted outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition duration-150"
-                    placeholder={`${field.label} giriniz`}
+                    placeholder={field.placeholder || `${field.label} giriniz`}
                   />
                 )}
               </div>

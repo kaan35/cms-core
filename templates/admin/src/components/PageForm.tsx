@@ -5,8 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import { useApiMutation } from "@/hooks/useApi";
-import { apiFetch } from "@/lib/api";
+import { useApiMutation, useApiQuery } from "@/hooks/useApi";
 import { useToast } from "@/lib/toast";
 import {
   ArrowDown,
@@ -21,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface Block {
   id: string;
@@ -46,7 +45,8 @@ interface PageFormProps {
 export function PageForm({ mode, pageId, initialData }: PageFormProps) {
   const router = useRouter();
   const { showToast } = useToast();
-  const [forms, setForms] = useState<any[]>([]);
+  const { data: formsData } = useApiQuery<{ forms: Array<{ formId: string; name: string }> }>("/forms");
+  const forms = formsData?.forms || [];
 
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
@@ -65,26 +65,24 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
       router.push("/pages");
       router.refresh();
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showToast({ message: err.message || "Failed to save page", type: "error" });
     },
   });
 
-  useEffect(() => {
-    const fetchForms = async () => {
-      try {
-        const data = await apiFetch("/forms");
-        setForms(data.forms || []);
-      } catch (err) {
-        console.error("Failed to load forms:", err);
-      }
-    };
-
-    fetchForms();
-  }, []);
 
   const handleChange = (field: "title" | "slug", value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (field === "title") {
+        updated.slug = value
+          .toLowerCase()
+          .replace(/[^a-z0-9 -]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-");
+      }
+      return updated;
+    });
   };
 
   const addBlock = (type: Block["type"]) => {
@@ -110,7 +108,7 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
     }));
   };
 
-  const updateBlockField = (index: number, field: keyof Block, value: any) => {
+  const updateBlockField = (index: number, field: keyof Block, value: Block[keyof Block]) => {
     setFormData((prev) => {
       const updatedBlocks = [...prev.blocks];
       updatedBlocks[index] = {

@@ -7,11 +7,18 @@ import DynamicForm from "./DynamicForm";
 interface BlockData {
   id: string;
   type: "hero" | "text" | "form" | "blog_posts";
-  title?: any;
-  subtitle?: any;
-  content?: any;
+  title?: string | Record<string, string>;
+  subtitle?: string | Record<string, string>;
+  content?: string | Record<string, string>;
   formId?: string;
   count?: number;
+}
+
+interface BlogPost {
+  title: string | Record<string, string>;
+  slug: string;
+  summary: string | Record<string, string>;
+  createdAt: string;
 }
 
 interface BlockRendererProps {
@@ -34,7 +41,7 @@ async function fetchFormSchema(formId: string) {
 }
 
 // Fetch Blog Posts dynamically
-async function fetchBlogPosts(limit = 5) {
+async function fetchBlogPosts(limit = 5): Promise<BlogPost[]> {
   const API_BASE = getInternalApiUrl();
   try {
     const res = await fetch(`${API_BASE}/blog?status=published`, { cache: "no-store" });
@@ -116,7 +123,7 @@ export default async function BlockRenderer({ blocks, locale = "tr" }: BlockRend
                   <p className="text-sm text-muted">Henüz yayınlanmış yazı bulunmuyor.</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {posts.map((post: any) => (
+                    {posts.map((post) => (
                       <div
                         key={post.slug}
                         className="rounded-2xl border border-card-border bg-card p-6 shadow-md hover:border-blue-500/30 transition duration-150 flex flex-col justify-between"

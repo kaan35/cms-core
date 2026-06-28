@@ -17,7 +17,7 @@ import type {
   ApiQueryResult,
 } from "../types";
 
-export function useApiQuery<T = any>(
+export function useApiQuery<T = unknown>(
   path: string | null,
   options: ApiQueryOptions<T> = {}
 ): ApiQueryResult<T> {
@@ -55,7 +55,7 @@ export function useApiQuery<T = any>(
   };
 }
 
-export function useApiMutation<T = any, Arg = any>(
+export function useApiMutation<T = unknown, Arg = unknown>(
   options: {
     method?: "POST" | "PUT" | "DELETE" | "PATCH";
   } & ApiMutationOptions<T, Arg>
@@ -81,14 +81,21 @@ export function useApiMutation<T = any, Arg = any>(
     {
       // Only include callbacks when defined — SWR throws if undefined is passed
       ...(onSuccess && { onSuccess }),
-      ...(onError && { onError }),
+      ...(onError && {
+        onError: (err: unknown) => {
+          onError(err instanceof Error ? err : new Error(String(err)));
+        }
+      }),
     }
   );
 
   return {
-    trigger: async (arg?: Arg) => trigger(arg as Arg),
+    trigger: async (arg?: Arg) => {
+      const result = await (trigger as (extraArgument?: Arg) => Promise<T>)(arg);
+      return result;
+    },
     data,
-    error,
+    error: (error as Error) || null,
     isMutating,
   };
 }

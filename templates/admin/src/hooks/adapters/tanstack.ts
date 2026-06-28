@@ -1,24 +1,9 @@
 /**
  * TanStack Query adapter for useApiQuery and useApiMutation.
- * 
- * Setup required:
- *   1. Install: npm install @tanstack/react-query
- *   2. Wrap app with QueryClientProvider in admin/src/app/layout.tsx:
- *
- *      import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
- *      const queryClient = new QueryClient();
- *      export default function RootLayout({ children }) {
- *        return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
- *      }
- *
- * To switch to this adapter:
- *   In hooks/useApi.ts, change:
- *     import { useApiQuery, useApiMutation } from "./adapters/swr";
- *   to:
- *     import { useApiQuery, useApiMutation } from "./adapters/tanstack";
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { useEffect } from "react";
 import type {
   ApiQueryOptions,
   ApiQueryResult,
@@ -26,7 +11,7 @@ import type {
   ApiMutationResult,
 } from "../types";
 
-export function useApiQuery<T = any>(
+export function useApiQuery<T = unknown>(
   path: string | null,
   options: ApiQueryOptions<T> = {}
 ): ApiQueryResult<T> {
@@ -48,36 +33,47 @@ export function useApiQuery<T = any>(
     staleTime,
   });
 
-  // TanStack Query doesn't expose onSuccess/onError in useQuery options
-  // in v5+, so we handle them manually here if provided
-  if (data && onSuccess) onSuccess(data);
-  if (error && onError) onError(error);
+  // Safe useEffect wrappers for success/error callbacks to avoid render-body side effects
+  useEffect(() => {
+    if (data && onSuccess) {
+      onSuccess(data);
+    }
+  }, [data, onSuccess]);
+
+  useEffect(() => {
+    if (error && onError) {
+      onError(error);
+    }
+  }, [error, onError]);
 
   const queryClient = useQueryClient();
 
   return {
     data,
-    error,
+    error: (error as Error) || null,
     isLoading,
     isRefreshing: isFetching && !isLoading,
-    refetch: () => { queryClient.invalidateQueries({ queryKey: [path] }); },
+    refetch: () => {
+      queryClient.invalidateQueries({ queryKey: [path] });
+    },
   };
 }
 
-export function useApiMutation<T = any, Arg = any>(
+export function useApiMutation<T = unknown, Arg = unknown>(
   options: {
-    path: string;
     method?: "POST" | "PUT" | "DELETE" | "PATCH";
-  } & ApiMutationOptions<T>
+  } & ApiMutationOptions<T, Arg>
 ): ApiMutationResult<T, Arg> {
   const { path, method = "POST", onSuccess, onError } = options;
 
-  const mutation = useMutation<T, unknown, Arg>({
-    mutationFn: (arg: Arg) =>
-      apiFetch(path, {
+  const mutation = useMutation<T, Error, Arg>({
+    mutationFn: (arg: Arg) => {
+      const resolvedPath = typeof path === "function" ? path(arg) : path;
+      return apiFetch(resolvedPath, {
         method,
-        body: arg !== undefined ? JSON.stringify(arg) : undefined,
-      }),
+        body: typeof path === "string" && arg !== undefined ? JSON.stringify(arg) : undefined,
+      });
+    },
     onSuccess,
     onError,
   });
@@ -85,7 +81,7 @@ export function useApiMutation<T = any, Arg = any>(
   return {
     trigger: async (arg?: Arg) => mutation.mutateAsync(arg as Arg),
     data: mutation.data,
-    error: mutation.error,
+    error: mutation.error as Error | null,
     isMutating: mutation.isPending,
   };
 }

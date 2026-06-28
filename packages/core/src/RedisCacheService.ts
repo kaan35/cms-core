@@ -6,9 +6,8 @@ import { logger } from "./LogService.ts";
 export class RedisCacheService {
   private client: RedisClientType;
   private isConnected = false;
-
-  private lastErrorLogTime = 0;
   private wasDisconnected = false;
+  private lastErrorLogTime = 0;
 
   constructor() {
     this.client = createClient({ url: config.REDIS_URL });

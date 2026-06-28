@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { Loading } from "@/components/ui/Loading";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import { Loading } from "@/components/ui/Loading";
-import { ApiError, apiFetch } from "@/lib/api";
+import { useApiMutation, useApiQuery } from "@/hooks/useApi";
+import { ApiError } from "@/lib/api";
 import { useToast } from "@/lib/toast";
-import { useApiMutation } from "@/hooks/useApi";
 import { ArrowLeft, Save } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -19,7 +19,6 @@ export default function BlogEditPage() {
   const { showToast } = useToast();
   const postId = params.id as string;
 
-  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     content: "",
     slug: "",
@@ -27,6 +26,8 @@ export default function BlogEditPage() {
     summary: "",
     title: "",
   });
+
+  const { data, error, isLoading } = useApiQuery<any>(`/blog/${postId}`);
 
   const { trigger: updatePost, isMutating } = useApiMutation({
     path: `/blog/${postId}`,
@@ -42,40 +43,43 @@ export default function BlogEditPage() {
   });
 
   useEffect(() => {
-    const fetchPost = async () => {
-      try {
-        console.log("Fetching blog post with ID:", postId);
-        const data = await apiFetch(`/blog/${postId}`);
-        console.log("Blog post data received:", data);
-        const post = data.post;
-        setFormData({
-          title: post.title,
-          slug: post.slug,
-          summary: post.summary || "",
-          content: post.content || "",
-          status: post.status || "published",
-        });
-        setIsLoading(false);
-      } catch (err: any) {
-        console.error("Error fetching blog post:", err);
-        if (err instanceof ApiError && err.status === 404) {
-          showToast({ message: "Blog post not found", type: "error" });
-        } else if (err instanceof ApiError && err.status === 400) {
-          showToast({ message: err.message || "Invalid blog post ID", type: "error" });
-        } else {
-          showToast({ message: "Failed to load blog post", type: "error" });
-          console.error("Failed to load blog post:", err);
-        }
-        // Redirect after showing error
-        router.push("/blog");
-      }
-    };
+    if (data?.post) {
+      const post = data.post;
+      setFormData({
+        title: post.title,
+        slug: post.slug,
+        summary: post.summary || "",
+        content: post.content || "",
+        status: post.status || "published",
+      });
+    }
+  }, [data]);
 
-    fetchPost();
-  }, [postId, router, showToast]);
+  useEffect(() => {
+    if (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        showToast({ message: "Blog post not found", type: "error" });
+      } else if (error instanceof ApiError && error.status === 400) {
+        showToast({ message: error.message || "Invalid blog post ID", type: "error" });
+      } else {
+        showToast({ message: "Failed to load blog post", type: "error" });
+      }
+      router.push("/blog");
+    }
+  }, [error, router, showToast]);
 
   const handleChange = (field: keyof typeof formData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (field === "title") {
+        updated.slug = value
+          .toLowerCase()
+          .replace(/[^a-z0-9 -]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-");
+      }
+      return updated;
+    });
   };
 
   const savePost = async (e: React.FormEvent) => {
@@ -100,7 +104,7 @@ export default function BlogEditPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Post: {formData.title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Edit Post</h1>
           <p className="text-sm text-zinc-400">Update article content and publishing settings</p>
         </div>
       </div>
