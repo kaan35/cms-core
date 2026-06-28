@@ -7,75 +7,126 @@ export class RedisCacheService {
   private client: RedisClientType;
   private isConnected = false;
   private wasDisconnected = false;
-  private lastErrorLogTime = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    this.client = createClient({ url: config.REDIS_URL });
+    this.client = createClient({
+      url: config.REDIS_URL,
+      socket: {
+        // Disable the built-in reconnect strategy — we manage reconnect ourselves
+        reconnectStrategy: false,
+      },
+    });
 
-    this.client.on("error", (err: any) => {
-      this.isConnected = false;
-      this.wasDisconnected = true;
-
-      const now = Date.now();
-      if (now - this.lastErrorLogTime > 10000) {
-        const message = err.errors ? err.errors[0]?.message : err.message;
-        logger.error({ message }, "Redis Client Error");
-        this.lastErrorLogTime = now;
+    this.client.on("error", () => {
+      // Errors are expected when Redis is unavailable — silently mark as disconnected
+      if (this.isConnected) {
+        this.isConnected = false;
+        this.wasDisconnected = true;
+        logger.warn("⚠️  Redis disconnected — operating without cache");
       }
+      this.scheduleReconnect();
     });
 
     this.client.on("ready", () => {
       this.isConnected = true;
       if (this.wasDisconnected) {
-        logger.info("♻️ Redis Connection Recovered");
+        logger.info("♻️  Redis reconnected — cache restored");
         this.wasDisconnected = false;
       } else {
         logger.info("🚀 Connected to Redis");
       }
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
     });
   }
 
+  private scheduleReconnect(): void {
+    if (this.isConnected || this.reconnectTimer) return;
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectTimer = null;
+      if (this.isConnected) return;
+      try {
+        // Disconnect cleanly first so we can call connect() again
+        await this.client.disconnect();
+      } catch {
+        // ignore
+      }
+      try {
+        await this.client.connect();
+      } catch {
+        // Will trigger error event which calls scheduleReconnect again
+      }
+    }, 10_000); // Retry every 10 seconds
+  }
+
   async connect(): Promise<void> {
-    if (this.isConnected) return;
     try {
       await this.client.connect();
-    } catch (error: any) {
-      const message = error.errors ? error.errors[0]?.message : error.message;
-      logger.error({ message }, "❌ Redis Connection Error");
+    } catch {
+      logger.warn("⚠️  Redis unavailable at startup — will retry in background");
+      this.scheduleReconnect();
     }
+  }
+
+  isAlive(): boolean {
+    return this.isConnected;
   }
 
   async get<T>(key: string): Promise<T | null> {
     if (!this.isConnected) return null;
-    const value = await this.client.get(key);
-    if (!value) return null;
     try {
-      return JSON.parse(value) as T;
+      const value = await this.client.get(key);
+      if (!value) return null;
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return value as unknown as T;
+      }
     } catch {
-      return value as unknown as T;
+      this.isConnected = false;
+      return null;
     }
   }
 
-  async set(key: string, value: any, ttlSeconds = 300): Promise<void> {
+  async set(key: string, value: unknown, ttlSeconds = 300): Promise<void> {
     if (!this.isConnected) return;
-    const data = typeof value === "string" ? value : JSON.stringify(value);
-    await this.client.set(key, data, { EX: ttlSeconds });
+    try {
+      const data = typeof value === "string" ? value : JSON.stringify(value);
+      await this.client.set(key, data, { EX: ttlSeconds });
+    } catch {
+      this.isConnected = false;
+    }
   }
 
   async del(key: string): Promise<void> {
     if (!this.isConnected) return;
-    await this.client.del(key);
+    try {
+      await this.client.del(key);
+    } catch {
+      this.isConnected = false;
+    }
   }
 
   async delByPattern(pattern: string): Promise<void> {
     if (!this.isConnected) return;
-    const keys = await this.client.keys(pattern);
-    if (keys.length > 0) {
-      await this.client.del(keys);
+    try {
+      const keys = await this.client.keys(pattern);
+      if (keys.length > 0) {
+        await this.client.del(keys);
+      }
+    } catch {
+      this.isConnected = false;
     }
   }
 
   async disconnect(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (!this.isConnected) return;
     await this.client.quit();
     this.isConnected = false;

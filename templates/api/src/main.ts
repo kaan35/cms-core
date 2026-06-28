@@ -115,17 +115,10 @@ export async function createServer() {
   // 5. Health Check Endpoint
   app.get("/health", async (request, reply) => {
     const mongoConnected = database.getDb() ? true : false;
-    // We can run a simple ping on cache
-    let redisConnected: boolean;
-    try {
-      await cache.get("health_ping");
-      redisConnected = true;
-    } catch {
-      redisConnected = false;
-    }
+    const redisConnected = cache.isAlive();
 
     const status = mongoConnected && redisConnected ? "ok" : "degraded";
-    reply.status(status === "ok" ? 200 : 503).send({
+    reply.send({
       status,
       services: {
         database: mongoConnected ? "connected" : "disconnected",

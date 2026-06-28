@@ -27,7 +27,7 @@ export const TableBody: React.FC<TableBodyProps> = ({ children, className = "", 
 
 type TableRowProps = React.HTMLAttributes<HTMLTableRowElement>;
 export const TableRow: React.FC<TableRowProps> = ({ children, className = "", ...props }) => (
-  <tr className={`hover:bg-zinc-900/35 transition duration-150 ${className}`} {...props}>
+  <tr className={`hover:bg-zinc-800/40 transition duration-150 ${className}`} {...props}>
     {children}
   </tr>
 );

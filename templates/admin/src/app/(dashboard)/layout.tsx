@@ -117,15 +117,18 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           <nav className="mt-6 px-4 space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href;
+              const isActive =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname === item.href || pathname.startsWith(item.href + "/");
               return (
                 <Link
                   key={item.name}
                   href={item.href}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition duration-150 ${
                     isActive
-                      ? "border border-blue-500/20 bg-blue-600/20 hover:bg-blue-600/50 text-white shadow-lg shadow-blue-600/10"
-                      : "text-zinc-400 hover:text-white hover:bg-white/5"
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                      : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
