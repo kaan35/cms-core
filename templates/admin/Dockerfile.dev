@@ -10,9 +10,6 @@ RUN npm install --legacy-peer-deps
 
 WORKDIR /app/templates/admin
 
-# Set NODE_PATH so Node.js can resolve modules from root node_modules
-ENV NODE_PATH=/app/node_modules
-
 EXPOSE 3002
 
 CMD ["npm", "run", "dev"]
