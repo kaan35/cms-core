@@ -4,37 +4,45 @@ import {
   CreateBucketCommand,
   HeadBucketCommand,
 } from "@aws-sdk/client-s3";
-import { database } from "@cms/db";
-import { config } from "./ConfigService.ts";
-import { logger } from "./LogService.ts";
+import type { IDatabase } from "./types/IDatabase.ts";
+import type { ILogger } from "./types/ILogger.ts";
+import type { Config } from "./ConfigService.ts";
 
 export class BackupService {
-  private static s3Client = new S3Client({
-    endpoint: config.S3_ENDPOINT,
-    credentials: {
-      accessKeyId: config.S3_ACCESS_KEY,
-      secretAccessKey: config.S3_SECRET_KEY,
-    },
-    region: config.S3_REGION,
-    forcePathStyle: true, // Necessary for local MinIO setup
-  });
+  private s3Client: S3Client;
 
-  static init() {
-    logger.info("📦 BackupService: Initializing daily backup scheduler...");
+  constructor(
+    private readonly database: IDatabase,
+    private readonly logger: ILogger,
+    private readonly config: Config
+  ) {
+    this.s3Client = new S3Client({
+      endpoint: config.S3_ENDPOINT,
+      credentials: {
+        accessKeyId: config.S3_ACCESS_KEY,
+        secretAccessKey: config.S3_SECRET_KEY,
+      },
+      region: config.S3_REGION,
+      forcePathStyle: true, // Necessary for local MinIO setup
+    });
+  }
+
+  init() {
+    this.logger.info("📦 BackupService: Initializing daily backup scheduler...");
 
     // Daily backup every 24 hours
     setInterval(() => {
       this.runBackup().catch((err) => {
-        logger.error(err, "💥 BackupService: Scheduled backup failed");
+        this.logger.error(err, "💥 BackupService: Scheduled backup failed");
       });
     }, 24 * 60 * 60 * 1000);
 
-    logger.info("📦 BackupService: Daily backup scheduled (runs every 24 hours)");
+    this.logger.info("📦 BackupService: Daily backup scheduled (runs every 24 hours)");
   }
 
-  static async runBackup(): Promise<string> {
-    logger.info("📦 BackupService: Starting database dump...");
-    const db = database.getDb();
+  async runBackup(): Promise<string> {
+    this.logger.info("📦 BackupService: Starting database dump...");
+    const db = this.database.getDb();
     if (!db) {
       throw new Error("Database not connected");
     }
@@ -52,39 +60,39 @@ export class BackupService {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const backupFileName = `backups/db-backup-${timestamp}.json`;
 
-    await this.ensureBucketExists(config.S3_BUCKET);
+    await this.ensureBucketExists(this.config.S3_BUCKET);
 
-    logger.info(
-      `📦 BackupService: Uploading backup to S3 [${config.S3_BUCKET}/${backupFileName}]...`
+    this.logger.info(
+      `📦 BackupService: Uploading backup to S3 [${this.config.S3_BUCKET}/${backupFileName}]...`
     );
     await this.s3Client.send(
       new PutObjectCommand({
-        Bucket: config.S3_BUCKET,
+        Bucket: this.config.S3_BUCKET,
         Key: backupFileName,
         Body: backupContent,
         ContentType: "application/json",
       })
     );
 
-    logger.info(`📦 BackupService: Backup completed! File: ${backupFileName}`);
+    this.logger.info(`📦 BackupService: Backup completed! File: ${backupFileName}`);
     return backupFileName;
   }
 
-  private static async ensureBucketExists(bucketName: string) {
+  private async ensureBucketExists(bucketName: string) {
     try {
       await this.s3Client.send(new HeadBucketCommand({ Bucket: bucketName }));
     } catch (err) {
       const awsErr = err as { name?: string; $metadata?: { httpStatusCode?: number } };
       if (awsErr.name === "NotFound" || awsErr.$metadata?.httpStatusCode === 404) {
-        logger.info(`📦 BackupService: Creating bucket '${bucketName}'...`);
+        this.logger.info(`📦 BackupService: Creating bucket '${bucketName}'...`);
         try {
           await this.s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
         } catch (createErr) {
-          logger.error(createErr, `💥 BackupService failed to create bucket '${bucketName}'`);
+          this.logger.error(createErr, `💥 BackupService failed to create bucket '${bucketName}'`);
           throw createErr;
         }
       } else {
-        logger.error(err, `💥 BackupService: Error verifying bucket '${bucketName}'`);
+        this.logger.error(err, `💥 BackupService: Error verifying bucket '${bucketName}'`);
         throw err;
       }
     }

@@ -133,9 +133,14 @@ export async function createServer() {
   await cache.connect();
 
   // Initialize core services after DB is ready
-  AuditLogService.init();
-  WebhookService.init();
-  BackupService.init();
+  const auditLogService = new AuditLogService(database, logger);
+  auditLogService.init();
+
+  const webhookService = new WebhookService(database, logger);
+  webhookService.init();
+
+  const backupService = new BackupService(database, logger, config);
+  backupService.init();
 
   // 7. Load Plugins from DB
   await pluginLoader.loadAll(app);

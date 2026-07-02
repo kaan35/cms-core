@@ -1,5 +1,4 @@
-import { database } from "@cms/db";
-import { logger } from "./LogService.ts";
+import type { IDatabase, ILogger } from "@cms/core";
 import { hooks } from "./HookManager.ts";
 
 interface AuditEventDef {
@@ -118,9 +117,22 @@ const auditDefinitions: AuditEventDef[] = [
   }
 ];
 
+/**
+ * Audit logging service with constructor injection.
+ * Listens to hook events and records them to cms_audit_logs collection.
+ *
+ * @example
+ * const audit = new AuditLogService(database, logger);
+ * audit.init();
+ */
 export class AuditLogService {
-  static init(): void {
-    logger.info("🛡️ AuditLogService: Initializing audit log listeners...");
+  constructor(
+    private readonly database: IDatabase,
+    private readonly logger: ILogger
+  ) {}
+
+  init(): void {
+    this.logger.info("🛡️ AuditLogService: Initializing audit log listeners...");
 
     for (const def of auditDefinitions) {
       hooks.on(def.hookName, async (data: unknown, actorOrExtra: unknown, ipOrExtra?: unknown) => {
@@ -153,7 +165,7 @@ export class AuditLogService {
     }
   }
 
-  private static async log(data: {
+  private async log(data: {
     userId: string | null;
     userEmail: string | null;
     action: string;
@@ -163,7 +175,7 @@ export class AuditLogService {
     ip: string;
   }): Promise<void> {
     try {
-      const db = database.getDb();
+      const db = this.database.getDb();
       if (!db) return;
 
       const auditCol = db.collection("cms_audit_logs");
@@ -171,9 +183,9 @@ export class AuditLogService {
         ...data,
         createdAt: new Date(),
       });
-      logger.debug(`🛡️ AuditLog: Recorded ${data.action} on ${data.targetCollection}`);
+      this.logger.info(`🛡️ AuditLog: Recorded ${data.action} on ${data.targetCollection}`);
     } catch (err) {
-      logger.error(err, "💥 AuditLogService failed to write log entry");
+      this.logger.error(err, "💥 AuditLogService failed to write log entry");
     }
   }
 }

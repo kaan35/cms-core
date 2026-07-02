@@ -2,9 +2,10 @@ import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 import { config } from "./ConfigService.ts";
 import { logger } from "./LogService.ts";
+import type { ICache } from "./types/ICache.ts";
 import type { ILogger } from "./types/ILogger.ts";
 
-export class RedisCacheService {
+export class RedisCacheService implements ICache {
   private client: RedisClientType;
   private isConnected = false;
   private wasDisconnected = false;
@@ -47,6 +48,12 @@ export class RedisCacheService {
         this.reconnectTimer = null;
       }
     });
+  }
+  delete(key: string): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  deleteByPattern(pattern: string): Promise<void> {
+    throw new Error("Method not implemented.");
   }
 
   private scheduleReconnect(): void {

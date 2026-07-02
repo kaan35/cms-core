@@ -1,15 +1,15 @@
-import type { DatabaseService } from "@cms/db";
 import type { preHandlerHookHandler } from "fastify";
 import type { Logger } from "pino";
 import type { Config } from "../ConfigService.ts";
-import type { RedisCacheService } from "../RedisCacheService.ts";
+import type { IDatabase } from "./IDatabase.ts";
+import type { ICache } from "./ICache.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
     /** MongoDB service — injected via app.decorate("db", ...) */
-    db: DatabaseService;
+    db: IDatabase;
     /** Redis cache service — injected via app.decorate("cache", ...) */
-    cache: RedisCacheService;
+    cache: ICache;
     /** Validated environment config */
     config: Config;
     /** Pino logger instance */

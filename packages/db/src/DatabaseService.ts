@@ -1,13 +1,13 @@
+import type { IDatabase, ILogger } from "@cms/core";
 import type { Collection, Db, Document } from "mongodb";
 import { MongoClient } from "mongodb";
-import type { ILogger } from "@cms/core";
 
 export interface DatabaseConfig {
   MONGO_URI: string;
   MONGO_DB_NAME: string;
 }
 
-export class DatabaseService {
+export class DatabaseService implements IDatabase {
   private client?: MongoClient;
   private db?: Db;
 

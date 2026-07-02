@@ -1,10 +1,15 @@
-import { database } from "@cms/db";
 import { hooks } from "./HookManager.ts";
-import { logger } from "./LogService.ts";
+import type { IDatabase } from "./types/IDatabase.ts";
+import type { ILogger } from "./types/ILogger.ts";
 
 export class WebhookService {
-  static init() {
-    logger.info("⚡ WebhookService: Initializing event listeners...");
+  constructor(
+    private readonly database: IDatabase,
+    private readonly logger: ILogger
+  ) {}
+
+  init() {
+    this.logger.info("⚡ WebhookService: Initializing event listeners...");
 
     const eventsToTrigger = [
       "blog.created",
@@ -30,9 +35,9 @@ export class WebhookService {
     }
   }
 
-  private static async dispatch(event: string, payload: unknown) {
+  private async dispatch(event: string, payload: unknown) {
     try {
-      const db = database.getDb();
+      const db = this.database.getDb();
       if (!db) return;
 
       const webhookCol = db.collection("cms_webhooks");
@@ -45,19 +50,19 @@ export class WebhookService {
 
       if (webhooks.length === 0) return;
 
-      logger.info(`⚡ WebhookService: Dispatching ${event} to ${webhooks.length} endpoints...`);
+      this.logger.info(`⚡ WebhookService: Dispatching ${event} to ${webhooks.length} endpoints...`);
 
       for (const wh of webhooks) {
         this.sendRequest(wh.url, payload).catch((err) => {
-          logger.error(err, `💥 Webhook send failed for URL: ${wh.url}`);
+          this.logger.error(err, `💥 Webhook send failed for URL: ${wh.url}`);
         });
       }
     } catch (err) {
-      logger.error(err, "💥 WebhookService failed to fetch/dispatch webhooks");
+      this.logger.error(err, "💥 WebhookService failed to fetch/dispatch webhooks");
     }
   }
 
-  private static async sendRequest(url: string, payload: unknown) {
+  private async sendRequest(url: string, payload: unknown) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -75,14 +80,14 @@ export class WebhookService {
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        logger.warn(`⚠️ Webhook URL ${url} returned status code: ${res.status}`);
+        this.logger.warn(`⚠️ Webhook URL ${url} returned status code: ${res.status}`);
       } else {
-        logger.debug(`✅ Webhook request successful for URL: ${url}`);
+        this.logger.info(`✅ Webhook request successful for URL: ${url}`);
       }
     } catch (err) {
       clearTimeout(timeoutId);
       const message = err instanceof Error ? err.message : String(err);
-      logger.error(err, `💥 Webhook HTTP POST failed for ${url}: ${message}`);
+      this.logger.error(err, `💥 Webhook HTTP POST failed for ${url}: ${message}`);
     }
   }
 }
