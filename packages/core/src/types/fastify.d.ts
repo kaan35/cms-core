@@ -1,8 +1,8 @@
+import type { DatabaseService } from "@cms/db";
 import type { preHandlerHookHandler } from "fastify";
-import type { DatabaseService } from "../../db/src/DatabaseService.ts";
-import type { RedisCacheService } from "../src/RedisCacheService.ts";
-import type { Config } from "../src/ConfigService.ts";
 import type { Logger } from "pino";
+import type { Config } from "../ConfigService.ts";
+import type { RedisCacheService } from "../RedisCacheService.ts";
 
 declare module "fastify" {
   interface FastifyInstance {

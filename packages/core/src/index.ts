@@ -1,3 +1,5 @@
+/// <reference path="./types/fastify.d.ts" />
+
 // Config & Logging
 export { config } from "./ConfigService.ts";
 export type { Config } from "./ConfigService.ts";
@@ -33,3 +35,4 @@ export type { PaginationQuery, PaginationParams, PaginationMeta } from "./utils/
 
 // Types
 export type { CmsPlugin } from "./types/plugin.ts";
+export type { ILogger } from "./types/ILogger.ts";
