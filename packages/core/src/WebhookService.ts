@@ -1,34 +1,36 @@
 import { database } from "@cms/db";
-import { logger } from "./LogService.ts";
 import { hooks } from "./HookManager.ts";
+import { logger } from "./LogService.ts";
 
 export class WebhookService {
   static init() {
     logger.info("⚡ WebhookService: Initializing event listeners...");
 
     const eventsToTrigger = [
-      "page.created",
-      "page.updated",
-      "page.deleted",
       "blog.created",
-      "blog.updated",
       "blog.deleted",
+      "blog.updated",
       "form.submitted",
+      "page.created",
+      "page.deleted",
+      "page.updated",
     ];
 
     for (const eventName of eventsToTrigger) {
-      hooks.on(eventName, async (data: any, actor: any, ip?: string) => {
+      hooks.on(eventName, async (data: unknown, actor: unknown, _ip?: string) => {
         await this.dispatch(eventName, {
           event: eventName,
           timestamp: new Date().toISOString(),
-          actor: actor ? { id: actor.id, email: actor.email, role: actor.role } : null,
+          actor: actor && typeof actor === "object" && "id" in actor
+            ? { id: (actor as Record<string, unknown>).id, email: (actor as Record<string, unknown>).email, role: (actor as Record<string, unknown>).role }
+            : null,
           data,
         });
       });
     }
   }
 
-  private static async dispatch(event: string, payload: any) {
+  private static async dispatch(event: string, payload: unknown) {
     try {
       const db = database.getDb();
       if (!db) return;
@@ -55,7 +57,7 @@ export class WebhookService {
     }
   }
 
-  private static async sendRequest(url: string, payload: any) {
+  private static async sendRequest(url: string, payload: unknown) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -77,9 +79,10 @@ export class WebhookService {
       } else {
         logger.debug(`✅ Webhook request successful for URL: ${url}`);
       }
-    } catch (err: any) {
+    } catch (err) {
       clearTimeout(timeoutId);
-      logger.error(`💥 Webhook HTTP POST failed for ${url}: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error(err, `💥 Webhook HTTP POST failed for ${url}: ${message}`);
     }
   }
 }

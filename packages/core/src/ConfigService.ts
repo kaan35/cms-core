@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const configSchema = z.object({
-  PORT: z.coerce.number().default(4000),
+  API_PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   MONGO_URI: z.string().default("mongodb://localhost:27017"),
   MONGO_DB_NAME: z.string().default("cms_dev"),

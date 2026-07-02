@@ -1,15 +1,10 @@
 import type { Collection, Db, Document } from "mongodb";
 import { MongoClient } from "mongodb";
+import type { ILogger } from "@cms/core";
 
 export interface DatabaseConfig {
   MONGO_URI: string;
   MONGO_DB_NAME: string;
-}
-
-export interface Logger {
-  info: (message: string, ...args: any[]) => void;
-  error: (data: any, message: string) => void;
-  warn: (message: string, ...args: any[]) => void;
 }
 
 export class DatabaseService {
@@ -19,12 +14,22 @@ export class DatabaseService {
   private wasDisconnected = false;
   private lastErrorLogTime = 0;
   private config?: DatabaseConfig;
-  private logger?: Logger;
+  private logger?: ILogger;
 
-  async connect(config: DatabaseConfig, logger: Logger, maxRetries = 5, baseDelay = 1000): Promise<void> {
+  constructor(config?: DatabaseConfig, logger?: ILogger) {
     this.config = config;
     this.logger = logger;
-    this.client = new MongoClient(config.MONGO_URI);
+  }
+
+  async connect(config?: DatabaseConfig, logger?: ILogger, maxRetries = 5, baseDelay = 1000): Promise<void> {
+    if (config) this.config = config;
+    if (logger) this.logger = logger;
+
+    if (!this.config) {
+      throw new Error("DatabaseConfig is required to connect");
+    }
+
+    this.client = new MongoClient(this.config.MONGO_URI);
 
     // Handle background reconnection monitoring
     this.client.on("serverHeartbeatSucceeded", () => {

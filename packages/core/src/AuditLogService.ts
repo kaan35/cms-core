@@ -6,7 +6,7 @@ interface AuditEventDef {
   hookName: string;
   action: string;
   targetCollection: string;
-  getPayload: (data: any, extra?: any) => any;
+  getPayload: (data: any, extra?: any) => Record<string, unknown>;
   getUser?: (data: any, extra?: any) => { id: string | null; email: string | null };
 }
 
@@ -123,19 +123,21 @@ export class AuditLogService {
     logger.info("🛡️ AuditLogService: Initializing audit log listeners...");
 
     for (const def of auditDefinitions) {
-      hooks.on(def.hookName, async (data: any, actorOrExtra: any, ipOrExtra?: any) => {
+      hooks.on(def.hookName, async (data: unknown, actorOrExtra: unknown, ipOrExtra?: unknown) => {
+        const dataObj = data as Record<string, unknown>;
+        const actorObj = actorOrExtra as Record<string, unknown> | null;
         let user: { id: string | null; email: string | null } = { id: null, email: "anonymous" };
         let ip = "127.0.0.1";
 
         if (def.getUser) {
           user = def.getUser(data, actorOrExtra);
-          ip = ipOrExtra || "127.0.0.1";
+          ip = (ipOrExtra as string) ?? "127.0.0.1";
         } else {
           user = {
-            id: actorOrExtra?.id || null,
-            email: actorOrExtra?.email || "unknown",
+            id: (actorObj?.id as string) ?? null,
+            email: (actorObj?.email as string) ?? "unknown",
           };
-          ip = ipOrExtra || "127.0.0.1";
+          ip = (ipOrExtra as string) ?? "127.0.0.1";
         }
 
         await this.log({
@@ -143,7 +145,7 @@ export class AuditLogService {
           userEmail: user.email,
           action: def.action,
           targetCollection: def.targetCollection,
-          targetId: data._id || data.id || data.slug || data.name || data.email || null,
+          targetId: dataObj ? (String(dataObj._id ?? dataObj.id ?? dataObj.slug ?? dataObj.name ?? dataObj.email ?? "") || null) : null,
           payload: def.getPayload(data, actorOrExtra),
           ip,
         });
@@ -156,8 +158,8 @@ export class AuditLogService {
     userEmail: string | null;
     action: string;
     targetCollection: string;
-    targetId: any;
-    payload: any;
+    targetId: string | null;
+    payload: Record<string, unknown>;
     ip: string;
   }): Promise<void> {
     try {

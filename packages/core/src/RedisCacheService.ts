@@ -2,6 +2,7 @@ import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 import { config } from "./ConfigService.ts";
 import { logger } from "./LogService.ts";
+import type { ILogger } from "./types/ILogger.ts";
 
 export class RedisCacheService {
   private client: RedisClientType;
@@ -9,9 +10,14 @@ export class RedisCacheService {
   private wasDisconnected = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor() {
+  private customLogger?: ILogger;
+
+  constructor(redisUrl?: string, customLogger?: ILogger) {
+    this.customLogger = customLogger;
+    const log = this.customLogger ?? logger;
+
     this.client = createClient({
-      url: config.REDIS_URL,
+      url: redisUrl ?? config.REDIS_URL,
       socket: {
         // Disable the built-in reconnect strategy — we manage reconnect ourselves
         reconnectStrategy: false,
@@ -23,7 +29,7 @@ export class RedisCacheService {
       if (this.isConnected) {
         this.isConnected = false;
         this.wasDisconnected = true;
-        logger.warn("⚠️  Redis disconnected — operating without cache");
+        log.warn("⚠️  Redis disconnected — operating without cache");
       }
       this.scheduleReconnect();
     });
@@ -31,10 +37,10 @@ export class RedisCacheService {
     this.client.on("ready", () => {
       this.isConnected = true;
       if (this.wasDisconnected) {
-        logger.info("♻️  Redis reconnected — cache restored");
+        log.info("♻️  Redis reconnected — cache restored");
         this.wasDisconnected = false;
       } else {
-        logger.info("🚀 Connected to Redis");
+        log.info("🚀 Connected to Redis");
       }
       if (this.reconnectTimer) {
         clearTimeout(this.reconnectTimer);
@@ -66,7 +72,7 @@ export class RedisCacheService {
     try {
       await this.client.connect();
     } catch {
-      logger.warn("⚠️  Redis unavailable at startup — will retry in background");
+      (this.customLogger ?? logger).warn("⚠️  Redis unavailable at startup — will retry in background");
       this.scheduleReconnect();
     }
   }
