@@ -12,7 +12,10 @@
   "scripts": {
     "dev:api": "npm run dev --workspace=templates/api",
     "dev:admin": "npm run dev --workspace=templates/admin",
-    "dev:client": "npm run dev --workspace=templates/client"
+    "dev:client": "npm run dev --workspace=templates/client",
+    "type-check": "npm run type-check --workspace=templates/api && npm run type-check --workspace=templates/admin",
+    "type-check:api": "npm run type-check --workspace=templates/api",
+    "type-check:admin": "npm run type-check --workspace=templates/admin"
   },
   "devDependencies": {
     "@types/node": "^26",
