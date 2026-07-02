@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useToast } from "@/lib/toast";
-import { ArrowLeft, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import { Card } from "@/components/ui/Card";
 import { useApiMutation } from "@/hooks/useApi";
+import { useToast } from "@/lib/toast";
+import { ArrowLeft, Save } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function BlogNewPage() {
   const router = useRouter();
@@ -96,7 +96,9 @@ export default function BlogNewPage() {
                 type="text"
                 required
                 value={formData.slug}
-                onChange={(e) => handleChange("slug", e.target.value.toLowerCase().replace(/\s+/g, "-"))}
+                onChange={(e) =>
+                  handleChange("slug", e.target.value.toLowerCase().replace(/\s+/g, "-"))
+                }
                 label="Post Slug (URL Path)"
                 placeholder="e.g. getting-started-with-docker"
               />
@@ -134,21 +136,20 @@ export default function BlogNewPage() {
           </div>
         </Card>
 
-            {/* Actions */}
-            <div className="border-t border-white/5 pt-6 flex justify-start">
-              <Button type="submit" isLoading={isMutating} icon={Save}>
-                Create Post
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => router.push("/blog")}
-                icon={ArrowLeft}
-                className="ml-4"
-              >
-                Cancel
-              </Button>
-            </div>
+        {/* Actions */}
+        <div className="border-t border-white/5 pt-6 flex items-center gap-4">
+          <Button type="submit" isLoading={isMutating} icon={Save}>
+            Create Post
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => router.push("/blog")}
+            icon={ArrowLeft}
+          >
+            Cancel
+          </Button>
+        </div>
       </form>
     </div>
   );

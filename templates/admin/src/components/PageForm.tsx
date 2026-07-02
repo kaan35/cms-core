@@ -45,7 +45,9 @@ interface PageFormProps {
 export function PageForm({ mode, pageId, initialData }: PageFormProps) {
   const router = useRouter();
   const { showToast } = useToast();
-  const { data: formsData } = useApiQuery<{ forms: Array<{ formId: string; name: string }> }>("/forms");
+  const { data: formsData } = useApiQuery<{ forms: Array<{ formId: string; name: string }> }>(
+    "/forms",
+  );
   const forms = formsData?.forms || [];
 
   const [formData, setFormData] = useState({
@@ -69,7 +71,6 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
       showToast({ message: err.message || "Failed to save page", type: "error" });
     },
   });
-
 
   const handleChange = (field: "title" | "slug", value: string) => {
     setFormData((prev) => {
@@ -340,7 +341,7 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
         </div>
       </Card>
 
-      <div className="flex gap-4 border-t border-white/5 pt-6">
+      <div className="border-t border-white/5 pt-6 flex items-center gap-4">
         <Button type="submit" isLoading={isMutating} icon={mode === "create" ? Plus : Save}>
           {mode === "create" ? "Create Page" : "Save Changes"}
         </Button>

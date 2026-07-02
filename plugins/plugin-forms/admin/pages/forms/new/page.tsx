@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useApiMutation } from "@/hooks/useApi";
 import { useToast } from "@/lib/toast";
-import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -53,8 +53,7 @@ export default function NewFormPage() {
 
   const addField = () => setFields((prev) => [...prev, emptyField()]);
 
-  const removeField = (index: number) =>
-    setFields((prev) => prev.filter((_, i) => i !== index));
+  const removeField = (index: number) => setFields((prev) => prev.filter((_, i) => i !== index));
 
   const updateField = (index: number, patch: Partial<FormField>) =>
     setFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
@@ -102,11 +101,7 @@ export default function NewFormPage() {
           <h1 className="text-2xl font-bold tracking-tight">Create Form</h1>
           <p className="text-sm text-zinc-400">Design a new custom dynamic form</p>
         </div>
-        <Button
-          variant="secondary"
-          icon={ArrowLeft}
-          onClick={() => router.push("/forms")}
-        >
+        <Button variant="secondary" icon={ArrowLeft} onClick={() => router.push("/forms")}>
           Back to Forms
         </Button>
       </div>
@@ -119,9 +114,7 @@ export default function NewFormPage() {
               label="Form ID (unique key)"
               required
               value={formId}
-              onChange={(e) =>
-                setFormId(e.target.value.toLowerCase().replace(/\s+/g, "-"))
-              }
+              onChange={(e) => setFormId(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
               placeholder="e.g. contact-form"
             />
             <Input
@@ -135,10 +128,7 @@ export default function NewFormPage() {
         </Card>
 
         {/* Fields */}
-        <Card
-          title="Form Fields"
-          description="Define the inputs that users will fill out"
-        >
+        <Card title="Form Fields" description="Define the inputs that users will fill out">
           <div className="space-y-4">
             {fields.length === 0 && (
               <p className="text-sm text-zinc-500 py-4 text-center">
@@ -224,15 +214,11 @@ export default function NewFormPage() {
         </Card>
 
         {/* Save */}
-        <div className="flex gap-4 border-t border-white/5 pt-6">
+        <div className="border-t border-white/5 pt-6 flex items-center gap-4">
           <Button type="submit" isLoading={isMutating} icon={Plus}>
             Create Form
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => router.push("/forms")}
-          >
+          <Button type="button" variant="secondary" onClick={() => router.push("/forms")}>
             Cancel
           </Button>
         </div>

@@ -166,7 +166,7 @@ export function RoleForm({ mode, roleId, initialData }: RoleFormProps) {
         </div>
       </Card>
 
-      <div className="flex gap-4 border-t border-white/5 pt-6">
+      <div className="border-t border-white/5 pt-6 flex items-center gap-4">
         <Button type="submit" isLoading={isMutating} icon={mode === "create" ? Plus : Save}>
           {mode === "create" ? "Create Role" : "Save Changes"}
         </Button>

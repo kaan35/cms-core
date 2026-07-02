@@ -1,11 +1,10 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import fp from "fastify-plugin";
 import bcrypt from "bcrypt";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import fp from "fastify-plugin";
 import jwt from "jsonwebtoken";
-import { z } from "zod";
 import { ObjectId } from "mongodb";
+import { z } from "zod";
 
-import { parseObjectId } from "@cms/core";
 
 // Zod login schema
 const loginSchema = z.object({
@@ -61,10 +60,10 @@ export async function register(fastify: FastifyInstance, _options: Record<string
   const rolesCol = db.getCollection("cms_roles");
 
   // Migrate legacy super_admin users and ensure root template exists
-  const rootRole = await rolesCol.findOne({ name: "root" });
+  const rootRole = await rolesCol.findOne({ name: "Root" });
   if (!rootRole) {
     await rolesCol.insertOne({
-      name: "root",
+      name: "Root",
       description: "Full system access with all permissions",
       permissions: SYSTEM_PERMISSIONS,
       createdAt: new Date(),
@@ -103,7 +102,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
         const token = request.cookies.token;
         if (!token) {
           reply.status(401).send({ status: "error", message: "Unauthorized: No token provided" });
-          return;
+          return reply;
         }
 
         const decoded = jwt.verify(token, config.JWT_SECRET) as { id: string };
@@ -112,13 +111,13 @@ export async function register(fastify: FastifyInstance, _options: Record<string
           objId = new ObjectId(decoded.id);
         } catch {
           reply.status(401).send({ status: "error", message: "Unauthorized: Invalid token" });
-          return;
+          return reply;
         }
 
         const dbUser = await usersCol.findOne({ _id: objId }, { projection: { passwordHash: 0 } });
         if (!dbUser) {
           reply.status(401).send({ status: "error", message: "Unauthorized: User not found" });
-          return;
+          return reply;
         }
 
         request.user = {
@@ -129,6 +128,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
         };
       } catch (err) {
         reply.status(401).send({ status: "error", message: "Unauthorized: Invalid token" });
+        return reply;
       }
     });
   }
@@ -140,12 +140,13 @@ export async function register(fastify: FastifyInstance, _options: Record<string
         const user = request.user;
         if (!user) {
           reply.status(401).send({ status: "error", message: "Unauthorized" });
-          return;
+          return reply;
         }
         if (Array.isArray(user.permissions) && user.permissions.includes(permission)) return;
         reply
           .status(403)
           .send({ status: "error", message: `Forbidden: Missing permission '${permission}'` });
+        return reply;
       };
     });
   }

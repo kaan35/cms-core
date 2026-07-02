@@ -169,7 +169,7 @@ export default function BlogEditPage() {
           </div>
         </Card>
 
-        <div className="flex gap-4 border-t border-white/5 pt-6">
+        <div className="border-t border-white/5 pt-6 flex items-center gap-4">
           <Button type="submit" isLoading={isMutating} icon={Save}>
             Save Changes
           </Button>

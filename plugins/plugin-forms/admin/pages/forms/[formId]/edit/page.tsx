@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Loading } from "@/components/ui/Loading";
-import { useApiQuery, useApiMutation } from "@/hooks/useApi";
+import { Select } from "@/components/ui/Select";
+import { useApiMutation, useApiQuery } from "@/hooks/useApi";
 import { useToast } from "@/lib/toast";
 import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type FieldType = "text" | "email" | "textarea" | "number";
@@ -64,8 +64,7 @@ export default function FormEditPage() {
 
   const addField = () => setFields((prev) => [...prev, emptyField()]);
 
-  const removeField = (index: number) =>
-    setFields((prev) => prev.filter((_, i) => i !== index));
+  const removeField = (index: number) => setFields((prev) => prev.filter((_, i) => i !== index));
 
   const updateField = (index: number, patch: Partial<FormField>) =>
     setFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
@@ -108,17 +107,10 @@ export default function FormEditPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            icon={ArrowLeft}
-            onClick={() => router.push("/forms")}
-          >
+          <Button variant="secondary" icon={ArrowLeft} onClick={() => router.push("/forms")}>
             Back to Forms
           </Button>
-          <Button
-            variant="secondary"
-            onClick={() => router.push(`/forms/${formId}`)}
-          >
+          <Button variant="secondary" onClick={() => router.push(`/forms/${formId}`)}>
             View Submissions
           </Button>
         </div>
@@ -226,15 +218,11 @@ export default function FormEditPage() {
         </Card>
 
         {/* Save */}
-        <div className="flex gap-4 border-t border-white/5 pt-6">
+        <div className="border-t border-white/5 pt-6 flex items-center gap-4">
           <Button type="submit" isLoading={isMutating} icon={Save}>
             Save Changes
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => router.push(`/forms/${formId}`)}
-          >
+          <Button type="button" variant="secondary" onClick={() => router.push(`/forms/${formId}`)}>
             Cancel
           </Button>
         </div>
