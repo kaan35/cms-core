@@ -100,7 +100,7 @@ export async function createServer() {
         description: "API Documentation for CMS core and active plugins",
         version: "1.0.0",
       },
-      servers: [{ url: `http://localhost:${config.PORT}` }],
+      servers: [{ url: `http://localhost:${config.API_PORT}` }],
     },
   });
 
@@ -147,7 +147,7 @@ export async function createServer() {
 if (import.meta.url.endsWith(process.argv[1]) || process.argv[1]?.endsWith("main.ts")) {
   createServer()
     .then(async (app) => {
-      const port = config.PORT;
+      const port = config.API_PORT;
       await app.listen({ port, host: "0.0.0.0" });
       logger.info(`✨ Fastify Server is Live on port ${port}`);
       logger.info(`📚 Documentation available at http://localhost:${port}/docs`);
