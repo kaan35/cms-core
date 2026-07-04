@@ -41,7 +41,7 @@ export const version = "1.0.0";
 
 const SYSTEM_PERMISSIONS = [
   "pages:read", "pages:write", "pages:delete",
-  "blog:read", "blog:write", "blog:delete",
+  "blog:read", "blog:read:draft", "blog:write", "blog:delete",
   "forms:read", "forms:write", "forms:delete",
   "users:read", "users:write", "users:delete",
   "settings:read", "settings:write",
@@ -59,31 +59,35 @@ export async function register(fastify: FastifyInstance, _options: Record<string
   const usersRepo = new UsersRepository(db, logger);
   const rolesRepo = new RolesRepository(db, logger);
 
-  // Decorate root Fastify instance so other plugins can use authenticate as preHandler.
+  // preValidation hook: silently populate request.user for ALL routes if a valid token is present.
+  // Runs after @fastify/cookie has parsed request.cookies — safe to read token here.
+  // Public routes get request.user = undefined if no token; protected routes use authenticate preHandler.
+  fastify.addHook("preValidation", async (request: FastifyRequest) => {
+    try {
+      const token = request.cookies.token;
+      if (!token) return;
+
+      const decoded = jwt.verify(token, config.JWT_SECRET) as { id: string };
+      const dbUser = await usersRepo.findById(decoded.id);
+      if (!dbUser) return;
+
+      request.user = {
+        id: dbUser._id ? dbUser._id.toString() : "",
+        email: dbUser.email,
+        role: dbUser.role,
+        permissions: dbUser.permissions || [],
+      };
+    } catch {
+      // Invalid or expired token — proceed as unauthenticated guest
+    }
+  });
+
+  // authenticate preHandler: requires request.user to be set (populated by the global hook above).
+  // Use this on POST/PUT/DELETE routes that must not be accessed without auth.
   if (!fastify.hasDecorator("authenticate")) {
     fastify.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const token = request.cookies.token;
-        if (!token) {
-          reply.status(401).send({ status: "error", message: "Unauthorized: No token provided" });
-          return reply;
-        }
-
-        const decoded = jwt.verify(token, config.JWT_SECRET) as { id: string };
-        const dbUser = await usersRepo.findById(decoded.id);
-        if (!dbUser) {
-          reply.status(401).send({ status: "error", message: "Unauthorized: User not found" });
-          return reply;
-        }
-
-        request.user = {
-          id: dbUser._id ? dbUser._id.toString() : "",
-          email: dbUser.email,
-          role: dbUser.role,
-          permissions: dbUser.permissions || [],
-        };
-      } catch (err) {
-        reply.status(401).send({ status: "error", message: "Unauthorized: Invalid token" });
+      if (!request.user) {
+        reply.status(401).send({ status: "error", message: "Unauthorized" });
         return reply;
       }
     });

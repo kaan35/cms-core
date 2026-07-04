@@ -1,13 +1,15 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import type { PaginationQuery } from "@cms/core";
+import {
+  BadRequestError,
+  buildPaginationMeta,
+  createPluginGuard,
+  hooks,
+  NotFoundError,
+  parsePaginationQuery,
+} from "@cms/core";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
-import {
-  hooks,
-  createPluginGuard,
-  parsePaginationQuery,
-  buildPaginationMeta,
-} from "@cms/core";
-import type { PaginationQuery } from "@cms/core";
 import { FormsRepository } from "./FormsRepository.ts";
 
 // Zod Form Field Schema
@@ -43,7 +45,9 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   const authenticate = fastify.authenticate;
   const checkPermission = fastify.checkPermission;
 
-  logger.info("📋 Plugin-Forms: Initializing forms and submission routes using Repository pattern...");
+  logger.info(
+    "📋 Plugin-Forms: Initializing forms and submission routes using Repository pattern...",
+  );
 
   const formsRepo = new FormsRepository(db, logger);
 
@@ -57,12 +61,11 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   });
 
   // Get form by ID
-  fastify.get("/forms/:formId", async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get("/forms/:formId", async (request: FastifyRequest) => {
     const { formId } = request.params as { formId: string };
     const form = await formsRepo.findByFormId(formId);
     if (!form) {
-      reply.status(404).send({ status: "error", message: "Form not found" });
-      return;
+      throw new NotFoundError("Form");
     }
     return { status: "success", form };
   });
@@ -74,18 +77,17 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       preHandler: [authenticate, checkPermission("forms:write")],
       schema: { body: formSchema },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest) => {
       const body = request.body as FormBody;
 
       const existing = await formsRepo.findByFormId(body.formId);
       if (existing) {
-        reply.status(400).send({ status: "error", message: "Form ID already exists" });
-        return;
+        throw new BadRequestError("Form ID already exists");
       }
 
       const createdForm = await formsRepo.createForm(body);
       return { status: "success", form: createdForm };
-    }
+    },
   );
 
   // Update form structure
@@ -95,34 +97,32 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       preHandler: [authenticate, checkPermission("forms:write")],
       schema: { body: formUpdateSchema },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest) => {
       const { formId } = request.params as { formId: string };
       const body = request.body as FormUpdateBody;
 
       const form = await formsRepo.findByFormId(formId);
       if (!form) {
-        reply.status(404).send({ status: "error", message: "Form not found" });
-        return;
+        throw new NotFoundError("Form");
       }
 
       await formsRepo.updateForm(formId, body.name, body.fields);
       return { status: "success", message: "Form updated successfully" };
-    }
+    },
   );
 
   // Delete form
   fastify.delete(
     "/forms/:formId",
     { preHandler: [authenticate, checkPermission("forms:delete")] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest) => {
       const { formId } = request.params as { formId: string };
       const deleted = await formsRepo.deleteForm(formId);
       if (!deleted) {
-        reply.status(404).send({ status: "error", message: "Form not found" });
-        return;
+        throw new NotFoundError("Form");
       }
       return { status: "success", message: "Form deleted successfully" };
-    }
+    },
   );
 
   // Submit form data (PUBLIC endpoint)
@@ -132,8 +132,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
 
     const form = await formsRepo.findByFormId(formId);
     if (!form) {
-      reply.status(404).send({ status: "error", message: "Form not found" });
-      return;
+      throw new NotFoundError("Form");
     }
 
     // Dynamic validation
@@ -195,7 +194,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
         items,
         meta: buildPaginationMeta(page, limit, total),
       };
-    }
+    },
   );
 }
 

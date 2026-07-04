@@ -1,6 +1,6 @@
 export const PERMISSION_GROUPS: Record<string, string[]> = {
   Pages: ["pages:read", "pages:write", "pages:delete"],
-  Blog: ["blog:read", "blog:write", "blog:delete"],
+  Blog: ["blog:read", "blog:read:draft", "blog:write", "blog:delete"],
   Forms: ["forms:read", "forms:write", "forms:delete"],
   Users: ["users:read", "users:write", "users:delete"],
   Settings: ["settings:read", "settings:write"],

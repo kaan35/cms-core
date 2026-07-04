@@ -26,12 +26,15 @@ export default function BlogListPage() {
   const { showToast } = useToast();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [targetPost, setTargetPost] = useState<{ id: string; title: string } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
 
-  // Fetch blog posts
   const { data, isLoading, isRefreshing, error, refetch } = useApiQuery<{ posts: BlogPost[] }>(
     "/blog",
   );
   const posts = data?.posts || [];
+
+  const filteredPosts =
+    statusFilter === "all" ? posts : posts.filter((post) => post.status === statusFilter);
 
   // Delete mutation
   const { trigger: deletePost } = useApiMutation({
@@ -82,6 +85,15 @@ export default function BlogListPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as "all" | "draft" | "published")}
+            className="px-3 py-2 bg-zinc-800 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="all">All Posts</option>
+            <option value="draft">Drafts</option>
+            <option value="published">Published</option>
+          </select>
           <Button variant="secondary" onClick={() => refetch()} isDisabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
           </Button>
@@ -134,7 +146,9 @@ export default function BlogListPage() {
                       <div className="max-w-full">
                         <div className="truncate">{post.title}</div>
                         <div className="text-xs text-zinc-400 truncate font-normal mt-0.5">
-                          {post.summary.length > 60 ? `${post.summary.substring(0, 60)}...` : post.summary}
+                          {post.summary.length > 60
+                            ? `${post.summary.substring(0, 60)}...`
+                            : post.summary}
                         </div>
                       </div>
                     </TableCell>

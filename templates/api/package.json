@@ -10,8 +10,8 @@
     "type-check": "tsc --noEmit",
     "build": "tsc",
     "start": "node --env-file=../../.env src/main.ts",
-    "seed": "node --env-file=.env src/scripts/seed.ts",
-    "generate-test-data": "tsx --env-file=.env src/scripts/generate-test-submissions.ts",
+    "seed": "node --env-file=../../.env src/scripts/seed.ts",
+    "generate-test-data": "tsx --env-file=../../.env src/scripts/generate-test-submissions.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

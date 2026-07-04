@@ -1,5 +1,13 @@
-import { createPluginGuard, hooks, pluginLoader, serializeDocument, serializeDocuments } from "@cms/core";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import {
+  BadRequestError,
+  createPluginGuard,
+  hooks,
+  NotFoundError,
+  pluginLoader,
+  serializeDocument,
+  serializeDocuments,
+} from "@cms/core";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
 import { PagesRepository } from "./PagesRepository.ts";
@@ -47,13 +55,12 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   });
 
   // Get page by ID or slug
-  fastify.get("/pages/:idOrSlug", async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get("/pages/:idOrSlug", async (request: FastifyRequest) => {
     const { idOrSlug } = request.params as { idOrSlug: string };
 
     const page = await pagesRepo.findByIdOrSlug(idOrSlug);
     if (!page) {
-      reply.status(404).send({ status: "error", message: "Page not found" });
-      return;
+      throw new NotFoundError("Page");
     }
 
     interface SerializedPage {
@@ -114,13 +121,12 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       preHandler: [authenticate, checkPermission("pages:write")],
       schema: { body: pageSchema },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest) => {
       const body = request.body as PageBody;
 
       const slugTaken = await pagesRepo.isSlugTaken(body.slug);
       if (slugTaken) {
-        reply.status(400).send({ status: "error", message: "Slug already exists" });
-        return;
+        throw new BadRequestError("Slug already exists");
       }
 
       const createdPage = await pagesRepo.create({
@@ -133,7 +139,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       hooks.emit("page.created", createdPage, request.user, request.ip);
 
       return { status: "success", page: createdPage };
-    }
+    },
   );
 
   // Update page
@@ -143,22 +149,20 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       preHandler: [authenticate, checkPermission("pages:write")],
       schema: { body: pageSchema },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest) => {
       const { id } = request.params as { id: string };
       const body = request.body as PageBody;
 
       const page = await pagesRepo.findById(id);
       if (!page) {
-        reply.status(404).send({ status: "error", message: "Page not found" });
-        return;
+        throw new NotFoundError("Page");
       }
 
       // Check slug uniqueness (exclude current page)
       if (body.slug !== page.slug) {
         const slugTaken = await pagesRepo.isSlugTaken(body.slug, id);
         if (slugTaken) {
-          reply.status(400).send({ status: "error", message: "Slug already exists" });
-          return;
+          throw new BadRequestError("Slug already exists");
         }
       }
 
@@ -177,7 +181,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       }
 
       return { status: "success", message: "Page updated successfully" };
-    }
+    },
   );
 
   // Delete page
@@ -186,26 +190,24 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     {
       preHandler: [authenticate, checkPermission("pages:delete")],
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest) => {
       const { id } = request.params as { id: string };
 
       const page = await pagesRepo.findById(id);
       if (!page) {
-        reply.status(404).send({ status: "error", message: "Page not found" });
-        return;
+        throw new NotFoundError("Page");
       }
 
       const deleted = await pagesRepo.delete(id);
       if (!deleted) {
-        reply.status(404).send({ status: "error", message: "Page not found" });
-        return;
+        throw new Error("Failed to delete page");
       }
 
       // Emit event
       hooks.emit("page.deleted", page, request.user, request.ip);
 
       return { status: "success", message: "Page deleted successfully" };
-    }
+    },
   );
 }
 

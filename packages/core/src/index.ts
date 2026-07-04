@@ -32,6 +32,9 @@ export {
 } from "./utils/pagination.ts";
 export type { PaginationMeta, PaginationParams, PaginationQuery } from "./utils/pagination.ts";
 
+// Errors
+export { AppError, NotFoundError, BadRequestError } from "./errors/AppError.ts";
+
 // Types
 export type { ICache } from "./types/ICache.ts";
 export type { IDatabase } from "./types/IDatabase.ts";

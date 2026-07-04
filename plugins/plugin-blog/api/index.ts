@@ -1,10 +1,12 @@
 import {
+  BadRequestError,
   createPluginGuard,
   hooks,
+  NotFoundError,
   serializeDocument,
   serializeDocuments,
 } from "@cms/core";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
 import { BlogPostsRepository } from "./BlogPostsRepository.ts";
@@ -12,13 +14,16 @@ import { BlogPostsRepository } from "./BlogPostsRepository.ts";
 // Zod Blog Post Schema
 const blogPostSchema = z.object({
   title: z.string(),
-  slug: z.string(),
+  slug: z.string().min(1),
   summary: z.string(),
   content: z.string(),
   status: z.enum(["draft", "published"]).default("published"),
 });
 
+const updateBlogPostSchema = blogPostSchema.partial({ status: true });
+
 type BlogPostBody = z.infer<typeof blogPostSchema>;
+type UpdateBlogPostBody = z.infer<typeof updateBlogPostSchema>;
 
 interface BlogListQuery {
   status?: string;
@@ -43,19 +48,35 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   // List blog posts
   fastify.get("/blog", async (request: FastifyRequest) => {
     const { status } = request.query as BlogListQuery;
-    const filter = status ? { status: status as any } : {};
+    const canReadDraft = !!request.user?.permissions?.includes("blog:read:draft");
+
+    let filter: { status?: "draft" | "published" } = { status: "published" };
+
+    if (canReadDraft) {
+      if (status === "draft" || status === "published") {
+        filter = { status };
+      } else {
+        // If status is not specified, authorized users can see all posts (draft + published)
+        filter = {};
+      }
+    }
+
     const posts = await blogPostsRepo.find(filter);
     return { status: "success", posts: serializeDocuments(posts) };
   });
 
   // Get blog post by ID or slug
-  fastify.get("/blog/:idOrSlug", async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get("/blog/:idOrSlug", async (request: FastifyRequest) => {
     const { idOrSlug } = request.params as { idOrSlug: string };
 
     const post = await blogPostsRepo.findByIdOrSlug(idOrSlug);
     if (!post) {
-      reply.status(404).send({ status: "error", message: "Blog post not found" });
-      return;
+      throw new NotFoundError("Blog post");
+    }
+
+    // If it's a draft and the user does NOT have 'blog:read:draft' permission, return 404 (hide existence)
+    if (post.status === "draft" && !request.user?.permissions?.includes("blog:read:draft")) {
+      throw new NotFoundError("Blog post");
     }
 
     return { status: "success", post: serializeDocument(post) };
@@ -67,22 +88,15 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     {
       preHandler: [authenticate, checkPermission("blog:write")],
       schema: {
-        body: z.object({
-          title: z.string(),
-          slug: z.string().min(1),
-          summary: z.string(),
-          content: z.string(),
-          status: z.enum(["draft", "published"]).optional(),
-        }),
+        body: blogPostSchema,
       },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest) => {
       const body = request.body as BlogPostBody;
 
       const slugTaken = await blogPostsRepo.isSlugTaken(body.slug);
       if (slugTaken) {
-        reply.status(400).send({ status: "error", message: "Slug already exists" });
-        return;
+        throw new BadRequestError("Slug already exists");
       }
 
       const createdPost = await blogPostsRepo.create({
@@ -90,7 +104,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
         title: body.title,
         summary: body.summary,
         content: body.content,
-        status: body.status ?? "published",
+        status: body.status,
       });
 
       hooks.emit("blog.created", createdPost, request.user, request.ip);
@@ -99,7 +113,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
         status: "success",
         post: createdPost,
       };
-    }
+    },
   );
 
   // Update blog post
@@ -107,24 +121,22 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     "/blog/:id",
     {
       preHandler: [authenticate, checkPermission("blog:write")],
-      schema: { body: blogPostSchema },
+      schema: { body: updateBlogPostSchema },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest) => {
       const { id } = request.params as { id: string };
-      const body = request.body as BlogPostBody;
+      const body = request.body as UpdateBlogPostBody;
 
       const post = await blogPostsRepo.findById(id);
       if (!post) {
-        reply.status(404).send({ status: "error", message: "Blog post not found" });
-        return;
+        throw new NotFoundError("Blog post");
       }
 
       // Check slug uniqueness (exclude current post)
       if (body.slug !== post.slug) {
         const slugTaken = await blogPostsRepo.isSlugTaken(body.slug, id);
         if (slugTaken) {
-          reply.status(400).send({ status: "error", message: "Slug already exists" });
-          return;
+          throw new BadRequestError("Slug already exists");
         }
       }
 
@@ -136,7 +148,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
         slug: body.slug,
         summary: body.summary,
         content: body.content,
-        status: body.status,
+        status: body.status ?? post.status,
       });
 
       if (updatedPost) {
@@ -144,32 +156,30 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       }
 
       return { status: "success", message: "Blog post updated successfully" };
-    }
+    },
   );
 
   // Delete blog post
   fastify.delete(
     "/blog/:id",
     { preHandler: [authenticate, checkPermission("blog:delete")] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest) => {
       const { id } = request.params as { id: string };
 
       const post = await blogPostsRepo.findById(id);
       if (!post) {
-        reply.status(404).send({ status: "error", message: "Blog post not found" });
-        return;
+        throw new NotFoundError("Blog post");
       }
 
       const deleted = await blogPostsRepo.delete(id);
       if (!deleted) {
-        reply.status(500).send({ status: "error", message: "Failed to delete blog post" });
-        return;
+        throw new Error("Failed to delete blog post");
       }
 
       hooks.emit("blog.deleted", post, request.user, request.ip);
 
       return { status: "success", message: "Blog post deleted successfully" };
-    }
+    },
   );
 }
 

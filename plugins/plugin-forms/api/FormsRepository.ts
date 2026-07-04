@@ -1,5 +1,5 @@
 import type { IDatabase, ILogger } from "@cms/core";
-import type { Collection, Document } from "mongodb";
+import type { Collection, Filter, WithId, UpdateFilter } from "mongodb";
 import { COLLECTIONS } from "./constants.ts";
 
 export interface FormField {
@@ -10,16 +10,14 @@ export interface FormField {
   required: boolean;
 }
 
-export interface Form extends Document {
-  _id?: string;
+export interface Form {
   formId: string;
   name: string;
   fields: FormField[];
   createdAt?: Date;
 }
 
-export interface FormSubmission extends Document {
-  _id?: string;
+export interface FormSubmission {
   formId: string;
   data: Record<string, unknown>;
   createdAt: Date;
@@ -38,53 +36,53 @@ export class FormsRepository {
     this.submissionsCollection = this.db.getCollection<FormSubmission>(COLLECTIONS.FORM_SUBMISSIONS);
   }
 
-  async find(): Promise<Form[]> {
-    return this.formsCollection.find({}).toArray();
+  async find(): Promise<WithId<Form>[]> {
+    return await this.formsCollection.find({}).toArray();
   }
 
-  async findByFormId(formId: string): Promise<Form | null> {
-    return this.formsCollection.findOne({ formId } as any);
+  async findByFormId(formId: string): Promise<WithId<Form> | null> {
+    return await this.formsCollection.findOne({ formId } as Filter<Form>);
   }
 
-  async createForm(formData: Omit<Form, "createdAt">): Promise<Form> {
+  async createForm(formData: Omit<Form, "createdAt">): Promise<WithId<Form>> {
     const newForm: Form = {
       ...formData,
       createdAt: new Date(),
-    } as Form;
-    await this.formsCollection.insertOne(newForm as any);
-    return newForm;
+    };
+    const result = await this.formsCollection.insertOne(newForm as any);
+    return { ...newForm, _id: result.insertedId } as WithId<Form>;
   }
 
   async updateForm(formId: string, name: string, fields: FormField[]): Promise<boolean> {
     const result = await this.formsCollection.updateOne(
-      { formId } as any,
-      { $set: { name, fields } } as any
+      { formId } as Filter<Form>,
+      { $set: { name, fields } } as UpdateFilter<Form>
     );
     return result.modifiedCount > 0;
   }
 
   async deleteForm(formId: string): Promise<boolean> {
-    const result = await this.formsCollection.deleteOne({ formId } as any);
+    const result = await this.formsCollection.deleteOne({ formId } as Filter<Form>);
     return result.deletedCount > 0;
   }
 
-  async createSubmission(formId: string, data: Record<string, unknown>): Promise<FormSubmission> {
+  async createSubmission(formId: string, data: Record<string, unknown>): Promise<WithId<FormSubmission>> {
     const submission: FormSubmission = {
       formId,
       data,
       createdAt: new Date(),
-    } as FormSubmission;
-    await this.submissionsCollection.insertOne(submission as any);
-    return submission;
+    };
+    const result = await this.submissionsCollection.insertOne(submission as any);
+    return { ...submission, _id: result.insertedId } as WithId<FormSubmission>;
   }
 
   async countSubmissions(formId: string): Promise<number> {
-    return this.submissionsCollection.countDocuments({ formId } as any);
+    return await this.submissionsCollection.countDocuments({ formId } as Filter<FormSubmission>);
   }
 
-  async findSubmissions(formId: string, skip: number, limit: number): Promise<FormSubmission[]> {
-    return this.submissionsCollection
-      .find({ formId } as any)
+  async findSubmissions(formId: string, skip: number, limit: number): Promise<WithId<FormSubmission>[]> {
+    return await this.submissionsCollection
+      .find({ formId } as Filter<FormSubmission>)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

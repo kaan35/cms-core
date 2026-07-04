@@ -16,7 +16,8 @@ declare module "fastify" {
     logger: Logger;
     /**
      * JWT authentication preHandler.
-     * Sets request.user if token is valid, else replies 401.
+     * Checks request.user (populated by the global onRequest hook).
+     * Replies 401 if user is not authenticated. Use on protected routes (POST/PUT/DELETE).
      */
     authenticate: preHandlerHookHandler;
     /**

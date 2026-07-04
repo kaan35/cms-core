@@ -1,7 +1,6 @@
+import { config } from "@cms/core";
 import bcrypt from "bcrypt";
 import { MongoClient } from "mongodb";
-import { config } from "@cms/core";
-
 
 async function seed() {
   console.log("🌱 Starting Database Seeding...");
@@ -64,13 +63,26 @@ async function seed() {
     console.log("✅ Seeded active plugins registry");
 
     const ROOT_PERMISSIONS = [
-      "pages:read", "pages:write", "pages:delete",
-      "blog:read", "blog:write", "blog:delete",
-      "forms:read", "forms:write", "forms:delete",
-      "users:read", "users:write", "users:delete",
-      "settings:read", "settings:write",
-      "webhooks:read", "webhooks:write", "webhooks:delete",
-      "backups:read", "backups:write",
+      "backups:read",
+      "backups:write",
+      "blog:delete",
+      "blog:read:draft",
+      "blog:read",
+      "blog:write",
+      "forms:delete",
+      "forms:read",
+      "forms:write",
+      "pages:delete",
+      "pages:read",
+      "pages:write",
+      "settings:read",
+      "settings:write",
+      "users:delete",
+      "users:read",
+      "users:write",
+      "webhooks:delete",
+      "webhooks:read",
+      "webhooks:write",
     ];
 
     // 2. Seed Role Templates
@@ -115,7 +127,8 @@ async function seed() {
           {
             id: "b2",
             type: "text",
-            content: "Yılların deneyimi ve profesyonel ekibimizle yenilikçi çözümler üretiyoruz. Müşteri memnuniyetini en üst düzeyde tutmak birinci önceliğimizdir.",
+            content:
+              "Yılların deneyimi ve profesyonel ekibimizle yenilikçi çözümler üretiyoruz. Müşteri memnuniyetini en üst düzeyde tutmak birinci önceliğimizdir.",
           },
         ],
         createdAt: new Date(),
@@ -134,7 +147,8 @@ async function seed() {
           {
             id: "a2",
             type: "text",
-            content: "2018 yılında kurulan firmamız, teknoloji odaklı iş çözümleri sunmaktadır. Genç ve dinamik kadromuzla hedeflerinize ulaşmanızı sağlıyoruz.",
+            content:
+              "2018 yılında kurulan firmamız, teknoloji odaklı iş çözümleri sunmaktadır. Genç ve dinamik kadromuzla hedeflerinize ulaşmanızı sağlıyoruz.",
           },
         ],
         createdAt: new Date(),
@@ -177,7 +191,6 @@ async function seed() {
       createdAt: new Date(),
     });
     console.log("✅ Seeded contact form");
-
   } catch (err) {
     console.error("💥 Seeding failed:", err);
   } finally {

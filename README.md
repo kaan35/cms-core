@@ -16,7 +16,6 @@ A modular, headless CMS framework built with **Fastify**, **Next.js**, and **Mon
   - [x] Redis cache service with auto-reconnect
   - [x] MinIO S3-compatible storage
   - [x] Docker Compose development environment
-  
 - [x] **Core Services (`@cms/core`)**
   - [x] ConfigService - Zod-validated environment config
   - [x] LogService - Pino structured logging
@@ -134,11 +133,6 @@ A modular, headless CMS framework built with **Fastify**, **Next.js**, and **Mon
   - [ ] `cms migrate` - Run database migrations
   - [ ] `cms backup` - Manual backup trigger
 
-- [ ] **GraphQL API**
-  - [ ] GraphQL schema generation from plugins
-  - [ ] Apollo Server integration
-  - [ ] GraphQL playground
-
 - [ ] **Internationalization (i18n)**
   - [ ] Multi-language content support
   - [ ] Language switcher UI
@@ -214,6 +208,7 @@ cms-core/
 ```
 
 **Key Concepts:**
+
 - **Packages:** Shared core logic reused across templates and plugins
 - **Plugins:** Self-contained feature modules with API routes + admin UI
 - **Templates:** Runnable applications that compose packages & plugins
@@ -231,7 +226,9 @@ Plugins are toggled from the Admin UI and stored in MongoDB (`cms_plugins` colle
 // Each plugin exports:
 export const name = "@cms/plugin-blog-api";
 export const version = "1.0.0";
-export async function register(fastify: FastifyInstance) { /* routes */ }
+export async function register(fastify: FastifyInstance) {
+  /* routes */
+}
 export default { name, version, register: fp(register, { name }) };
 ```
 
@@ -249,7 +246,9 @@ import { hooks } from "@cms/core";
 await hooks.emit("blog.created", post, user, request.ip);
 
 // AuditLogService and WebhookService listen automatically
-hooks.on("blog.created", async (post, user, ip) => { /* ... */ });
+hooks.on("blog.created", async (post, user, ip) => {
+  /* ... */
+});
 ```
 
 ### Dependency Injection
@@ -258,10 +257,10 @@ Core services are decorated onto the Fastify instance so plugins can access them
 
 ```typescript
 // In templates/api/src/main.ts
-app.decorate("db", database);    // → fastify.db
-app.decorate("cache", cache);    // → fastify.cache
-app.decorate("config", config);  // → fastify.config
-app.decorate("logger", logger);  // → fastify.logger
+app.decorate("db", database); // → fastify.db
+app.decorate("cache", cache); // → fastify.cache
+app.decorate("config", config); // → fastify.config
+app.decorate("logger", logger); // → fastify.logger
 ```
 
 ---
@@ -270,14 +269,14 @@ app.decorate("logger", logger);  // → fastify.logger
 
 Packages use `@cms/` scope internally. On publish to GitHub Packages, the scope is remapped via `publishConfig.name` in each `package.json`:
 
-| Internal (`@cms/`) | Published (`@kaan35/`) |
-|---|---|
-| `@cms/core` | `@kaan35/cms-core` |
-| `@cms/db` | `@kaan35/cms-db` |
-| `@cms/plugin-auth-api` | `@kaan35/cms-plugin-auth-api` |
-| `@cms/plugin-blog-api` | `@kaan35/cms-plugin-blog-api` |
-| `@cms/plugin-pages-api` | `@kaan35/cms-plugin-pages-api` |
-| `@cms/plugin-forms-api` | `@kaan35/cms-plugin-forms-api` |
+| Internal (`@cms/`)       | Published (`@kaan35/`)          |
+| ------------------------ | ------------------------------- |
+| `@cms/core`              | `@kaan35/cms-core`              |
+| `@cms/db`                | `@kaan35/cms-db`                |
+| `@cms/plugin-auth-api`   | `@kaan35/cms-plugin-auth-api`   |
+| `@cms/plugin-blog-api`   | `@kaan35/cms-plugin-blog-api`   |
+| `@cms/plugin-pages-api`  | `@kaan35/cms-plugin-pages-api`  |
+| `@cms/plugin-forms-api`  | `@kaan35/cms-plugin-forms-api`  |
 | `@cms/plugin-system-api` | `@kaan35/cms-plugin-system-api` |
 
 ---
@@ -286,7 +285,7 @@ Packages use `@cms/` scope internally. On publish to GitHub Packages, the scope 
 
 ### Prerequisites
 
-- Node.js ≥ 22
+- Node.js ≥ 26
 - MongoDB, Redis, MinIO (or use Docker)
 
 ### Local Development
@@ -354,7 +353,7 @@ docker compose up -d --build
 # Client: http://localhost:3003
 
 # 6. (Optional) Seed database
-npm run seed --workspace=templates/api
+npm run seed
 ```
 
 ### Option 2: Standalone Project (Production)
@@ -364,18 +363,19 @@ npm run seed --workspace=templates/api
 **Manual Steps:**
 
 1. **Copy template files:**
+
    ```bash
    mkdir my-cms-project
    cd my-cms-project
-   
+
    # Copy core packages
    cp -r /path/to/cms-core/packages ./
-   
+
    # Copy desired template
    cp -r /path/to/cms-core/templates/api ./api
    cp -r /path/to/cms-core/templates/admin ./admin
    cp -r /path/to/cms-core/templates/client ./client
-   
+
    # Copy desired plugins
    mkdir plugins
    cp -r /path/to/cms-core/plugins/plugin-auth ./plugins/
@@ -383,6 +383,7 @@ npm run seed --workspace=templates/api
    ```
 
 2. **Create workspace root:**
+
    ```bash
    # Create package.json
    cat > package.json <<EOF
@@ -402,6 +403,7 @@ npm run seed --workspace=templates/api
    ```
 
 3. **Setup environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env
@@ -432,6 +434,7 @@ npm run dev:admin
 ```
 
 **CLI will:**
+
 - Copy selected templates and plugins
 - Generate `package.json` with correct workspace config
 - Create `.env` from template
@@ -444,30 +447,30 @@ npm run dev:admin
 
 ### Infrastructure
 
-| Service | Container | Port(s) | Purpose |
-|---|---|---|---|
-| **MongoDB** | `cms_mongo` | 27017 | Primary database for CMS content, users, plugins, audit logs |
-| **Redis** | `cms_redis` | 6379 | Session cache, rate limiting, temporary data storage |
-| **MinIO** | `cms_minio` | 9000 (API), 9001 (Console) | S3-compatible object storage for media uploads & backups |
-| **API** | `cms_api` | 3001 | Fastify REST API — plugin routes, auth, webhooks |
-| **Admin** | `cms_admin` | 3002 | Next.js admin dashboard — content management interface |
-| **Client** | `cms_client` | 3003 | Next.js public site — renders dynamic pages, blog, forms |
+| Service     | Container    | Port(s)                    | Purpose                                                      |
+| ----------- | ------------ | -------------------------- | ------------------------------------------------------------ |
+| **MongoDB** | `cms_mongo`  | 27017                      | Primary database for CMS content, users, plugins, audit logs |
+| **Redis**   | `cms_redis`  | 6379                       | Session cache, rate limiting, temporary data storage         |
+| **MinIO**   | `cms_minio`  | 9000 (API), 9001 (Console) | S3-compatible object storage for media uploads & backups     |
+| **API**     | `cms_api`    | 3001                       | Fastify REST API — plugin routes, auth, webhooks             |
+| **Admin**   | `cms_admin`  | 3002                       | Next.js admin dashboard — content management interface       |
+| **Client**  | `cms_client` | 3003                       | Next.js public site — renders dynamic pages, blog, forms     |
 
 ### Technology Stack
 
-| Layer | Technology |
-|---|---|
-| API | [Fastify](https://fastify.dev) v5 + TypeScript (native `--strip-types`, no build in dev) |
-| Admin | [Next.js](https://nextjs.org) App Router + React 19 |
-| Public site | Next.js App Router |
-| Database | MongoDB |
-| Cache | Redis |
-| Validation | [Zod](https://zod.dev) |
-| Storage | AWS S3 / MinIO |
-| Auth | JWT (cookie-based, `jsonwebtoken`) |
-| Package registry | GitHub Packages (`@kaan35`) |
-| Monorepo | npm workspaces |
-| Runtime | Node.js 26 (native TypeScript support) |
+| Layer            | Technology                                                                               |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| API              | [Fastify](https://fastify.dev) v5 + TypeScript (native `--strip-types`, no build in dev) |
+| Admin            | [Next.js](https://nextjs.org) App Router + React 19                                      |
+| Public site      | Next.js App Router                                                                       |
+| Database         | MongoDB                                                                                  |
+| Cache            | Redis                                                                                    |
+| Validation       | [Zod](https://zod.dev)                                                                   |
+| Storage          | AWS S3 / MinIO                                                                           |
+| Auth             | JWT (cookie-based, `jsonwebtoken`)                                                       |
+| Package registry | GitHub Packages (`@kaan35`)                                                              |
+| Monorepo         | npm workspaces                                                                           |
+| Runtime          | Node.js 26 (native TypeScript support)                                                   |
 
 ---
 
@@ -479,19 +482,9 @@ This project uses **npm workspaces** with **dependency hoisting** to share depen
 
 ```json
 {
-  "workspaces": [
-    "packages/*",
-    "plugins/*/api",
-    "plugins/*/admin",
-    "templates/*"
-  ]
+  "workspaces": ["packages/*", "plugins/*/api", "plugins/*/admin", "templates/*"]
 }
 ```
-
-**Key Points:**
-- All dependencies are hoisted to root `node_modules`
-- Plugin admin pages use `peerDependencies` to reference admin template's dependencies
-- `NODE_PATH=/app/node_modules` set in Docker containers for proper module resolution
 
 ### Plugin Admin Pages Integration
 
@@ -503,6 +496,7 @@ export { default } from "@cms/plugin-pages-admin/pages/pages/page";
 ```
 
 **TypeScript Path Mapping:**
+
 ```json
 {
   "paths": {
@@ -521,6 +515,7 @@ node --watch --experimental-strip-types --env-file=../../.env src/main.ts
 ```
 
 **Benefits:**
+
 - No `tsx` or `ts-node` runtime overhead
 - Faster development startup
 - Native hot-reload with `--watch`
@@ -539,165 +534,6 @@ volumes:
   - ./plugins:/app/plugins
   - ./templates/api/src:/app/templates/api/src
 ```
-
----
-
-## Troubleshooting
-
-### Module Not Found Errors in Admin
-
-**Problem:** `Error: Cannot find module 'lucide-react'` or similar
-
-**Cause:** Workspace hoisting not working, Node.js can't resolve modules from root `node_modules`
-
-**Solution:**
-1. Ensure `NODE_PATH=/app/node_modules` is set in Dockerfile
-2. Rebuild containers: `docker compose up -d --build`
-3. Check package is in root: `docker exec cms_admin ls /app/node_modules | grep <package>`
-
-### Plugin Load Order Issues
-
-**Problem:** `checkPermission is not a function` errors
-
-**Cause:** Plugin dependencies loaded in wrong order
-
-**Solution:** `@cms/plugin-auth-api` must load first (provides authentication/authorization). The `PluginLoader` automatically sorts plugins to load `auth` first.
-
-### React Compiler Errors
-
-**Problem:** `Failed to load babel-plugin-react-compiler`
-
-**Cause:** Next.js can't find the package with workspace hoisting
-
-**Solution:**
-1. Add `babel-plugin-react-compiler` to root `package.json` devDependencies
-2. Set `NODE_PATH=/app/node_modules` in admin Dockerfile
-3. Or disable React Compiler: `reactCompiler: false` in `next.config.ts`
-
-### TypeScript Path Resolution in Plugins
-
-**Problem:** Admin can't import from plugin admin packages
-
-**Cause:** Missing TypeScript path mappings
-
-**Solution:** Add paths to `templates/admin/tsconfig.json`:
-```json
-{
-  "compilerOptions": {
-    "paths": {
-      "@cms/plugin-*-admin/*": ["../../plugins/plugin-*/admin/*"]
-    }
-  }
-}
-```
-
-### Container Keeps Restarting
-
-**Problem:** Container exits immediately or restarts in loop
-
-**Cause:** Usually missing environment variables or dependency errors
-
-**Solution:**
-1. Check logs: `docker logs cms_<service>`
-2. Verify `.env` file exists and is mounted
-3. Check for missing dependencies: `docker exec <container> npm list`
-
----
-
-## Development Workflow
-
-### Git Strategy
-
-This project uses **Git Flow** with feature branches:
-
-```
-main (production-ready)
-  └── develop (integration branch)
-       ├── feature/client-template
-       ├── feature/media-plugin
-       ├── feature/api-docs
-       └── bugfix/blog-description-truncate
-```
-
-**Branch Naming:**
-- `feature/<feature-name>` - New features
-- `bugfix/<bug-name>` - Bug fixes
-- `hotfix/<critical-fix>` - Critical production fixes
-- `refactor/<refactor-name>` - Code refactoring
-- `docs/<doc-update>` - Documentation updates
-
-**Commit Convention:**
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation
-- `style`: Formatting, missing semicolons, etc
-- `refactor`: Code restructuring
-- `test`: Adding tests
-- `chore`: Maintenance tasks
-
-**Examples:**
-```bash
-feat(blog): add description truncate to list view
-fix(auth): resolve checkPermission loading order
-docs(readme): add git workflow section
-refactor(plugins): extract common table component
-```
-
-### Development Process
-
-1. **Create feature branch:**
-   ```bash
-   git checkout develop
-   git pull origin develop
-   git checkout -b feature/media-plugin
-   ```
-
-2. **Make changes and commit:**
-   ```bash
-   git add .
-   git commit -m "feat(media): add file upload to MinIO"
-   ```
-
-3. **Push and create PR:**
-   ```bash
-   git push origin feature/media-plugin
-   # Create Pull Request to develop on GitHub
-   ```
-
-4. **After review, merge to develop:**
-   ```bash
-   git checkout develop
-   git merge feature/media-plugin
-   git push origin develop
-   ```
-
-5. **When develop is stable, merge to main:**
-   ```bash
-   git checkout main
-   git merge develop
-   git tag v1.0.0
-   git push origin main --tags
-   ```
-
----
-
-## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. **Code Style:** Follow existing ESLint and Prettier configs
-2. **Commits:** Use conventional commit messages (`feat:`, `fix:`, `docs:`, etc.)
-3. **Testing:** Add tests for new features
-4. **Documentation:** Update README and inline code comments
 
 ---
 
