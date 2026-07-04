@@ -15,6 +15,7 @@ export interface Form {
   name: string;
   fields: FormField[];
   createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface FormSubmission {
@@ -36,32 +37,38 @@ export class FormsRepository {
     this.submissionsCollection = this.db.getCollection<FormSubmission>(COLLECTIONS.FORM_SUBMISSIONS);
   }
 
-  async find(): Promise<WithId<Form>[]> {
+  async findAll(): Promise<WithId<Form>[]> {
     return await this.formsCollection.find({}).toArray();
   }
 
-  async findByFormId(formId: string): Promise<WithId<Form> | null> {
+  async findById(formId: string): Promise<WithId<Form> | null> {
     return await this.formsCollection.findOne({ formId } as Filter<Form>);
   }
 
-  async createForm(formData: Omit<Form, "createdAt">): Promise<WithId<Form>> {
+  async isFormIdTaken(formId: string): Promise<boolean> {
+    const count = await this.formsCollection.countDocuments({ formId } as Filter<Form>);
+    return count > 0;
+  }
+
+  async create(formData: Omit<Form, "createdAt" | "updatedAt">): Promise<WithId<Form>> {
     const newForm: Form = {
       ...formData,
       createdAt: new Date(),
+      updatedAt: new Date(),
     };
     const result = await this.formsCollection.insertOne(newForm as any);
     return { ...newForm, _id: result.insertedId } as WithId<Form>;
   }
 
-  async updateForm(formId: string, name: string, fields: FormField[]): Promise<boolean> {
+  async update(formId: string, name: string, fields: FormField[]): Promise<boolean> {
     const result = await this.formsCollection.updateOne(
       { formId } as Filter<Form>,
-      { $set: { name, fields } } as UpdateFilter<Form>
+      { $set: { name, fields, updatedAt: new Date() } } as UpdateFilter<Form>
     );
     return result.modifiedCount > 0;
   }
 
-  async deleteForm(formId: string): Promise<boolean> {
+  async delete(formId: string): Promise<boolean> {
     const result = await this.formsCollection.deleteOne({ formId } as Filter<Form>);
     return result.deletedCount > 0;
   }

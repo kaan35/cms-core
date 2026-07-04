@@ -71,6 +71,7 @@ async function seed() {
       "blog:write",
       "forms:delete",
       "forms:read",
+      "forms:submissions:read",
       "forms:write",
       "pages:delete",
       "pages:read",
@@ -117,6 +118,7 @@ async function seed() {
       {
         slug: "home",
         title: "Ana Sayfa",
+        status: "published",
         blocks: [
           {
             id: "b1",
@@ -137,6 +139,7 @@ async function seed() {
       {
         slug: "about",
         title: "Hakkımızda",
+        status: "published",
         blocks: [
           {
             id: "a1",
@@ -157,6 +160,7 @@ async function seed() {
       {
         slug: "contact",
         title: "İletişim",
+        status: "published",
         blocks: [
           {
             id: "c1",

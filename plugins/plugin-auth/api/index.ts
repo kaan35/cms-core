@@ -42,7 +42,7 @@ export const version = "1.0.0";
 const SYSTEM_PERMISSIONS = [
   "pages:read", "pages:write", "pages:delete",
   "blog:read", "blog:read:draft", "blog:write", "blog:delete",
-  "forms:read", "forms:write", "forms:delete",
+  "forms:read", "forms:write", "forms:delete", "forms:submissions:read",
   "users:read", "users:write", "users:delete",
   "settings:read", "settings:write",
   "webhooks:read", "webhooks:write", "webhooks:delete",

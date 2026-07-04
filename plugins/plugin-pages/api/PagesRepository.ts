@@ -17,13 +17,14 @@ export interface PageBlock {
 export interface Page {
   title: string;
   slug: string;
+  status: "draft" | "published";
   blocks: PageBlock[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface PageVersion {
-  postId: ObjectId | string;
+  pageId: ObjectId | string;
   versionNumber: number;
   data: WithId<Page>;
   savedBy: string | null;
@@ -98,10 +99,10 @@ export class PagesRepository {
   async saveVersionSnapshot(page: WithId<Page>, savedByUserId: string | null): Promise<void> {
     try {
       const currentVersionCount = await this.versionsCollection.countDocuments({
-        postId: page._id,
+        pageId: page._id,
       } as Filter<PageVersion>);
       await this.versionsCollection.insertOne({
-        postId: page._id,
+        pageId: page._id,
         versionNumber: currentVersionCount + 1,
         data: page,
         savedBy: savedByUserId,

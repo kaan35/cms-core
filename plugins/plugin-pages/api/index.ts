@@ -27,8 +27,11 @@ const blockSchema = z.object({
 const pageSchema = z.object({
   title: z.string(),
   slug: z.string(),
+  status: z.enum(["draft", "published"]).default("draft"),
   blocks: z.array(blockSchema),
 });
+
+const pageUpdateSchema = pageSchema.partial().required({ blocks: true });
 
 type PageBody = z.infer<typeof pageSchema>;
 
@@ -49,8 +52,10 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   fastify.addHook("preHandler", createPluginGuard(name));
 
   // Get all pages list
-  fastify.get("/pages", async () => {
-    const pages = await pagesRepo.find({}, { title: 1, slug: 1, createdAt: 1 });
+  fastify.get("/pages", async (request: FastifyRequest) => {
+    const isAdmin = request.user?.permissions?.includes("pages:read") ?? false;
+    const filter = isAdmin ? {} : { status: "published" as const };
+    const pages = await pagesRepo.find(filter, { title: 1, slug: 1, status: 1, createdAt: 1 });
     return { status: "success", pages: serializeDocuments(pages) };
   });
 
@@ -63,10 +68,17 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       throw new NotFoundError("Page");
     }
 
+    // Check draft access
+    const isAdmin = request.user?.permissions?.includes("pages:read") ?? false;
+    if (page.status === "draft" && !isAdmin) {
+      throw new NotFoundError("Page");
+    }
+
     interface SerializedPage {
       _id: string;
       title: string;
       slug: string;
+      status: "draft" | "published";
       blocks?: Array<{
         id: string;
         type: "hero" | "text" | "form" | "blog_posts";
@@ -83,22 +95,6 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     const serializedPage = serializeDocument(page) as unknown as SerializedPage;
 
     // Filter out blocks of disabled plugins for public users (non-admins)
-    let isAdmin = false;
-    const token = request.cookies?.token;
-    if (token) {
-      try {
-        const config = fastify.config;
-        const jwt = await import("jsonwebtoken");
-        const decoded = jwt.default.verify(token, config.JWT_SECRET) as { permissions?: string[] };
-        // Verify user has read permissions to bypass filters
-        if (decoded && decoded.permissions && decoded.permissions.includes("pages:read")) {
-          isAdmin = true;
-        }
-      } catch (err) {
-        // Ignore and treat as public user
-      }
-    }
-
     if (!isAdmin && serializedPage.blocks && Array.isArray(serializedPage.blocks)) {
       serializedPage.blocks = serializedPage.blocks.filter((block) => {
         if (block.type === "form" && !pluginLoader.isEnabled("@cms/plugin-forms-api")) {
@@ -132,6 +128,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       const createdPage = await pagesRepo.create({
         slug: body.slug,
         title: body.title,
+        status: body.status ?? "draft",
         blocks: body.blocks,
       });
 
@@ -147,11 +144,11 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     "/pages/:id",
     {
       preHandler: [authenticate, checkPermission("pages:write")],
-      schema: { body: pageSchema },
+      schema: { body: pageUpdateSchema },
     },
     async (request: FastifyRequest) => {
       const { id } = request.params as { id: string };
-      const body = request.body as PageBody;
+      const body = request.body as Partial<PageBody> & { blocks: typeof blockSchema[] };
 
       const page = await pagesRepo.findById(id);
       if (!page) {
@@ -159,7 +156,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       }
 
       // Check slug uniqueness (exclude current page)
-      if (body.slug !== page.slug) {
+      if (body.slug && body.slug !== page.slug) {
         const slugTaken = await pagesRepo.isSlugTaken(body.slug, id);
         if (slugTaken) {
           throw new BadRequestError("Slug already exists");
@@ -170,8 +167,9 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       await pagesRepo.saveVersionSnapshot(page, request.user?.id ?? null);
 
       const updatedPage = await pagesRepo.update(id, {
-        title: body.title,
-        slug: body.slug,
+        ...(body.title && { title: body.title }),
+        ...(body.slug && { slug: body.slug }),
+        ...(body.status && { status: body.status }),
         blocks: body.blocks,
       });
 

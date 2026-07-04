@@ -56,14 +56,14 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
 
   // Get all forms
   fastify.get("/forms", async () => {
-    const forms = await formsRepo.find();
+    const forms = await formsRepo.findAll();
     return { status: "success", forms };
   });
 
   // Get form by ID
   fastify.get("/forms/:formId", async (request: FastifyRequest) => {
     const { formId } = request.params as { formId: string };
-    const form = await formsRepo.findByFormId(formId);
+    const form = await formsRepo.findById(formId);
     if (!form) {
       throw new NotFoundError("Form");
     }
@@ -80,12 +80,12 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     async (request: FastifyRequest) => {
       const body = request.body as FormBody;
 
-      const existing = await formsRepo.findByFormId(body.formId);
-      if (existing) {
+      const isTaken = await formsRepo.isFormIdTaken(body.formId);
+      if (isTaken) {
         throw new BadRequestError("Form ID already exists");
       }
 
-      const createdForm = await formsRepo.createForm(body);
+      const createdForm = await formsRepo.create(body);
       return { status: "success", form: createdForm };
     },
   );
@@ -101,12 +101,12 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       const { formId } = request.params as { formId: string };
       const body = request.body as FormUpdateBody;
 
-      const form = await formsRepo.findByFormId(formId);
+      const form = await formsRepo.findById(formId);
       if (!form) {
         throw new NotFoundError("Form");
       }
 
-      await formsRepo.updateForm(formId, body.name, body.fields);
+      await formsRepo.update(formId, body.name, body.fields);
       return { status: "success", message: "Form updated successfully" };
     },
   );
@@ -117,7 +117,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     { preHandler: [authenticate, checkPermission("forms:delete")] },
     async (request: FastifyRequest) => {
       const { formId } = request.params as { formId: string };
-      const deleted = await formsRepo.deleteForm(formId);
+      const deleted = await formsRepo.delete(formId);
       if (!deleted) {
         throw new NotFoundError("Form");
       }
@@ -130,7 +130,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     const { formId } = request.params as { formId: string };
     const inputData = request.body as Record<string, unknown>;
 
-    const form = await formsRepo.findByFormId(formId);
+    const form = await formsRepo.findById(formId);
     if (!form) {
       throw new NotFoundError("Form");
     }
@@ -181,7 +181,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   // Get all submissions for a form (with pagination)
   fastify.get(
     "/forms/:formId/submissions",
-    { preHandler: [authenticate, checkPermission("forms:read")] },
+    { preHandler: [authenticate, checkPermission("forms:submissions:read")] },
     async (request: FastifyRequest) => {
       const { formId } = request.params as { formId: string };
       const { page, limit, skip } = parsePaginationQuery(request.query as PaginationQuery);
