@@ -1,4 +1,4 @@
-import type { Collection, Db } from "mongodb";
+import type { Collection, Db, Document } from "mongodb";
 
 /**
  * Minimal database interface for dependency injection.
@@ -28,7 +28,7 @@ export interface IDatabase {
    * Get a typed MongoDB collection
    * @throws Error if database is not connected
    */
-  getCollection<T = any>(name: string): Collection<T>;
+  getCollection<T extends Document = Document>(name: string): Collection<T>;
 
   /**
    * Get the MongoDB Db instance

@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -174,7 +174,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
-      <DashboardContent>{children}</DashboardContent>
+      <Suspense fallback={<Loading />}>
+        <DashboardContent>{children}</DashboardContent>
+      </Suspense>
     </ToastProvider>
   );
 }

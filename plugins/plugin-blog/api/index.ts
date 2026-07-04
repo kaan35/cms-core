@@ -1,13 +1,13 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import fp from "fastify-plugin";
-import { z } from "zod";
 import {
-  hooks,
   createPluginGuard,
-  parseObjectId,
+  hooks,
   serializeDocument,
   serializeDocuments,
 } from "@cms/core";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import fp from "fastify-plugin";
+import { z } from "zod";
+import { BlogPostsRepository } from "./BlogPostsRepository.ts";
 
 // Zod Blog Post Schema
 const blogPostSchema = z.object({
@@ -18,10 +18,8 @@ const blogPostSchema = z.object({
   status: z.enum(["draft", "published"]).default("published"),
 });
 
-// Reuse the same type from schema
 type BlogPostBody = z.infer<typeof blogPostSchema>;
 
-// Query params for list endpoint
 interface BlogListQuery {
   status?: string;
 }
@@ -35,9 +33,9 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   const authenticate = fastify.authenticate;
   const checkPermission = fastify.checkPermission;
 
-  logger.info("📝 Plugin-Blog: Initializing blog post routes...");
+  logger.info("📝 Plugin-Blog: Initializing blog post routes using Repository pattern...");
 
-  const blogCol = db.getCollection("cms_blog_posts");
+  const blogPostsRepo = new BlogPostsRepository(db, logger);
 
   // Check if plugin is enabled globally for all routes in this plugin
   fastify.addHook("preHandler", createPluginGuard(name));
@@ -45,8 +43,8 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   // List blog posts
   fastify.get("/blog", async (request: FastifyRequest) => {
     const { status } = request.query as BlogListQuery;
-    const filter = status ? { status } : {};
-    const posts = await blogCol.find(filter).sort({ createdAt: -1 }).toArray();
+    const filter = status ? { status: status as any } : {};
+    const posts = await blogPostsRepo.find(filter);
     return { status: "success", posts: serializeDocuments(posts) };
   });
 
@@ -54,13 +52,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   fastify.get("/blog/:idOrSlug", async (request: FastifyRequest, reply: FastifyReply) => {
     const { idOrSlug } = request.params as { idOrSlug: string };
 
-    let post;
-    try {
-      post = await blogCol.findOne({ _id: parseObjectId(idOrSlug) });
-    } catch {
-      post = await blogCol.findOne({ slug: idOrSlug });
-    }
-
+    const post = await blogPostsRepo.findByIdOrSlug(idOrSlug);
     if (!post) {
       reply.status(404).send({ status: "error", message: "Blog post not found" });
       return;
@@ -87,28 +79,25 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = request.body as BlogPostBody;
 
-      const existing = await blogCol.findOne({ slug: body.slug });
-      if (existing) {
+      const slugTaken = await blogPostsRepo.isSlugTaken(body.slug);
+      if (slugTaken) {
         reply.status(400).send({ status: "error", message: "Slug already exists" });
         return;
       }
 
-      const newPost = {
+      const createdPost = await blogPostsRepo.create({
         slug: body.slug,
         title: body.title,
         summary: body.summary,
         content: body.content,
         status: body.status ?? "published",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      });
 
-      const result = await blogCol.insertOne(newPost);
-      hooks.emit("blog.created", newPost, request.user, request.ip);
+      hooks.emit("blog.created", createdPost, request.user, request.ip);
 
       return {
         status: "success",
-        post: { ...newPost, _id: result.insertedId.toString() },
+        post: createdPost,
       };
     }
   );
@@ -124,15 +113,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       const { id } = request.params as { id: string };
       const body = request.body as BlogPostBody;
 
-      let objectId;
-      try {
-        objectId = parseObjectId(id);
-      } catch {
-        reply.status(400).send({ status: "error", message: "Invalid blog post ID" });
-        return;
-      }
-
-      const post = await blogCol.findOne({ _id: objectId });
+      const post = await blogPostsRepo.findById(id);
       if (!post) {
         reply.status(404).send({ status: "error", message: "Blog post not found" });
         return;
@@ -140,40 +121,27 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
 
       // Check slug uniqueness (exclude current post)
       if (body.slug !== post.slug) {
-        const slugExists = await blogCol.findOne({ slug: body.slug, _id: { $ne: objectId } });
-        if (slugExists) {
+        const slugTaken = await blogPostsRepo.isSlugTaken(body.slug, id);
+        if (slugTaken) {
           reply.status(400).send({ status: "error", message: "Slug already exists" });
           return;
         }
       }
 
       // Save version snapshot
-      try {
-        const versionsCol = db.getCollection("cms_post_versions");
-        const versionCount = await versionsCol.countDocuments({ postId: post._id });
-        await versionsCol.insertOne({
-          postId: post._id,
-          versionNumber: versionCount + 1,
-          data: post,
-          savedBy: request.user?.id ?? null,
-          createdAt: new Date(),
-        });
-      } catch (versionErr) {
-        logger.error(versionErr, "Failed to write blog post version snapshot");
-      }
+      await blogPostsRepo.saveVersionSnapshot(post, request.user?.id ?? null);
 
-      const updatedPost = {
-        ...post,
+      const updatedPost = await blogPostsRepo.update(id, {
         title: body.title,
         slug: body.slug,
         summary: body.summary,
         content: body.content,
         status: body.status,
-        updatedAt: new Date(),
-      };
+      });
 
-      await blogCol.updateOne({ _id: objectId }, { $set: updatedPost });
-      hooks.emit("blog.updated", updatedPost, request.user, request.ip);
+      if (updatedPost) {
+        hooks.emit("blog.updated", updatedPost, request.user, request.ip);
+      }
 
       return { status: "success", message: "Blog post updated successfully" };
     }
@@ -186,21 +154,18 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
 
-      let objectId;
-      try {
-        objectId = parseObjectId(id);
-      } catch {
-        reply.status(400).send({ status: "error", message: "Invalid blog post ID" });
-        return;
-      }
-
-      const post = await blogCol.findOne({ _id: objectId });
+      const post = await blogPostsRepo.findById(id);
       if (!post) {
         reply.status(404).send({ status: "error", message: "Blog post not found" });
         return;
       }
 
-      await blogCol.deleteOne({ _id: objectId });
+      const deleted = await blogPostsRepo.delete(id);
+      if (!deleted) {
+        reply.status(500).send({ status: "error", message: "Failed to delete blog post" });
+        return;
+      }
+
       hooks.emit("blog.deleted", post, request.user, request.ip);
 
       return { status: "success", message: "Blog post deleted successfully" };

@@ -6,7 +6,12 @@ import tseslint from "typescript-eslint";
 
 export default defineConfig([
   { ignores: ["dist/**"] },
-  { files: ["**/*.{js,mjs,cjs,ts,mts,cts}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: globals.node } },
+  {
+    extends: ["js/recommended"],
+    files: ["**/*.{js,mjs,cjs,ts,mts,cts}"],
+    languageOptions: { globals: globals.node },
+    plugins: { js },
+  },
   tseslint.configs.recommended,
   prettier,
 ]);

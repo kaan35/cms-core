@@ -1,21 +1,23 @@
 import {
-  S3Client,
-  PutObjectCommand,
   CreateBucketCommand,
   HeadBucketCommand,
+  PutObjectCommand,
+  S3Client,
 } from "@aws-sdk/client-s3";
+import type { Config } from "./ConfigService.ts";
 import type { IDatabase } from "./types/IDatabase.ts";
 import type { ILogger } from "./types/ILogger.ts";
-import type { Config } from "./ConfigService.ts";
 
 export class BackupService {
+  private readonly database: IDatabase;
+  private readonly logger: ILogger;
+  private readonly config: Config;
   private s3Client: S3Client;
 
-  constructor(
-    private readonly database: IDatabase,
-    private readonly logger: ILogger,
-    private readonly config: Config
-  ) {
+  constructor(database: IDatabase, logger: ILogger, config: Config) {
+    this.database = database;
+    this.logger = logger;
+    this.config = config;
     this.s3Client = new S3Client({
       endpoint: config.S3_ENDPOINT,
       credentials: {

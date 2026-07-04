@@ -126,10 +126,13 @@ const auditDefinitions: AuditEventDef[] = [
  * audit.init();
  */
 export class AuditLogService {
-  constructor(
-    private readonly database: IDatabase,
-    private readonly logger: ILogger
-  ) {}
+  private readonly database: IDatabase;
+  private readonly logger: ILogger;
+
+  constructor(database: IDatabase, logger: ILogger) {
+    this.database = database;
+    this.logger = logger;
+  }
 
   init(): void {
     this.logger.info("🛡️ AuditLogService: Initializing audit log listeners...");

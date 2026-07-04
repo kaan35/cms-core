@@ -34,5 +34,29 @@ declare module "fastify" {
       role: string;
       permissions: string[];
     };
+    /** Cookies parsed by @fastify/cookie plugin */
+    cookies: {
+      token?: string;
+      [key: string]: string | undefined;
+    };
+  }
+
+  interface FastifyReply {
+    /** Set cookie via @fastify/cookie plugin */
+    setCookie(
+      name: string,
+      value: string,
+      options?: {
+        path?: string;
+        httpOnly?: boolean;
+        secure?: boolean;
+        sameSite?: "strict" | "lax" | "none";
+        maxAge?: number;
+        expires?: Date;
+        domain?: string;
+      }
+    ): this;
+    /** Clear cookie via @fastify/cookie plugin */
+    clearCookie(name: string, options?: { path?: string; domain?: string }): this;
   }
 }

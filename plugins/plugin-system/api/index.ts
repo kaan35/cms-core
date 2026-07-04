@@ -1,7 +1,9 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { hooks, pluginLoader } from "@cms/core";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
-import { hooks, pluginLoader, parseObjectId } from "@cms/core";
+import { PluginsRepository } from "./PluginsRepository.ts";
+import { SettingsRepository } from "./SettingsRepository.ts";
 
 const settingsSchema = z.object({
   brandName: z.string().min(1),
@@ -20,8 +22,8 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
 
   logger.info("🔌 Plugin-System: Initializing plugin management and settings routes...");
 
-  const pluginCol = db.getCollection("cms_plugins");
-  const settingsCol = db.getCollection("cms_settings");
+  const pluginsRepo = new PluginsRepository(db, logger);
+  const settingsRepo = new SettingsRepository(db, logger);
 
   // List all plugins
   fastify.get(
@@ -30,10 +32,10 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       preHandler: [authenticate, checkPermission("settings:read")],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const plugins = await pluginCol.find({}).sort({ name: 1 }).toArray();
+      const plugins = await pluginsRepo.findAll();
       
       const serialized = plugins.map(p => ({
-        _id: p._id.toString(),
+        _id: p._id ? p._id.toString() : "",
         name: p.name,
         displayName: p.displayName || p.name,
         version: p.version || "1.0.0",
@@ -55,35 +57,27 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
 
-      let objectId;
-      try {
-        objectId = parseObjectId(id);
-      } catch {
-        reply.status(400).send({ status: "error", message: "Invalid plugin ID" });
-        return;
-      }
-
-      const plugin = await pluginCol.findOne({ _id: objectId });
+      const plugin = await pluginsRepo.findById(id);
       if (!plugin) {
         reply.status(404).send({ status: "error", message: "Plugin not found" });
         return;
       }
 
-      const newStatus = !plugin.isEnabled;
-      await pluginCol.updateOne(
-        { _id: objectId },
-        { $set: { isEnabled: newStatus } }
-      );
+      const toggleResult = await pluginsRepo.toggleEnabled(id);
+      if (!toggleResult || !toggleResult.success) {
+        reply.status(500).send({ status: "error", message: "Failed to toggle plugin" });
+        return;
+      }
 
-      logger.info(`🔌 Plugin [${plugin.name}] ${newStatus ? "enabled" : "disabled"}`);
+      logger.info(`🔌 Plugin [${plugin.name}] ${toggleResult.isEnabled ? "enabled" : "disabled"}`);
 
       // Reload plugin states in PluginLoader (no restart needed!)
       await pluginLoader.reloadStates();
 
       return {
         status: "success",
-        message: `Plugin ${newStatus ? "enabled" : "disabled"}. Changes applied immediately.`,
-        isEnabled: newStatus,
+        message: `Plugin ${toggleResult.isEnabled ? "enabled" : "disabled"}. Changes applied immediately.`,
+        isEnabled: toggleResult.isEnabled,
       };
     }
   );
@@ -92,15 +86,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
 
   // Get settings
   fastify.get("/settings", async () => {
-    let settings = await settingsCol.findOne({});
-    if (!settings) {
-      // Return defaults if not set in DB yet
-      settings = {
-        brandName: "ModularCMS",
-        primaryColor: "#8b5cf6",
-        secondaryColor: "#4f46e5",
-      };
-    }
+    const settings = await settingsRepo.get();
     return { status: "success", settings };
   });
 
@@ -114,18 +100,11 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = request.body as z.infer<typeof settingsSchema>;
 
-      await settingsCol.updateOne(
-        {},
-        {
-          $set: {
-            brandName: body.brandName,
-            primaryColor: body.primaryColor,
-            secondaryColor: body.secondaryColor,
-            updatedAt: new Date(),
-          },
-        },
-        { upsert: true }
-      );
+      await settingsRepo.update({
+        brandName: body.brandName,
+        primaryColor: body.primaryColor,
+        secondaryColor: body.secondaryColor,
+      });
 
       // Emit event
       hooks.emit("settings.updated", body, request.user, request.ip);

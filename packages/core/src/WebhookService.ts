@@ -3,10 +3,13 @@ import type { IDatabase } from "./types/IDatabase.ts";
 import type { ILogger } from "./types/ILogger.ts";
 
 export class WebhookService {
-  constructor(
-    private readonly database: IDatabase,
-    private readonly logger: ILogger
-  ) {}
+  private readonly database: IDatabase;
+  private readonly logger: ILogger;
+
+  constructor(database: IDatabase, logger: ILogger) {
+    this.database = database;
+    this.logger = logger;
+  }
 
   init() {
     this.logger.info("⚡ WebhookService: Initializing event listeners...");

@@ -8,6 +8,7 @@ import {
   buildPaginationMeta,
 } from "@cms/core";
 import type { PaginationQuery } from "@cms/core";
+import { FormsRepository } from "./FormsRepository.ts";
 
 // Zod Form Field Schema
 const fieldSchema = z.object({
@@ -42,24 +43,23 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   const authenticate = fastify.authenticate;
   const checkPermission = fastify.checkPermission;
 
-  logger.info("📋 Plugin-Forms: Initializing forms and submission routes...");
+  logger.info("📋 Plugin-Forms: Initializing forms and submission routes using Repository pattern...");
 
-  const formsCol = db.getCollection("cms_forms");
-  const submissionsCol = db.getCollection("cms_form_submissions");
+  const formsRepo = new FormsRepository(db, logger);
 
   // Check if plugin is enabled globally for all routes in this plugin
   fastify.addHook("preHandler", createPluginGuard(name));
 
   // Get all forms
   fastify.get("/forms", async () => {
-    const forms = await formsCol.find({}).toArray();
+    const forms = await formsRepo.find();
     return { status: "success", forms };
   });
 
   // Get form by ID
   fastify.get("/forms/:formId", async (request: FastifyRequest, reply: FastifyReply) => {
     const { formId } = request.params as { formId: string };
-    const form = await formsCol.findOne({ formId });
+    const form = await formsRepo.findByFormId(formId);
     if (!form) {
       reply.status(404).send({ status: "error", message: "Form not found" });
       return;
@@ -77,14 +77,14 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = request.body as FormBody;
 
-      const existing = await formsCol.findOne({ formId: body.formId });
+      const existing = await formsRepo.findByFormId(body.formId);
       if (existing) {
         reply.status(400).send({ status: "error", message: "Form ID already exists" });
         return;
       }
 
-      await formsCol.insertOne({ ...body, createdAt: new Date() });
-      return { status: "success", form: body };
+      const createdForm = await formsRepo.createForm(body);
+      return { status: "success", form: createdForm };
     }
   );
 
@@ -99,16 +99,13 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       const { formId } = request.params as { formId: string };
       const body = request.body as FormUpdateBody;
 
-      const form = await formsCol.findOne({ formId });
+      const form = await formsRepo.findByFormId(formId);
       if (!form) {
         reply.status(404).send({ status: "error", message: "Form not found" });
         return;
       }
 
-      await formsCol.updateOne(
-        { formId },
-        { $set: { name: body.name, fields: body.fields } }
-      );
+      await formsRepo.updateForm(formId, body.name, body.fields);
       return { status: "success", message: "Form updated successfully" };
     }
   );
@@ -119,8 +116,8 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     { preHandler: [authenticate, checkPermission("forms:delete")] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { formId } = request.params as { formId: string };
-      const result = await formsCol.deleteOne({ formId });
-      if (result.deletedCount === 0) {
+      const deleted = await formsRepo.deleteForm(formId);
+      if (!deleted) {
         reply.status(404).send({ status: "error", message: "Form not found" });
         return;
       }
@@ -133,7 +130,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     const { formId } = request.params as { formId: string };
     const inputData = request.body as Record<string, unknown>;
 
-    const form = await formsCol.findOne({ formId });
+    const form = await formsRepo.findByFormId(formId);
     if (!form) {
       reply.status(404).send({ status: "error", message: "Form not found" });
       return;
@@ -176,8 +173,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       return;
     }
 
-    const submission = { formId, data: sanitizedData, createdAt: new Date() };
-    await submissionsCol.insertOne(submission);
+    const submission = await formsRepo.createSubmission(formId, sanitizedData);
     hooks.emit("form.submitted", submission, form.name, request.ip);
 
     return { status: "success", message: "Form submitted successfully" };
@@ -191,13 +187,8 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       const { formId } = request.params as { formId: string };
       const { page, limit, skip } = parsePaginationQuery(request.query as PaginationQuery);
 
-      const total = await submissionsCol.countDocuments({ formId });
-      const items = await submissionsCol
-        .find({ formId })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .toArray();
+      const total = await formsRepo.countSubmissions(formId);
+      const items = await formsRepo.findSubmissions(formId, skip, limit);
 
       return {
         status: "success",

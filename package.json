@@ -15,7 +15,10 @@
     "dev:client": "npm run dev --workspace=templates/client",
     "type-check": "npm run type-check --workspace=templates/api && npm run type-check --workspace=templates/admin",
     "type-check:api": "npm run type-check --workspace=templates/api",
-    "type-check:admin": "npm run type-check --workspace=templates/admin"
+    "type-check:admin": "npm run type-check --workspace=templates/admin",
+    "build:packages": "npm run build --workspaces --if-present",
+    "build:apps": "npm run build --prefix templates/api && npm run build --prefix templates/admin",
+    "build:core": "npm run build:packages && npm run build:apps"
   },
   "devDependencies": {
     "@types/node": "^26",

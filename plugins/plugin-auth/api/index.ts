@@ -2,9 +2,9 @@ import bcrypt from "bcrypt";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import jwt from "jsonwebtoken";
-import { ObjectId } from "mongodb";
 import { z } from "zod";
-
+import { RolesRepository } from "./RolesRepository.ts";
+import { UsersRepository } from "./UsersRepository.ts";
 
 // Zod login schema
 const loginSchema = z.object({
@@ -54,46 +54,10 @@ export async function register(fastify: FastifyInstance, _options: Record<string
   const config = fastify.config;
   const logger = fastify.logger;
 
-  logger.info("🔑 Plugin-Auth: Initializing authentication routes...");
+  logger.info("🔑 Plugin-Auth: Initializing authentication routes using Repository pattern...");
 
-  const usersCol = db.getCollection("cms_users");
-  const rolesCol = db.getCollection("cms_roles");
-
-  // Migrate legacy super_admin users and ensure root template exists
-  const rootRole = await rolesCol.findOne({ name: "Root" });
-  if (!rootRole) {
-    await rolesCol.insertOne({
-      name: "Root",
-      description: "Full system access with all permissions",
-      permissions: SYSTEM_PERMISSIONS,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    logger.info("Created missing root role template");
-  }
-
-  const legacyUsers = await usersCol
-    .find({
-      $or: [
-        { role: "super_admin" },
-        { email: "admin@cms.com", $or: [{ permissions: { $exists: false } }, { permissions: { $size: 0 } }] },
-      ],
-    })
-    .toArray();
-
-  for (const legacyUser of legacyUsers) {
-    await usersCol.updateOne(
-      { _id: legacyUser._id },
-      {
-        $set: {
-          role: "user",
-          permissions: SYSTEM_PERMISSIONS,
-          updatedAt: new Date(),
-        },
-      }
-    );
-    logger.info(`Migrated legacy user ${legacyUser.email} to permission-based access`);
-  }
+  const usersRepo = new UsersRepository(db, logger);
+  const rolesRepo = new RolesRepository(db, logger);
 
   // Decorate root Fastify instance so other plugins can use authenticate as preHandler.
   if (!fastify.hasDecorator("authenticate")) {
@@ -106,22 +70,14 @@ export async function register(fastify: FastifyInstance, _options: Record<string
         }
 
         const decoded = jwt.verify(token, config.JWT_SECRET) as { id: string };
-        let objId: ObjectId;
-        try {
-          objId = new ObjectId(decoded.id);
-        } catch {
-          reply.status(401).send({ status: "error", message: "Unauthorized: Invalid token" });
-          return reply;
-        }
-
-        const dbUser = await usersCol.findOne({ _id: objId }, { projection: { passwordHash: 0 } });
+        const dbUser = await usersRepo.findById(decoded.id);
         if (!dbUser) {
           reply.status(401).send({ status: "error", message: "Unauthorized: User not found" });
           return reply;
         }
 
         request.user = {
-          id: dbUser._id.toString(),
+          id: dbUser._id ? dbUser._id.toString() : "",
           email: dbUser.email,
           role: dbUser.role,
           permissions: dbUser.permissions || [],
@@ -164,7 +120,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { email, password } = request.body as z.infer<typeof loginSchema>;
 
-      const user = await usersCol.findOne({ email });
+      const user = await usersRepo.findByEmail(email);
 
       if (!user) {
         reply.status(401).send({ status: "error", message: "Invalid email or password" });
@@ -180,7 +136,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
       // Sign token
       const token = jwt.sign(
         {
-          id: user._id.toString(),
+          id: user._id ? user._id.toString() : "",
           email: user.email,
           role: user.role,
           permissions: user.permissions || [],
@@ -201,7 +157,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
       return {
         status: "success",
         user: {
-          id: user._id.toString(),
+          id: user._id ? user._id.toString() : "",
           email: user.email,
           role: user.role,
           permissions: user.permissions || [],
@@ -249,12 +205,11 @@ export async function register(fastify: FastifyInstance, _options: Record<string
       preHandler: [fastify.authenticate, checkPermission("users:read")],
     },
     async () => {
-      const usersCol = db.getCollection("cms_users");
-      const users = await usersCol.find({}, { projection: { passwordHash: 0 } }).toArray();
+      const users = await usersRepo.findAll();
       return {
         status: "success",
         users: users.map((u: any) => ({
-          id: u._id.toString(),
+          id: u._id ? u._id.toString() : "",
           email: u.email,
           role: u.role,
           permissions: u.permissions || [],
@@ -274,31 +229,28 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = request.body as z.infer<typeof userCreateSchema>;
-      const usersCol = db.getCollection("cms_users");
 
-      const existing = await usersCol.findOne({ email: body.email });
+      const existing = await usersRepo.findByEmail(body.email);
       if (existing) {
         reply.status(400).send({ status: "error", message: "User already exists" });
         return;
       }
 
       const passwordHash = await bcrypt.hash(body.password, 10);
-      const newUser = {
+      const createdUser = await usersRepo.create({
         email: body.email,
         passwordHash,
         role: "user",
         permissions: body.permissions,
-        createdAt: new Date(),
-      };
+      });
 
-      const result = await usersCol.insertOne(newUser);
       return {
         status: "success",
         user: {
-          id: result.insertedId.toString(),
-          email: newUser.email,
-          role: newUser.role,
-          permissions: newUser.permissions,
+          id: createdUser._id ? createdUser._id.toString() : "",
+          email: createdUser.email,
+          role: createdUser.role,
+          permissions: createdUser.permissions,
         },
       };
     }
@@ -312,15 +264,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      const usersCol = db.getCollection("cms_users");
-      let objId;
-      try {
-        objId = new ObjectId(id);
-      } catch (err) {
-        reply.status(400).send({ status: "error", message: "Invalid user ID" });
-        return;
-      }
-      const user = await usersCol.findOne({ _id: objId }, { projection: { passwordHash: 0 } });
+      const user = await usersRepo.findById(id);
       if (!user) {
         reply.status(404).send({ status: "error", message: "User not found" });
         return;
@@ -328,7 +272,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
       return {
         status: "success",
         user: {
-          id: user._id.toString(),
+          id: user._id ? user._id.toString() : "",
           email: user.email,
           role: user.role,
           permissions: user.permissions || [],
@@ -349,36 +293,19 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
       const body = request.body as z.infer<typeof userUpdateSchema>;
-      const usersCol = db.getCollection("cms_users");
 
-      let objId;
-      try {
-        objId = new ObjectId(id);
-      } catch (err) {
-        reply.status(400).send({ status: "error", message: "Invalid user ID" });
-        return;
-      }
-
-      const user = await usersCol.findOne({ _id: objId });
+      const user = await usersRepo.findById(id);
       if (!user) {
         reply.status(404).send({ status: "error", message: "User not found" });
         return;
       }
 
-      await usersCol.updateOne(
-        { _id: objId },
-        {
-          $set: {
-            permissions: body.permissions,
-            updatedAt: new Date(),
-          },
-        }
-      );
+      await usersRepo.updatePermissions(id, body.permissions);
 
       return {
         status: "success",
         user: {
-          id: user._id.toString(),
+          id: user._id ? user._id.toString() : "",
           email: user.email,
           role: user.role,
           permissions: body.permissions,
@@ -395,25 +322,16 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      const usersCol = db.getCollection("cms_users");
-
-      let objId;
-      try {
-        objId = new ObjectId(id);
-      } catch (err) {
-        reply.status(400).send({ status: "error", message: "Invalid user ID" });
-        return;
-      }
 
       // Check if trying to delete self
       const currentUser = request.user;
-      if (currentUser.id === id) {
+      if (currentUser && currentUser.id === id) {
         reply.status(400).send({ status: "error", message: "Cannot delete your own admin account" });
         return;
       }
 
-      const result = await usersCol.deleteOne({ _id: objId });
-      if (result.deletedCount === 0) {
+      const deleted = await usersRepo.delete(id);
+      if (!deleted) {
         reply.status(404).send({ status: "error", message: "User not found" });
         return;
       }
@@ -429,7 +347,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     "/auth/roles",
     { preHandler: [fastify.authenticate, checkPermission("users:read")] },
     async () => {
-      const roles = await rolesCol.find({}).sort({ name: 1 }).toArray();
+      const roles = await rolesRepo.findAll();
       return { status: "success", roles };
     }
   );
@@ -441,15 +359,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
       
-      let objectId;
-      try {
-        objectId = new ObjectId(id);
-      } catch (err) {
-        reply.status(400).send({ status: "error", message: "Invalid role ID" });
-        return;
-      }
-
-      const role = await rolesCol.findOne({ _id: objectId });
+      const role = await rolesRepo.findById(id);
       if (!role) {
         reply.status(404).send({ status: "error", message: "Role not found" });
         return;
@@ -459,7 +369,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
         status: "success", 
         role: {
           ...role,
-          id: role._id.toString(),
+          id: role._id ? role._id.toString() : "",
         }
       };
     }
@@ -474,14 +384,14 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = request.body as RoleBody;
-      const existing = await rolesCol.findOne({ name: body.name });
+      const existing = await rolesRepo.findByName(body.name);
       if (existing) {
         reply.status(400).send({ status: "error", message: "Role name already exists" });
         return;
       }
-      const role = { ...body, createdAt: new Date(), updatedAt: new Date() };
-      const result = await rolesCol.insertOne(role);
-      return { status: "success", role: { ...role, id: result.insertedId.toString() } };
+      
+      const createdRole = await rolesRepo.create(body);
+      return { status: "success", role: { ...createdRole, id: createdRole._id ? createdRole._id.toString() : "" } };
     }
   );
 
@@ -494,17 +404,12 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      let objId: ObjectId;
-      try { objId = new ObjectId(id); } catch {
-        reply.status(400).send({ status: "error", message: "Invalid role ID" }); return;
-      }
       const body = request.body as RoleBody;
-      const result = await rolesCol.updateOne(
-        { _id: objId },
-        { $set: { name: body.name, description: body.description, permissions: body.permissions, updatedAt: new Date() } }
-      );
-      if (result.matchedCount === 0) {
-        reply.status(404).send({ status: "error", message: "Role not found" }); return;
+
+      const updated = await rolesRepo.update(id, body.name, body.description, body.permissions);
+      if (!updated) {
+        reply.status(404).send({ status: "error", message: "Role not found" });
+        return;
       }
       return { status: "success", message: "Role updated" };
     }
@@ -516,19 +421,15 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     { preHandler: [fastify.authenticate, checkPermission("users:delete")] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      let objId: ObjectId;
-      try { objId = new ObjectId(id); } catch {
-        reply.status(400).send({ status: "error", message: "Invalid role ID" }); return;
-      }
-      const result = await rolesCol.deleteOne({ _id: objId });
-      if (result.deletedCount === 0) {
-        reply.status(404).send({ status: "error", message: "Role not found" }); return;
+      const deleted = await rolesRepo.delete(id);
+      if (!deleted) {
+        reply.status(404).send({ status: "error", message: "Role not found" });
+        return;
       }
       return { status: "success", message: "Role deleted" };
     }
   );
 }
-
 
 export default {
   name,

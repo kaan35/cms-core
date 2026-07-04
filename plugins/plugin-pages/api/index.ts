@@ -1,7 +1,8 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { createPluginGuard, hooks, pluginLoader, serializeDocument, serializeDocuments } from "@cms/core";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { z } from "zod";
-import { hooks, createPluginGuard, parseObjectId, serializeDocument, serializeDocuments, pluginLoader } from "@cms/core";
+import { PagesRepository } from "./PagesRepository.ts";
 
 // Zod Block Schema
 const blockSchema = z.object({
@@ -32,16 +33,16 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   const authenticate = fastify.authenticate;
   const checkPermission = fastify.checkPermission;
 
-  logger.info("📄 Plugin-Pages: Initializing dynamic pages routes...");
+  logger.info("📄 Plugin-Pages: Initializing dynamic pages routes using Repository pattern...");
 
-  const pagesCol = db.getCollection("cms_pages");
+  const pagesRepo = new PagesRepository(db, logger);
 
   // Hook: Check if plugin is enabled globally for all routes in this plugin
   fastify.addHook("preHandler", createPluginGuard(name));
 
   // Get all pages list
   fastify.get("/pages", async () => {
-    const pages = await pagesCol.find({}, { projection: { title: 1, slug: 1, createdAt: 1 } }).toArray();
+    const pages = await pagesRepo.find({}, { title: 1, slug: 1, createdAt: 1 });
     return { status: "success", pages: serializeDocuments(pages) };
   });
 
@@ -49,15 +50,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   fastify.get("/pages/:idOrSlug", async (request: FastifyRequest, reply: FastifyReply) => {
     const { idOrSlug } = request.params as { idOrSlug: string };
 
-    let page;
-
-    try {
-      page = await pagesCol.findOne({ _id: parseObjectId(idOrSlug) });
-    } catch {
-      // Not a valid ObjectId, try as slug
-      page = await pagesCol.findOne({ slug: idOrSlug });
-    }
-
+    const page = await pagesRepo.findByIdOrSlug(idOrSlug);
     if (!page) {
       reply.status(404).send({ status: "error", message: "Page not found" });
       return;
@@ -124,31 +117,22 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = request.body as PageBody;
 
-      const existing = await pagesCol.findOne({ slug: body.slug });
-      if (existing) {
+      const slugTaken = await pagesRepo.isSlugTaken(body.slug);
+      if (slugTaken) {
         reply.status(400).send({ status: "error", message: "Slug already exists" });
         return;
       }
 
-      const newPage = {
+      const createdPage = await pagesRepo.create({
         slug: body.slug,
         title: body.title,
         blocks: body.blocks,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const result = await pagesCol.insertOne(newPage);
+      });
 
       // Emit event
-      hooks.emit("page.created", newPage, request.user, request.ip);
+      hooks.emit("page.created", createdPage, request.user, request.ip);
 
-      const serializedPage = {
-        ...newPage,
-        _id: result.insertedId.toString(),
-      };
-
-      return { status: "success", page: serializedPage };
+      return { status: "success", page: createdPage };
     }
   );
 
@@ -163,15 +147,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       const { id } = request.params as { id: string };
       const body = request.body as PageBody;
 
-      let objectId;
-      try {
-        objectId = parseObjectId(id);
-      } catch {
-        reply.status(400).send({ status: "error", message: "Invalid page ID" });
-        return;
-      }
-
-      const page = await pagesCol.findOne({ _id: objectId });
+      const page = await pagesRepo.findById(id);
       if (!page) {
         reply.status(404).send({ status: "error", message: "Page not found" });
         return;
@@ -179,53 +155,26 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
 
       // Check slug uniqueness (exclude current page)
       if (body.slug !== page.slug) {
-        const existing = await pagesCol.findOne({
-          slug: body.slug,
-          _id: { $ne: objectId }
-        });
-        if (existing) {
+        const slugTaken = await pagesRepo.isSlugTaken(body.slug, id);
+        if (slugTaken) {
           reply.status(400).send({ status: "error", message: "Slug already exists" });
           return;
         }
       }
 
       // Save version snapshot
-      try {
-        const versionsCol = db.getCollection("cms_post_versions");
-        const currentVersionCount = await versionsCol.countDocuments({ postId: page._id });
-        await versionsCol.insertOne({
-          postId: page._id,
-          versionNumber: currentVersionCount + 1,
-          data: page,
-          savedBy: request.user?.id ?? null,
-          createdAt: new Date(),
-        });
-      } catch (versionErr) {
-        logger.error(versionErr, "Failed to write page version snapshot");
-      }
+      await pagesRepo.saveVersionSnapshot(page, request.user?.id ?? null);
 
-      const updatedPage = {
-        ...page,
+      const updatedPage = await pagesRepo.update(id, {
         title: body.title,
         slug: body.slug,
         blocks: body.blocks,
-        updatedAt: new Date(),
-      };
+      });
 
-      await pagesCol.updateOne(
-        { _id: objectId },
-        {
-          $set: {
-            title: body.title,
-            slug: body.slug,
-            blocks: body.blocks,
-            updatedAt: new Date(),
-          },
-        }
-      );
-
-      // Emit event
-      hooks.emit("page.updated", updatedPage, request.user, request.ip);
+      if (updatedPage) {
+        // Emit event
+        hooks.emit("page.updated", updatedPage, request.user, request.ip);
+      }
 
       return { status: "success", message: "Page updated successfully" };
     }
@@ -240,22 +189,14 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
 
-      let objectId;
-      try {
-        objectId = parseObjectId(id);
-      } catch {
-        reply.status(400).send({ status: "error", message: "Invalid page ID" });
-        return;
-      }
-
-      const page = await pagesCol.findOne({ _id: objectId });
+      const page = await pagesRepo.findById(id);
       if (!page) {
         reply.status(404).send({ status: "error", message: "Page not found" });
         return;
       }
 
-      const result = await pagesCol.deleteOne({ _id: objectId });
-      if (result.deletedCount === 0) {
+      const deleted = await pagesRepo.delete(id);
+      if (!deleted) {
         reply.status(404).send({ status: "error", message: "Page not found" });
         return;
       }
