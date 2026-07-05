@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   reactCompiler: true,
-  cacheComponents: true,
+  // cacheComponents: true,
   // partialPrefetching: true,
 
   // Proxy /api/* requests to the internal API server.

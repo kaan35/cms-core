@@ -7,6 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY templates/admin/package.json ./templates/admin/
 
+COPY plugins/ ./plugins/
+
 RUN npm ci --workspace=templates/admin --include-workspace-root
 
 COPY templates/admin/ ./templates/admin/

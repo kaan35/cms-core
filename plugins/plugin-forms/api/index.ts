@@ -52,7 +52,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   const formsRepo = new FormsRepository(db, logger);
 
   // Check if plugin is enabled globally for all routes in this plugin
-  fastify.addHook("preHandler", createPluginGuard(name));
+  fastify.addHook("preHandler", createPluginGuard(name, "/forms"));
 
   // Get all forms
   fastify.get("/forms", async () => {

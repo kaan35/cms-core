@@ -7,7 +7,8 @@ const configSchema = z.object({
   MONGO_DB_NAME: z.string().default("cms_dev"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   LOG_LEVEL: z.string().default("info"),
-  JWT_SECRET: z.string().default("supersecretchangeit"),
+  JWT_SECRET: z.string().trim().min(32, "JWT_SECRET en az 32 karakter olmalı"),
+  ALLOWED_ORIGINS: z.string().default(""),
   // S3 / MinIO Settings for backup & media
   S3_ENDPOINT: z.string().default("http://localhost:9000"),
   S3_ACCESS_KEY: z.string().default("minioadmin"),

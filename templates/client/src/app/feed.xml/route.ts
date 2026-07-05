@@ -1,4 +1,4 @@
-import { getInternalApiUrl } from "@/lib/config";
+import { getInternalApiUrl, getPublicSiteUrl } from "@/lib/config";
 
 interface FeedPost {
   title: string;
@@ -8,7 +8,7 @@ interface FeedPost {
 }
 
 export async function GET() {
-  const baseUrl = "http://localhost:3002";
+  const baseUrl = getPublicSiteUrl();
   const apiBaseUrl = getInternalApiUrl();
 
   let posts: FeedPost[] = [];

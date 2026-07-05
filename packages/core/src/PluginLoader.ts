@@ -1,6 +1,14 @@
-import type { FastifyInstance } from "fastify";
 import { database } from "@cms/db";
+import type { FastifyInstance } from "fastify";
 import { logger } from "./LogService.ts";
+
+const ALLOWED_PLUGIN_NAMES = new Set([
+  "@cms/plugin-auth-api",
+  "@cms/plugin-blog-api",
+  "@cms/plugin-pages-api",
+  "@cms/plugin-forms-api",
+  "@cms/plugin-system-api",
+]);
 
 export class PluginLoader {
   private pluginStates: Map<string, boolean> = new Map();
@@ -19,11 +27,17 @@ export class PluginLoader {
       }
 
       // Sort plugins by priority (higher priority loads first)
-      const sortedPlugins = activePlugins.sort((a, b) => 
-        (b.priority ?? 50) - (a.priority ?? 50)
-      );
+      const sortedPlugins = activePlugins.sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50));
 
       for (const p of sortedPlugins) {
+        // Security check: Only allow whitelisted plugin names
+        if (!ALLOWED_PLUGIN_NAMES.has(p.name)) {
+          logger.error(
+            `🚫 PluginLoader: Plugin [${p.name}] is not in the allowed list — skipping for security`,
+          );
+          continue;
+        }
+
         logger.info(`🔌 PluginLoader: Loading [${p.name}] (priority: ${p.priority ?? 50})...`);
         try {
           // Import by package name - workspace resolution handles dev mode automatically
@@ -37,9 +51,14 @@ export class PluginLoader {
             logger.warn(`⚠️  PluginLoader: [${p.name}] has no register() export — skipping`);
           }
         } catch (err) {
-          logger.error(err, `💥 PluginLoader: Failed to load [${p.name}] — server continues without it`);
+          logger.error(
+            err,
+            `💥 PluginLoader: Failed to load [${p.name}] — server continues without it`,
+          );
           if (p.name === "@cms/plugin-auth-api") {
-            throw new Error("Critical plugin @cms/plugin-auth-api failed to load. Crashing server.");
+            throw new Error(
+              "Critical plugin @cms/plugin-auth-api failed to load. Crashing server.",
+            );
           }
         }
       }

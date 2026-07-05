@@ -38,6 +38,7 @@ interface PageFormProps {
   initialData?: {
     title: string;
     slug: string;
+    status: "draft" | "published";
     blocks: Block[];
   };
 }
@@ -53,6 +54,7 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     slug: initialData?.slug || "",
+    status: initialData?.status || ("draft" as "draft" | "published"),
     blocks: initialData?.blocks || [],
   });
 
@@ -176,6 +178,22 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
             label="Page Slug"
             placeholder="e.g. home"
           />
+        </div>
+
+        <div className="w-full md:w-1/3">
+          <Select
+            value={formData.status}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                status: e.target.value as "draft" | "published",
+              }))
+            }
+            label="Publishing Status"
+          >
+            <option value="published">Published (Visible to all)</option>
+            <option value="draft">Draft (Private draft)</option>
+          </Select>
         </div>
       </Card>
 

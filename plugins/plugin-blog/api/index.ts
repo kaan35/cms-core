@@ -20,7 +20,9 @@ const blogPostSchema = z.object({
   status: z.enum(["draft", "published"]).default("published"),
 });
 
-const updateBlogPostSchema = blogPostSchema.partial({ status: true });
+const updateBlogPostSchema = blogPostSchema.extend({
+  status: z.enum(["draft", "published"]).optional(),
+});
 
 type BlogPostBody = z.infer<typeof blogPostSchema>;
 type UpdateBlogPostBody = z.infer<typeof updateBlogPostSchema>;
@@ -43,7 +45,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   const blogPostsRepo = new BlogPostsRepository(db, logger);
 
   // Check if plugin is enabled globally for all routes in this plugin
-  fastify.addHook("preHandler", createPluginGuard(name));
+  fastify.addHook("preHandler", createPluginGuard(name, "/blog"));
 
   // List blog posts
   fastify.get("/blog", async (request: FastifyRequest) => {

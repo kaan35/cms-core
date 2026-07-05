@@ -31,7 +31,9 @@ export async function createServer() {
   // 1. Set Zod Validator Compiler
   app.setValidatorCompiler(({ schema }: { schema: unknown }) => {
     return (data: unknown) => {
-      const s = schema as { safeParse?: (d: unknown) => { success: boolean; data?: unknown; error?: Error } };
+      const s = schema as {
+        safeParse?: (d: unknown) => { success: boolean; data?: unknown; error?: Error };
+      };
       if (s && typeof s.safeParse === "function") {
         const result = s.safeParse(data);
         if (result.success) return { value: result.data };
@@ -73,7 +75,12 @@ export async function createServer() {
 
   // 3. Register Security & Core Plugins
   await app.register(cors, {
-    origin: true, // Configurable or true for all in dev
+    origin:
+      config.NODE_ENV === "production"
+        ? config.ALLOWED_ORIGINS.split(",")
+            .map((o) => o.trim())
+            .filter(Boolean)
+        : true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],

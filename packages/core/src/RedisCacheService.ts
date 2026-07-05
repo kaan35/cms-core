@@ -49,12 +49,6 @@ export class RedisCacheService implements ICache {
       }
     });
   }
-  delete(key: string): Promise<void> {
-    throw new Error("Method not implemented.");
-  }
-  deleteByPattern(pattern: string): Promise<void> {
-    throw new Error("Method not implemented.");
-  }
 
   private scheduleReconnect(): void {
     if (this.isConnected || this.reconnectTimer) return;
@@ -79,7 +73,9 @@ export class RedisCacheService implements ICache {
     try {
       await this.client.connect();
     } catch {
-      (this.customLogger ?? logger).warn("⚠️  Redis unavailable at startup — will retry in background");
+      (this.customLogger ?? logger).warn(
+        "⚠️  Redis unavailable at startup — will retry in background",
+      );
       this.scheduleReconnect();
     }
   }
@@ -114,7 +110,7 @@ export class RedisCacheService implements ICache {
     }
   }
 
-  async del(key: string): Promise<void> {
+  async delete(key: string): Promise<void> {
     if (!this.isConnected) return;
     try {
       await this.client.del(key);
@@ -123,7 +119,7 @@ export class RedisCacheService implements ICache {
     }
   }
 
-  async delByPattern(pattern: string): Promise<void> {
+  async deleteByPattern(pattern: string): Promise<void> {
     if (!this.isConnected) return;
     try {
       const keys = await this.client.keys(pattern);

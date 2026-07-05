@@ -19,4 +19,4 @@ WORKDIR /app/templates/api
 
 EXPOSE 3001
 
-CMD ["node", "--preserve-symlinks", "--env-file=../../.env", "src/main.ts"] 
+CMD ["npm", "start"]

@@ -1,4 +1,4 @@
-import { getInternalApiUrl } from "@/lib/config";
+import { getInternalApiUrl, getPublicSiteUrl } from "@/lib/config";
 
 interface SitemapPage {
   slug: string;
@@ -11,7 +11,7 @@ interface SitemapPost {
 }
 
 export async function GET() {
-  const baseUrl = "http://localhost:3002";
+  const baseUrl = getPublicSiteUrl();
   const apiBaseUrl = getInternalApiUrl();
 
   let pages: SitemapPage[] = [];

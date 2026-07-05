@@ -117,6 +117,12 @@ export async function register(fastify: FastifyInstance, _options: Record<string
   fastify.post(
     "/auth/login",
     {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: "1 minute",
+        },
+      },
       schema: {
         body: loginSchema,
       },

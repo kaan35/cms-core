@@ -24,14 +24,17 @@ const blockSchema = z.object({
 });
 
 // Zod Page Schema
-const pageSchema = z.object({
+const pageBaseSchema = z.object({
   title: z.string(),
   slug: z.string(),
-  status: z.enum(["draft", "published"]).default("draft"),
+  status: z.enum(["draft", "published"]),
   blocks: z.array(blockSchema),
 });
 
-const pageUpdateSchema = pageSchema.partial().required({ blocks: true });
+const pageSchema = pageBaseSchema.extend({
+  status: z.enum(["draft", "published"]).default("draft"),
+});
+const pageUpdateSchema = pageBaseSchema.partial().required({ blocks: true });
 
 type PageBody = z.infer<typeof pageSchema>;
 
@@ -49,7 +52,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
   const pagesRepo = new PagesRepository(db, logger);
 
   // Hook: Check if plugin is enabled globally for all routes in this plugin
-  fastify.addHook("preHandler", createPluginGuard(name));
+  fastify.addHook("preHandler", createPluginGuard(name, "/pages"));
 
   // Get all pages list
   fastify.get("/pages", async (request: FastifyRequest) => {
@@ -148,7 +151,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     },
     async (request: FastifyRequest) => {
       const { id } = request.params as { id: string };
-      const body = request.body as Partial<PageBody> & { blocks: typeof blockSchema[] };
+      const body = request.body as Partial<PageBody> & { blocks: (typeof blockSchema)[] };
 
       const page = await pagesRepo.findById(id);
       if (!page) {

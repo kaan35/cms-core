@@ -33,8 +33,8 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const plugins = await pluginsRepo.findAll();
-      
-      const serialized = plugins.map(p => ({
+
+      const serialized = plugins.map((p) => ({
         _id: p._id ? p._id.toString() : "",
         name: p.name,
         displayName: p.displayName || p.name,
@@ -45,7 +45,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       }));
 
       return { status: "success", plugins: serialized };
-    }
+    },
   );
 
   // Toggle plugin enabled status
@@ -79,7 +79,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
         message: `Plugin ${toggleResult.isEnabled ? "enabled" : "disabled"}. Changes applied immediately.`,
         isEnabled: toggleResult.isEnabled,
       };
-    }
+    },
   );
 
   // --- GLOBAL SETTINGS ENDPOINTS (Decoupled from Pages Plugin) ---
@@ -110,7 +110,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
       hooks.emit("settings.updated", body, request.user, request.ip);
 
       return { status: "success", message: "Settings updated successfully", settings: body };
-    }
+    },
   );
 }
 

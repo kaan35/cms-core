@@ -17,6 +17,7 @@ export default function PageEditPage() {
   const [pageData, setPageData] = useState<{
     title: string;
     slug: string;
+    status: "draft" | "published";
     blocks: any[];
   } | null>(null);
 
@@ -28,6 +29,7 @@ export default function PageEditPage() {
       setPageData({
         title: page.title,
         slug: page.slug,
+        status: page.status || "draft",
         blocks: page.blocks || [],
       });
     }
