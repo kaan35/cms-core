@@ -1,9 +1,16 @@
 import { config } from "@cms/core";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { MongoClient } from "mongodb";
 
 async function seed() {
   console.log("🌱 Starting Database Seeding...");
+  if (config.NODE_ENV === "production") {
+    console.error(
+      "❌ Seed script can't run in production. Create users manually or with migration script.",
+    );
+    process.exit(1);
+  }
   const client = new MongoClient(config.MONGO_URI);
 
   try {
@@ -106,15 +113,19 @@ async function seed() {
     // 3. Seed Default Admin User
     const usersCol = db.collection("cms_users");
     await usersCol.deleteMany({});
-    const passwordHash = await bcrypt.hash("admin123", 10);
+    const seedPassword =
+      process.env.ADMIN_SEED_PASSWORD ?? crypto.randomBytes(9).toString("base64url");
+    const passwordHash = await bcrypt.hash(seedPassword, 10);
+
+    const seedEmail = process.env.ADMIN_SEED_EMAIL ?? "admin@cms.com";
     await usersCol.insertOne({
-      email: "admin@cms.com",
+      email: seedEmail,
       passwordHash,
       role: "user",
       permissions: ROOT_PERMISSIONS,
       createdAt: new Date(),
     });
-    console.log("✅ Seeded default admin user: admin@cms.com / admin123");
+    console.log(`✅ Seeded default admin user: ${seedEmail} / ${seedPassword}`);
 
     // 4. Seed Default Content Pages (Home, About, Contact)
     const pagesCol = db.collection("cms_pages");
@@ -229,6 +240,18 @@ async function seed() {
       },
     ]);
     console.log("✅ Seeded sample blog posts");
+
+    // 7. Seed Settings
+    const settingsCol = db.collection("cms_settings");
+    await settingsCol.deleteMany({});
+    await settingsCol.insertOne({
+      brandName: "ModularCMS",
+      primaryColor: "#3b82f6",
+      secondaryColor: "#0070f3",
+      createdAt: new Date(),
+    });
+
+    console.log("✅ Seeded system settings");
   } catch (err) {
     console.error("💥 Seeding failed:", err);
   } finally {

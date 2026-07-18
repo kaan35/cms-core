@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useApiQuery } from "@/hooks/useApi";
-import { UserForm } from "@/components/UserForm";
+import { UserForm } from "@/components/forms/UserForm";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Loading } from "@/components/ui/Loading";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { useApiQuery } from "@/hooks/useApi";
+import { useEffect, useState } from "react";
 
 interface RoleTemplate {
   id: string;
@@ -23,7 +25,7 @@ export default function UserNewPage() {
           id: r._id?.toString() || r.id,
           name: r.name,
           permissions: r.permissions || [],
-        }))
+        })),
       );
     }
   }, [rolesData]);
@@ -34,14 +36,11 @@ export default function UserNewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">New User</h1>
-          <p className="text-sm text-zinc-400">
-            Create a new user account with custom permissions
-          </p>
-        </div>
-      </div>
+      <Breadcrumb items={[{ label: "Users & RBAC", href: "/users" }, { label: "New User" }]} />
+      <PageHeader
+        title="New User"
+        description="Create a new user account with custom permissions"
+      />
 
       <UserForm mode="create" roles={roles} />
     </div>

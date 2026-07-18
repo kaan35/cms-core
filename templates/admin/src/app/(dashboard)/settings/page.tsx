@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useToast } from "@/lib/toast";
-import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { ErrorMessage } from "@/components/ui/ErrorMessage";
+import { Input } from "@/components/ui/Input";
 import { Loading } from "@/components/ui/Loading";
-import { Save, Sparkles, RefreshCw } from "lucide-react";
-import { useApiQuery, useApiMutation } from "@/hooks/useApi";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { useApiMutation, useApiQuery } from "@/hooks/useApi";
+import { useToast } from "@/lib/toast";
+import { Flame, RefreshCw, Save, Settings as SettingsIcon } from "lucide-react";
+import { useState } from "react";
 
 export default function SettingsPage() {
   const { showToast } = useToast();
@@ -36,16 +38,16 @@ export default function SettingsPage() {
   });
 
   const { trigger: saveSettings, isMutating } = useApiMutation({
-    path: "/settings",
     method: "PUT",
-    onSuccess: () => {
-      showToast({ message: "Settings updated successfully", type: "success" });
-      refetch();
-    },
     onError: (err: Error) => {
       const errorMsg = err.message || "Failed to save settings";
       showToast({ message: errorMsg, type: "error" });
     },
+    onSuccess: () => {
+      showToast({ message: "Settings updated successfully", type: "success" });
+      refetch();
+    },
+    path: "/settings",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,29 +65,28 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">General Settings</h1>
-          <p className="text-sm text-zinc-400">
-            Configure dynamic portal themes, branding settings and styling variables
-          </p>
-        </div>
-
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => refetch()}
-          isDisabled={isRefreshing}
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-        </Button>
-      </div>
+      <PageHeader
+        icon={SettingsIcon}
+        accent="neutral"
+        title="General Settings"
+        description="Configure dynamic portal themes, branding settings and styling variables"
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => refetch()}
+            isDisabled={isRefreshing}
+            aria-label="Refresh"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+          </Button>
+        }
+      />
 
       {error && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">
-          {error.message || "Failed to load settings"}
-        </div>
+        <ErrorMessage error={error} fallback="Failed to load settings" />
       )}
 
       <form onSubmit={handleSubmit}>
@@ -98,16 +99,21 @@ export default function SettingsPage() {
               <Input
                 label="Site Brand Name"
                 value={formData.brandName}
-                onChange={(e) => setFormData((prev) => ({ ...prev, brandName: e.target.value }))}
-                placeholder="e.g. Antigravity Blog"
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    brandName: e.target.value,
+                  }))
+                }
+                placeholder="e.g. CMS Core Blog"
                 required
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl border-t border-white/5 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl border-t border-border pt-6">
               {/* Primary Color */}
               <div className="space-y-3">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Primary Theme Color
                 </label>
                 <div className="flex gap-4 items-center">
@@ -115,15 +121,21 @@ export default function SettingsPage() {
                     type="color"
                     value={formData.primaryColor}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, primaryColor: e.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        primaryColor: e.target.value,
+                      }))
                     }
-                    className="h-12 w-12 rounded-lg border border-white/10 bg-transparent cursor-pointer"
+                    className="h-12 w-12 rounded-lg border border-border bg-transparent cursor-pointer"
                   />
                   <div className="flex-1">
                     <Input
                       value={formData.primaryColor}
                       onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, primaryColor: e.target.value }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          primaryColor: e.target.value,
+                        }))
                       }
                       placeholder="#8b5cf6"
                     />
@@ -133,7 +145,7 @@ export default function SettingsPage() {
 
               {/* Secondary Color */}
               <div className="space-y-3">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Secondary Theme Color
                 </label>
                 <div className="flex gap-4 items-center">
@@ -141,15 +153,21 @@ export default function SettingsPage() {
                     type="color"
                     value={formData.secondaryColor}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, secondaryColor: e.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        secondaryColor: e.target.value,
+                      }))
                     }
-                    className="h-12 w-12 rounded-lg border border-white/10 bg-transparent cursor-pointer"
+                    className="h-12 w-12 rounded-lg border border-border bg-transparent cursor-pointer"
                   />
                   <div className="flex-1">
                     <Input
                       value={formData.secondaryColor}
                       onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, secondaryColor: e.target.value }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          secondaryColor: e.target.value,
+                        }))
                       }
                       placeholder="#4f46e5"
                     />
@@ -159,19 +177,19 @@ export default function SettingsPage() {
             </div>
 
             {/* Preview Banner */}
-            <div className="border-t border-white/5 pt-6 space-y-3">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <div className="border-t border-border pt-6 space-y-3">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Live Theme Preset Preview
               </label>
-              <div className="p-6 rounded-xl border border-white/5 bg-zinc-950 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="p-6 rounded-xl border border-border bg-background flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-2">
                   <div
                     className="h-8 w-8 rounded-lg flex items-center justify-center text-white"
                     style={{ backgroundColor: formData.primaryColor }}
                   >
-                    <Sparkles className="h-4 w-4" />
+                    <Flame className="h-4 w-4" />
                   </div>
-                  <span className="font-bold text-white text-lg">
+                  <span className="font-bold text-foreground text-lg">
                     {formData.brandName || "ModularCMS"}
                   </span>
                 </div>
@@ -193,7 +211,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Actions */}
-            <div className="border-t border-white/5 pt-6 flex justify-start">
+            <div className="border-t border-border pt-6 flex justify-start">
               <Button type="submit" isLoading={isMutating} icon={Save}>
                 Save Settings
               </Button>

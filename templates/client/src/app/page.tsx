@@ -23,7 +23,7 @@ export default async function HomePage() {
     const internalUrl = getInternalApiUrl();
     return (
       <div className="flex-1 flex flex-col items-center justify-center py-20 px-6 text-center">
-        <h1 className="text-4xl font-extrabold tracking-tight">Antigravity Headless CMS</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight">CMS Core Headless CMS</h1>
         <p className="text-zinc-400 mt-2 max-w-md">
           Please make sure the Fastify API is running at{" "}
           <code className="text-blue-400 font-mono">{internalUrl}</code> and database seed is

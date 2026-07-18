@@ -1,42 +1,49 @@
-"use client";
-
+import { cn } from "@/lib/utils";
 import React from "react";
+import { fieldVariants, FieldWrapper } from "./input-shared";
 
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
+  helperText?: string;
 }
 
-export const Textarea: React.FC<TextareaProps> = ({
+export function Textarea({
   className = "",
   label,
   error,
+  helperText,
   id,
   rows = 4,
+  required,
   ...props
-}) => {
+}: TextareaProps) {
   const generatedId = React.useId();
   const textareaId = id || generatedId;
 
   return (
-    <div className="w-full space-y-2">
-      {label && (
-        <label
-          htmlFor={textareaId}
-          className="block text-xs font-semibold tracking-wider text-zinc-400"
-        >
-          {label}
-        </label>
+    <FieldWrapper
+      label={label}
+      error={error}
+      helperText={helperText}
+      htmlFor={textareaId}
+      required={required}
+    >
+      {(describedBy) => (
+        <textarea
+          id={textareaId}
+          rows={rows}
+          required={required}
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={describedBy}
+          className={cn(
+            fieldVariants({ error: error ? "true" : "false" }),
+            "resize-y focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring",
+            className,
+          )}
+          {...props}
+        />
       )}
-      <textarea
-        id={textareaId}
-        rows={rows}
-        className={`w-full rounded-lg border border-white/10 bg-zinc-950 px-4 py-2.5 text-sm text-white outline-none transition focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-          error ? "border-red-500/50 focus:border-red-500" : ""
-        } ${className}`}
-        {...props}
-      />
-      {error && <p className="text-xs text-red-400 font-medium">{error}</p>}
-    </div>
+    </FieldWrapper>
   );
-};
+}

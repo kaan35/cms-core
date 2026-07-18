@@ -22,4 +22,9 @@ export { useApiMutation, useApiQuery } from "./adapters/swr";
 export { useApiPagination } from "./useApiPagination";
 
 // Re-export common types so consumers don't need to import from types.ts directly
-export type { ApiMutationOptions, ApiMutationResult, ApiQueryOptions, ApiQueryResult } from "./types";
+export type {
+  ApiMutationOptions,
+  ApiMutationResult,
+  ApiQueryOptions,
+  ApiQueryResult,
+} from "./types";

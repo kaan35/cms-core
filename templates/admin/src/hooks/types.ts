@@ -3,22 +3,26 @@
  * These map to SWR or TanStack Query options under the hood.
  *
  * SWR mapping:
- *   enabled          → key (null disables fetching)
- *   revalidateOnFocus → revalidateOnFocus
- *   retryOnError     → shouldRetryOnError
- *   staleTime        → dedupingInterval
+ *   enabled             → key (null disables fetching)
+ *   revalidateOnFocus   → revalidateOnFocus
+ *   revalidateOnReconnect → revalidateOnReconnect
+ *   retryOnError        → shouldRetryOnError
+ *   staleTime           → dedupingInterval
  *
  * TanStack Query mapping:
- *   enabled          → enabled
- *   revalidateOnFocus → refetchOnWindowFocus
- *   retryOnError     → retry
- *   staleTime        → staleTime
+ *   enabled             → enabled
+ *   revalidateOnFocus   → refetchOnWindowFocus
+ *   revalidateOnReconnect → refetchOnReconnect
+ *   retryOnError        → retry
+ *   staleTime           → staleTime
  */
 export interface ApiQueryOptions<T = unknown> {
   /** Disable fetching entirely (e.g. while auth is pending). Default: true */
   enabled?: boolean;
   /** Revalidate when the browser window regains focus. Default: true */
   revalidateOnFocus?: boolean;
+  /** Revalidate when the browser regains network connection. Default: true */
+  revalidateOnReconnect?: boolean;
   /** Retry failed requests. Default: false */
   retryOnError?: boolean;
   /** How long (ms) to consider cached data fresh before revalidating. Default: 0 */

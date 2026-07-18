@@ -84,6 +84,10 @@ export class DatabaseService implements IDatabase {
     return this.db;
   }
 
+  isConnected(): boolean {
+    return !!this.db && !!this.client;
+  }
+
   async disconnect(): Promise<void> {
     if (this.client) {
       await this.client.close();

@@ -1,52 +1,106 @@
+import { cn } from "@/lib/utils";
 import React from "react";
 
-type TableProps = React.TableHTMLAttributes<HTMLTableElement>;
-export const Table: React.FC<TableProps> = ({ children, className = "", ...props }) => (
-  <div className="border border-white/5 rounded-xl bg-zinc-900/20 overflow-hidden">
-    <div className="overflow-x-auto">
-      <table className={`w-full text-left border-collapse ${className}`} {...props}>
-        {children}
-      </table>
+export function Table({
+  className,
+  children,
+  ...props
+}: React.TableHTMLAttributes<HTMLTableElement>) {
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="overflow-x-auto w-full">
+        <table
+          className={cn("w-full text-left border-collapse text-sm", className)}
+          {...props}
+        >
+          {children}
+        </table>
+      </div>
     </div>
-  </div>
-);
+  );
+}
 
-type TableHeaderProps = React.HTMLAttributes<HTMLTableSectionElement>;
-export const TableHeader: React.FC<TableHeaderProps> = ({ children, className = "", ...props }) => (
-  <thead className={`border-b border-white/5 bg-zinc-900/60 text-xs font-semibold tracking-wide text-zinc-300 ${className}`} {...props}>
-    {children}
-  </thead>
-);
+export function TableHeader({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <thead
+      className={cn(
+        "border-b border-border text-xs tracking-wide text-muted-foreground font-normal bg-muted/40",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
-type TableBodyProps = React.HTMLAttributes<HTMLTableSectionElement>;
-export const TableBody: React.FC<TableBodyProps> = ({ children, className = "", ...props }) => (
-  <tbody className={`divide-y divide-white/5 ${className}`} {...props}>
-    {children}
-  </tbody>
-);
+export function TableBody({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <tbody className={cn("divide-y divide-border", className)} {...props} />
+  );
+}
 
-type TableRowProps = React.HTMLAttributes<HTMLTableRowElement>;
-export const TableRow: React.FC<TableRowProps> = ({ children, className = "", ...props }) => (
-  <tr className={`hover:bg-zinc-800/40 transition duration-150 ${className}`} {...props}>
-    {children}
-  </tr>
-);
+export function TableRow({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableRowElement>) {
+  return (
+    <tr
+      className={cn(
+        "hover:bg-accent/40 transition-colors duration-100",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
-interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+export function TableHead({
+  className,
+  ...props
+}: React.ThHTMLAttributes<HTMLTableCellElement>) {
+  return (
+    <th
+      className={cn(
+        "h-10 px-5 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   isHeader?: boolean;
 }
-export const TableCell: React.FC<TableCellProps> = ({ children, className = "", isHeader = false, ...props }) => {
-  const baseClass = "px-6 py-4 text-sm";
+
+export function TableCell({
+  className,
+  isHeader = false,
+  ...props
+}: TableCellProps) {
   if (isHeader) {
     return (
-      <th className={`${baseClass} font-semibold ${className}`} {...props}>
-        {children}
-      </th>
+      <th
+        className={cn(
+          "px-5 py-3 text-left align-middle font-medium text-muted-foreground text-xs",
+          className,
+        )}
+        {...(props as React.ThHTMLAttributes<HTMLTableCellElement>)}
+      />
     );
   }
   return (
-    <td className={`${baseClass} ${className}`} {...props}>
-      {children}
-    </td>
+    <td
+      className={cn(
+        "px-5 py-4 text-sm text-foreground/80 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        className,
+      )}
+      {...props}
+    />
   );
-};
+}

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -46,21 +47,26 @@ interface PageFormProps {
 export function PageForm({ mode, pageId, initialData }: PageFormProps) {
   const router = useRouter();
   const { showToast } = useToast();
-  const { data: formsData } = useApiQuery<{ forms: Array<{ formId: string; name: string }> }>(
-    "/forms",
-  );
+  const { data: formsData } = useApiQuery<{
+    forms: Array<{ formId: string; name: string }>;
+  }>("/forms");
   const forms = formsData?.forms || [];
 
   const [formData, setFormData] = useState({
-    title: initialData?.title || "",
+    blocks: initialData?.blocks || [],
     slug: initialData?.slug || "",
     status: initialData?.status || ("draft" as "draft" | "published"),
-    blocks: initialData?.blocks || [],
+    title: initialData?.title || "",
   });
 
   const { trigger: savePage, isMutating } = useApiMutation({
-    path: mode === "create" ? "/pages" : `/pages/${pageId}`,
     method: mode === "create" ? "POST" : "PUT",
+    onError: (err: Error) => {
+      showToast({
+        message: err.message || "Failed to save page",
+        type: "error",
+      });
+    },
     onSuccess: () => {
       showToast({
         message: `Page ${mode === "create" ? "created" : "updated"} successfully`,
@@ -69,9 +75,7 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
       router.push("/pages");
       router.refresh();
     },
-    onError: (err: Error) => {
-      showToast({ message: err.message || "Failed to save page", type: "error" });
-    },
+    path: mode === "create" ? "/pages" : `/pages/${pageId}`,
   });
 
   const handleChange = (field: "title" | "slug", value: string) => {
@@ -111,7 +115,11 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
     }));
   };
 
-  const updateBlockField = (index: number, field: keyof Block, value: Block[keyof Block]) => {
+  const updateBlockField = (
+    index: number,
+    field: keyof Block,
+    value: Block[keyof Block],
+  ) => {
     setFormData((prev) => {
       const updatedBlocks = [...prev.blocks];
       updatedBlocks[index] = {
@@ -157,66 +165,74 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
     <form onSubmit={handleSubmit} className="space-y-8">
       <Card
         title="Page Definition Properties"
-        description="Configure page meta values and friendly URL pathing"
+        description="Configure page meta values and friendly URL"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Input
-            type="text"
-            required
-            value={formData.title}
-            onChange={(e) => handleChange("title", e.target.value)}
-            label="Page Title"
-            placeholder="e.g. Home Page"
-          />
-          <Input
-            type="text"
-            required
-            value={formData.slug}
-            onChange={(e) =>
-              handleChange("slug", e.target.value.toLowerCase().replace(/\s+/g, "-"))
-            }
-            label="Page Slug"
-            placeholder="e.g. home"
-          />
-        </div>
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <Input
+              type="text"
+              required
+              value={formData.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+              label="Page Title"
+              placeholder="e.g. Home Page"
+            />
+            <Input
+              type="text"
+              required
+              value={formData.slug}
+              onChange={(e) =>
+                handleChange(
+                  "slug",
+                  e.target.value.toLowerCase().replace(/\s+/g, "-"),
+                )
+              }
+              label="Page Slug"
+              placeholder="e.g. home"
+            />
+          </div>
 
-        <div className="w-full md:w-1/3">
-          <Select
-            value={formData.status}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                status: e.target.value as "draft" | "published",
-              }))
-            }
-            label="Publishing Status"
-          >
-            <option value="published">Published (Visible to all)</option>
-            <option value="draft">Draft (Private draft)</option>
-          </Select>
+          <div className="w-full md:w-1/3">
+            <Select
+              value={formData.status}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  status: e.target.value as "draft" | "published",
+                }))
+              }
+              label="Publishing Status"
+            >
+              <option value="published">Published (Visible to all)</option>
+              <option value="draft">Draft (Private draft)</option>
+            </Select>
+          </div>
         </div>
       </Card>
 
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-bold">Blocks Layout</h3>
-          <span className="text-xs text-zinc-500">{formData.blocks.length} blocks total</span>
+          <h3 className="text-lg font-semibold text-foreground">
+            Blocks Layout
+          </h3>
+          <span className="text-xs text-muted-foreground">
+            {formData.blocks.length} blocks total
+          </span>
         </div>
 
         {formData.blocks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 rounded-xl border border-dashed border-white/10 bg-zinc-900/10">
-            <Layout className="h-10 w-10 text-zinc-600 mb-2" />
-            <p className="text-zinc-500 text-sm">
-              No blocks added yet. Choose a block type below to begin layout.
-            </p>
-          </div>
+          <EmptyState
+            icon={Layout}
+            title="No blocks added yet"
+            description="Choose a block type below to begin layout."
+          />
         ) : (
           <div className="space-y-4">
             {formData.blocks.map((block, index) => {
               return (
                 <div
                   key={block.id}
-                  className="group relative rounded-xl border border-white/5 bg-zinc-900/60 p-5 shadow-lg backdrop-blur-sm flex gap-4 items-start"
+                  className="group relative rounded-xl border border-border bg-card p-5 shadow-sm flex gap-4 items-start"
                 >
                   <div className="flex flex-col gap-1 mt-1">
                     <Button
@@ -225,6 +241,7 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
                       variant="ghost"
                       onClick={() => moveBlock(index, "up")}
                       isDisabled={index === 0}
+                      aria-label="Move block up"
                     >
                       <ArrowUp className="h-4 w-4" />
                     </Button>
@@ -234,6 +251,7 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
                       variant="ghost"
                       onClick={() => moveBlock(index, "down")}
                       isDisabled={index === formData.blocks.length - 1}
+                      aria-label="Move block down"
                     >
                       <ArrowDown className="h-4 w-4" />
                     </Button>
@@ -241,22 +259,28 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
 
                   <div className="flex-1 space-y-4">
                     <div className="flex items-center gap-2">
-                      <span className="capitalize text-xs font-bold px-2 py-0.5 rounded bg-blue-600/30 text-blue-300 tracking-wider">
+                      <span className="capitalize text-xs font-bold px-2 py-0.5 rounded bg-primary/15 text-primary tracking-wider">
                         {block.type} Block
                       </span>
-                      <span className="text-xs text-zinc-500">ID: {block.id}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ID: {block.id}
+                      </span>
                     </div>
 
                     {block.type === "hero" && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Input
                           value={block.title || ""}
-                          onChange={(e) => updateBlockField(index, "title", e.target.value)}
+                          onChange={(e) =>
+                            updateBlockField(index, "title", e.target.value)
+                          }
                           label="Hero Title"
                         />
                         <Input
                           value={block.subtitle || ""}
-                          onChange={(e) => updateBlockField(index, "subtitle", e.target.value)}
+                          onChange={(e) =>
+                            updateBlockField(index, "subtitle", e.target.value)
+                          }
                           label="Hero Subtitle"
                         />
                       </div>
@@ -266,7 +290,9 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
                       <Textarea
                         rows={3}
                         value={block.content || ""}
-                        onChange={(e) => updateBlockField(index, "content", e.target.value)}
+                        onChange={(e) =>
+                          updateBlockField(index, "content", e.target.value)
+                        }
                         label="Text Content"
                       />
                     )}
@@ -274,7 +300,9 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
                     {block.type === "form" && (
                       <Select
                         value={block.formId || ""}
-                        onChange={(e) => updateBlockField(index, "formId", e.target.value)}
+                        onChange={(e) =>
+                          updateBlockField(index, "formId", e.target.value)
+                        }
                         label="Select Form"
                       >
                         {forms.map((form) => (
@@ -292,7 +320,11 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
                         max={20}
                         value={block.count || 5}
                         onChange={(e) =>
-                          updateBlockField(index, "count", parseInt(e.target.value) || 5)
+                          updateBlockField(
+                            index,
+                            "count",
+                            parseInt(e.target.value) || 5,
+                          )
                         }
                         label="Display Limit"
                         className="w-24"
@@ -305,6 +337,7 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
                     size="icon"
                     variant="ghost"
                     onClick={() => removeBlock(index)}
+                    aria-label="Remove block"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -359,8 +392,12 @@ export function PageForm({ mode, pageId, initialData }: PageFormProps) {
         </div>
       </Card>
 
-      <div className="border-t border-white/5 pt-6 flex items-center gap-4">
-        <Button type="submit" isLoading={isMutating} icon={mode === "create" ? Plus : Save}>
+      <div className="sticky bottom-0 -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-background/95 backdrop-blur-sm border-t border-border flex items-center gap-4">
+        <Button
+          type="submit"
+          isLoading={isMutating}
+          icon={mode === "create" ? Plus : Save}
+        >
           {mode === "create" ? "Create Page" : "Save Changes"}
         </Button>
         <Button

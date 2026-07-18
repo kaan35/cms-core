@@ -1,6 +1,25 @@
+import dns from "node:dns/promises";
+import net from "node:net";
 import { hooks } from "./HookManager.ts";
 import type { IDatabase } from "./types/IDatabase.ts";
 import type { ILogger } from "./types/ILogger.ts";
+
+async function isPrivateOrLoopback(hostname: string): Promise<boolean> {
+  try {
+    const { address } = await dns.lookup(hostname);
+    if (net.isIP(address) === 0) return true;
+
+    return (
+      address.startsWith("127.") ||
+      address.startsWith("10.") ||
+      address.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(address) ||
+      address.startsWith("::1")
+    );
+  } catch {
+    return true;
+  }
+}
 
 export class WebhookService {
   private readonly database: IDatabase;
@@ -29,9 +48,14 @@ export class WebhookService {
         await this.dispatch(eventName, {
           event: eventName,
           timestamp: new Date().toISOString(),
-          actor: actor && typeof actor === "object" && "id" in actor
-            ? { id: (actor as Record<string, unknown>).id, email: (actor as Record<string, unknown>).email, role: (actor as Record<string, unknown>).role }
-            : null,
+          actor:
+            actor && typeof actor === "object" && "id" in actor
+              ? {
+                  id: (actor as Record<string, unknown>).id,
+                  email: (actor as Record<string, unknown>).email,
+                  role: (actor as Record<string, unknown>).role,
+                }
+              : null,
           data,
         });
       });
@@ -53,7 +77,9 @@ export class WebhookService {
 
       if (webhooks.length === 0) return;
 
-      this.logger.info(`⚡ WebhookService: Dispatching ${event} to ${webhooks.length} endpoints...`);
+      this.logger.info(
+        `⚡ WebhookService: Dispatching ${event} to ${webhooks.length} endpoints...`,
+      );
 
       for (const wh of webhooks) {
         this.sendRequest(wh.url, payload).catch((err) => {
@@ -66,6 +92,17 @@ export class WebhookService {
   }
 
   private async sendRequest(url: string, payload: unknown) {
+    try {
+      const parsedUrl = new URL(url);
+      if (await isPrivateOrLoopback(parsedUrl.hostname)) {
+        this.logger.error(url, "🚫 Webhook rejected (SSRF risk)");
+        return;
+      }
+    } catch (urlErr) {
+      this.logger.error(urlErr, "💥 Invalid Webhook URL format");
+      return;
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 

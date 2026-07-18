@@ -14,7 +14,7 @@ interface PaginatedResponse<T> {
   meta: PaginationMeta;
 }
 
-interface UseApiPaginationOptions extends Omit<ApiQueryOptions, 'onSuccess'> {
+interface UseApiPaginationOptions extends Omit<ApiQueryOptions, "onSuccess"> {
   initialPage?: number;
   initialLimit?: number;
 }
@@ -36,13 +36,13 @@ interface UseApiPaginationResult<T> {
 
 /**
  * Hook for paginated API queries with built-in pagination controls
- * 
+ *
  * @example
  * const { items, meta, page, setPage, nextPage, prevPage } = useApiPagination<User>(
  *   "/users",
  *   { initialPage: 1, initialLimit: 10 }
  * );
- * 
+ *
  * @example
  * // With filters
  * const [status, setStatus] = useState("active");
@@ -53,7 +53,7 @@ interface UseApiPaginationResult<T> {
  */
 export function useApiPagination<T>(
   basePath: string,
-  options: UseApiPaginationOptions = {}
+  options: UseApiPaginationOptions = {},
 ): UseApiPaginationResult<T> {
   const {
     initialPage = 1,
@@ -70,14 +70,13 @@ export function useApiPagination<T>(
   const separator = basePath.includes("?") ? "&" : "?";
   const url = `${basePath}${separator}page=${page}&limit=${limit}`;
 
-  const { data, isLoading, isRefreshing, error, refetch } = useApiQuery<PaginatedResponse<T>>(
-    url,
-    {
-      enabled,
-      revalidateOnFocus,
-      ...queryOptions,
-    }
-  );
+  const { data, isLoading, isRefreshing, error, refetch } = useApiQuery<
+    PaginatedResponse<T>
+  >(url, {
+    enabled,
+    revalidateOnFocus,
+    ...queryOptions,
+  });
 
   const items = data?.items || [];
   const meta = data?.meta || null;
@@ -95,17 +94,17 @@ export function useApiPagination<T>(
   };
 
   return {
-    items,
-    meta,
+    error,
     isLoading,
     isRefreshing,
-    error,
-    page,
+    items,
     limit,
-    setPage,
-    setLimit,
+    meta,
     nextPage,
+    page,
     prevPage,
     refetch,
+    setLimit,
+    setPage,
   };
 }

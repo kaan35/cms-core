@@ -121,7 +121,7 @@ export async function createServer() {
 
   // 5. Health Check Endpoint
   app.get("/health", async (request, reply) => {
-    const mongoConnected = database.getDb() ? true : false;
+    const mongoConnected = database.isConnected();
     const redisConnected = cache.isAlive();
 
     const status = mongoConnected && redisConnected ? "ok" : "degraded";

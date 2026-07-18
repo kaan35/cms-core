@@ -1,8 +1,10 @@
 "use client";
 
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { useApiMutation } from "@/hooks/useApi";
@@ -67,14 +69,11 @@ export default function BlogNewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">New Blog Post</h1>
-          <p className="text-sm text-zinc-400">
-            Compose and publish articles with content summary and tag status
-          </p>
-        </div>
-      </div>
+      <Breadcrumb items={[{ label: "Blog Posts", href: "/blog" }, { label: "New Post" }]} />
+      <PageHeader
+        title="New Blog Post"
+        description="Compose and publish articles with content summary and tag status"
+      />
 
       <form onSubmit={savePost} className="space-y-6">
         <Card
@@ -137,7 +136,7 @@ export default function BlogNewPage() {
         </Card>
 
         {/* Actions */}
-        <div className="border-t border-white/5 pt-6 flex items-center gap-4">
+        <div className="sticky bottom-0 -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-background/95 backdrop-blur-sm border-t border-border flex items-center gap-4">
           <Button type="submit" isLoading={isMutating} icon={Save}>
             Create Post
           </Button>

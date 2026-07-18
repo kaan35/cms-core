@@ -1,11 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { Input } from "@/components/ui/Input";
 import { useApiMutation } from "@/hooks/useApi";
-import { Lock, Mail, Sparkles } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Flame, Lock, LogIn, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+import { mutate } from "swr";
 
 interface LoginCredentials {
   email: string;
@@ -15,21 +19,29 @@ interface LoginCredentials {
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<LoginCredentials>({
-    email: "admin@cms.com",
-    password: "admin123",
+    email: "",
+    password: "",
   });
   const [error, setError] = useState("");
 
-  // Use mutation hook for login
-  const { trigger: login, isMutating } = useApiMutation<{ status: string }, LoginCredentials>({
-    path: "/auth/login",
+  const { isLoading: isCheckingAuth } = useAuth({
+    redirectIfFound: true,
+    redirectTo: "/",
+  });
+
+  const { trigger: login, isMutating } = useApiMutation<
+    { status: string },
+    LoginCredentials
+  >({
     method: "POST",
-    onSuccess: () => {
-      router.push("/pages");
-    },
     onError: (err: Error) => {
       setError(err.message || "Invalid credentials");
     },
+    onSuccess: async () => {
+      await mutate("/auth/me");
+      router.push("/");
+    },
+    path: "/auth/login",
   });
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -38,40 +50,49 @@ export default function LoginPage() {
     await login(formData);
   };
 
+  if (isCheckingAuth) {
+    return null;
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 text-white">
-      {/* Background Neon Glows */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-blue-600/10 blur-[128px]"></div>
-        <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-indigo-600/10 blur-[128px]"></div>
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 text-foreground">
+      {/* Subtle background glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/8 blur-[120px]" />
       </div>
 
-      <div className="relative w-full max-w-md">
-        {/* Glass Card */}
-        <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-8 backdrop-blur-xl shadow-2xl">
-          <div className="mb-8 flex flex-col items-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600/20 text-blue-400">
-              <Sparkles className="h-6 w-6" />
-            </div>
-            <h2 className="text-2xl font-bold tracking-tight">Antigravity CMS</h2>
-            <p className="mt-1 text-sm text-zinc-400">
-              Sign in to administer your headless content
-            </p>
-          </div>
+      {/* Brand header — outside the card */}
+      <div className="relative mb-6 flex flex-col items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-lg shadow-primary/10">
+          <Flame className="h-6 w-6" />
+        </div>
+        <div className="text-center">
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            CMS Core
+          </h1>
+        </div>
+      </div>
 
+      {/* Island card */}
+      <div className="relative w-full max-w-sm">
+        <div className="rounded-2xl border border-border bg-card/90 p-8 backdrop-blur-xl shadow-xl">
           {error && (
-            <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
-              {error}
-            </div>
+            <ErrorMessage
+              error={error}
+              fallback="Invalid credentials"
+              className="mb-5"
+            />
           )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-4">
             <Input
               type="email"
               required
-              label="Email Address"
+              label="Email"
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
               placeholder="admin@cms.com"
               leftIcon={Mail}
             />
@@ -81,15 +102,18 @@ export default function LoginPage() {
               required
               label="Password"
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, password: e.target.value })
+              }
               placeholder="••••••••"
               leftIcon={Lock}
             />
 
             <Button
+              icon={LogIn}
               type="submit"
               isLoading={isMutating}
-              className="w-full py-3 justify-center active:scale-[0.98]"
+              className="mt-2 w-full justify-center py-2.5"
             >
               Sign In
             </Button>

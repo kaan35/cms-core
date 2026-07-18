@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // cacheComponents: true,
   // partialPrefetching: true,
+  // Add local network IPs for testing via NEXT_PUBLIC_DEV_ORIGINS env var (comma-separated)
+  ...(process.env.NEXT_PUBLIC_DEV_ORIGINS && {
+    allowedDevOrigins: process.env.NEXT_PUBLIC_DEV_ORIGINS.split(",").map(
+      (ip) => ip.trim(),
+    ),
+  }),
 
   // Proxy /api/* requests to the internal API server.
   // This replaces NEXT_PUBLIC_API_URL — the real API address never reaches the browser.
@@ -14,8 +20,8 @@ const nextConfig: NextConfig = {
     const apiUrl = process.env.INTERNAL_API_URL ?? "http://localhost:3001";
     return [
       {
-        source: "/api/:path*",
         destination: `${apiUrl}/:path*`,
+        source: "/api/:path*",
       },
     ];
   },

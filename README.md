@@ -154,6 +154,22 @@ Running more than one project from this repo on the same host? Set `COMPOSE_PROJ
 
 **Building a separate site on top of it:** there's no CLI yet, so for now it's a manual copy. Copy `packages/`, the templates you need, and the plugins you want into a new repo, write a root `package.json` with matching `workspaces`, and generate new `.env` secrets (`JWT_SECRET` especially — never reuse the same secret across projects). A CLI (`cms create`, `cms add <plugin>`) is planned to replace this step; see `TODO.md`.
 
+## Admin UI & Component Library
+
+The admin panel (`templates/admin`) adopts the **Shadcn/ui** design system and visual style. Instead of adding heavy external packages, it uses a lightweight, custom, type-safe architecture:
+
+- **Zero-Dependency Styling Engine (`src/lib/utils.ts`)**:
+  - `cn(...)`: A minimal utility to safely combine classes (supports conditions and arrays).
+  - `cva(...)`: A custom variant authority function to handle component variants (like button size/style variants) with full TypeScript safety, eliminating `class-variance-authority` and `tailwind-merge` dependency overhead.
+- **Core UI Primitives (`src/components/ui/`)**:
+  - `Button`: Supports `buttonVariants` (default, destructive, outline, secondary, ghost, link), loading spinners, icons, and has an `href` prop which automatically renders a Next.js `<Link>` for proper `Ctrl+Click` / middle-click behaviors.
+  - `Card`: Standard composable card API (`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`) with fallback shorthand props (`title`, `description`).
+  - `Badge`, `Breadcrumb`, `EmptyState`, `ErrorMessage`, `Loading`, `PageHeader`, `Pagination`, `Table`, and `Skeleton`.
+- **Modular Component Structure**:
+  - `src/components/ui/`: Pure layout/styling blocks (atoms). Kept **flat** to align with Shadcn CLI standards.
+  - `src/components/forms/`: Feature-specific, stateful validation forms (e.g. `PageForm.tsx`, `UserForm.tsx`, `RoleForm.tsx` and shared `PermissionGroup.tsx`).
+  - `src/components/layout/`: Stateful dashboard layout elements (like `UserMenu.tsx`).
+
 ## Tech Stack & Services
 
 | Service     | Container    | Port(s)     | Purpose                                                  |

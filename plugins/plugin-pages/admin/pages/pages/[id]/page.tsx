@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { PageForm } from "@/components/forms/PageForm";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { Loading } from "@/components/ui/Loading";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { useApiQuery } from "@/hooks/useApi";
 import { ApiError } from "@/lib/api";
 import { useToast } from "@/lib/toast";
-import { useApiQuery } from "@/hooks/useApi";
-import { PageForm } from "@/components/PageForm";
-import { Loading } from "@/components/ui/Loading";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function PageEditPage() {
   const router = useRouter();
@@ -56,12 +58,10 @@ export default function PageEditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Page</h1>
-          <p className="text-sm text-zinc-400">Update page structure and block configuration</p>
-        </div>
-      </div>
+      <Breadcrumb
+        items={[{ label: "Pages", href: "/pages" }, { label: pageData.title || "Edit Page" }]}
+      />
+      <PageHeader title="Edit Page" description="Update page structure and block configuration" />
 
       <PageForm mode="update" pageId={pageId} initialData={pageData} />
     </div>

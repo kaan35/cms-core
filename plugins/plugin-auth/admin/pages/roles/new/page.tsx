@@ -1,18 +1,19 @@
 "use client";
 
-import { RoleForm } from "@/components/RoleForm";
+import { RoleForm } from "@/components/forms/RoleForm";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function RoleNewPage() {
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">New Role Template</h1>
-          <p className="text-sm text-zinc-400">
-            Define a reusable permission set that can be assigned to users
-          </p>
-        </div>
-      </div>
+      <Breadcrumb
+        items={[{ label: "Role Templates", href: "/roles" }, { label: "New Role Template" }]}
+      />
+      <PageHeader
+        title="New Role Template"
+        description="Define a reusable permission set that can be assigned to users"
+      />
 
       <RoleForm mode="create" />
     </div>

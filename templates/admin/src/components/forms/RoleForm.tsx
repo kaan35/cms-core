@@ -9,6 +9,7 @@ import { useToast } from "@/lib/toast";
 import { ArrowLeft, Plus, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PermissionGroup } from "./PermissionGroup";
 
 interface RoleFormProps {
   mode: "create" | "update";
@@ -25,14 +26,19 @@ export function RoleForm({ mode, roleId, initialData }: RoleFormProps) {
   const { showToast } = useToast();
 
   const [formData, setFormData] = useState({
-    name: initialData?.name || "",
     description: initialData?.description || "",
+    name: initialData?.name || "",
     permissions: initialData?.permissions || [],
   });
 
   const { trigger: saveRole, isMutating } = useApiMutation({
-    path: mode === "create" ? "/auth/roles" : `/auth/roles/${roleId}`,
     method: mode === "create" ? "POST" : "PUT",
+    onError: (err: Error) => {
+      showToast({
+        message: err.message || "Failed to save role",
+        type: "error",
+      });
+    },
     onSuccess: () => {
       showToast({
         message: `Role ${mode === "create" ? "created" : "updated"} successfully`,
@@ -41,9 +47,7 @@ export function RoleForm({ mode, roleId, initialData }: RoleFormProps) {
       router.push("/roles");
       router.refresh();
     },
-    onError: (err: Error) => {
-      showToast({ message: err.message || "Failed to save role", type: "error" });
-    },
+    path: mode === "create" ? "/auth/roles" : `/auth/roles/${roleId}`,
   });
 
   const handleChange = (field: keyof typeof formData, value: string) => {
@@ -82,7 +86,10 @@ export function RoleForm({ mode, roleId, initialData }: RoleFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <Card title="Role Identity" description="Name and describe this permission template">
+      <Card
+        title="Role Identity"
+        description="Name and describe this permission template"
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input
             label="Role Name"
@@ -105,69 +112,30 @@ export function RoleForm({ mode, roleId, initialData }: RoleFormProps) {
         description="Select permissions that belong to this role template"
       >
         <div className="space-y-6">
-          {Object.entries(PERMISSION_GROUPS).map(([group, perms]) => {
-            const allSelected = perms.every((p) => formData.permissions.includes(p));
-            const someSelected = perms.some((p) => formData.permissions.includes(p));
-            return (
-              <div key={group}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold tracking-wider text-zinc-300">{group}</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={allSelected ? "primary" : "ghost"}
-                    onClick={() => toggleGroup(perms)}
-                  >
-                    {allSelected ? "Deselect All" : someSelected ? "Select All" : "Select All"}
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {perms.map((perm) => {
-                    const checked = formData.permissions.includes(perm);
-                    const action = perm.split(":")[1];
-                    return (
-                      <label
-                        key={perm}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono cursor-pointer transition select-none ${
-                          checked
-                            ? "bg-blue-600/15 border-blue-500/30 text-blue-300"
-                            : "bg-zinc-950/50 border-white/5 text-zinc-500 hover:border-white/10 hover:text-zinc-300"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => togglePermission(perm)}
-                          className="rounded border-white/10 bg-zinc-950 text-blue-600 h-3.5 w-3.5 cursor-pointer"
-                        />
-                        <span
-                          className={`capitalize ${
-                            action === "delete"
-                              ? "text-red-400/70"
-                              : action === "write"
-                                ? "text-amber-400/70"
-                                : ""
-                          }`}
-                        >
-                          {perm}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+          {Object.entries(PERMISSION_GROUPS).map(([group, perms]) => (
+            <PermissionGroup
+              key={group}
+              group={group}
+              permissions={perms}
+              selected={formData.permissions}
+              onTogglePermission={togglePermission}
+              onToggleGroup={toggleGroup}
+            />
+          ))}
         </div>
 
-        <div className="pt-4 border-t border-white/5 text-xs text-zinc-500">
+        <div className="pt-4 mt-6 border-t border-border text-xs text-muted-foreground">
           {formData.permissions.length} permission
           {formData.permissions.length !== 1 ? "s" : ""} selected
         </div>
       </Card>
 
-      <div className="border-t border-white/5 pt-6 flex items-center gap-4">
-        <Button type="submit" isLoading={isMutating} icon={mode === "create" ? Plus : Save}>
+      <div className="sticky bottom-0 -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-background/95 backdrop-blur-sm border-t border-border flex items-center gap-4">
+        <Button
+          type="submit"
+          isLoading={isMutating}
+          icon={mode === "create" ? Plus : Save}
+        >
           {mode === "create" ? "Create Role" : "Save Changes"}
         </Button>
         <Button

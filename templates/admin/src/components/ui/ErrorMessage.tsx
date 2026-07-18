@@ -1,11 +1,11 @@
+import { cn } from "@/lib/utils";
 import React from "react";
 
-interface ErrorMessageProps {
+export interface ErrorMessageProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The error object or message string to display */
   error: Error | string | null | undefined;
   /** Fallback message when error has no message field */
   fallback?: string;
-  className?: string;
 }
 
 /**
@@ -14,17 +14,25 @@ interface ErrorMessageProps {
  * @example
  * <ErrorMessage error={error} fallback="Failed to load plugins" />
  */
-export function ErrorMessage({ error, fallback = "An unexpected error occurred.", className = "" }: ErrorMessageProps) {
+export function ErrorMessage({
+  error,
+  fallback = "An unexpected error occurred.",
+  className,
+  ...props
+}: ErrorMessageProps) {
   if (!error) return null;
 
-  const message = typeof error === "string"
-    ? error
-    : error?.message || fallback;
+  const message =
+    typeof error === "string" ? error : error?.message || fallback;
 
   return (
     <div
       role="alert"
-      className={`rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400 ${className}`}
+      className={cn(
+        "rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive",
+        className,
+      )}
+      {...props}
     >
       {message}
     </div>

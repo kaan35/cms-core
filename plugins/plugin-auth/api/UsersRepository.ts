@@ -62,7 +62,21 @@ export class UsersRepository {
           permissions,
           updatedAt: new Date(),
         },
-      } as any
+      } as any,
+    );
+    return result.modifiedCount > 0;
+  }
+
+  async updatePassword(id: string, passwordHash: string): Promise<boolean> {
+    const objectId = parseObjectId(id);
+    const result = await this.usersCollection.updateOne(
+      { _id: objectId } as any,
+      {
+        $set: {
+          passwordHash,
+          updatedAt: new Date(),
+        },
+      } as any,
     );
     return result.modifiedCount > 0;
   }

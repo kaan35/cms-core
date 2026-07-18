@@ -28,14 +28,14 @@ export function QueryProvider({ children }: QueryProviderProps) {
       new QueryClient({
         defaultOptions: {
           queries: {
+            // Keep unused data in cache for 5 minutes
+            gcTime: 1000 * 60 * 5,
             // Refetch on window focus
             refetchOnWindowFocus: "always",
             // Don't retry failed requests by default
             retry: false,
             // Consider data stale after 5 seconds
             staleTime: 5000,
-            // Keep unused data in cache for 5 minutes
-            gcTime: 1000 * 60 * 5,
           },
         },
       }),
@@ -44,7 +44,9 @@ export function QueryProvider({ children }: QueryProviderProps) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      {process.env.NODE_ENV === "development" && <ReactQueryDevtools initialIsOpen={false} />}
+      {process.env.NODE_ENV === "development" && (
+        <ReactQueryDevtools initialIsOpen={false} />
+      )}
     </QueryClientProvider>
   );
 }

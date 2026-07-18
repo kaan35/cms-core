@@ -11,8 +11,21 @@ const configSchema = z.object({
   ALLOWED_ORIGINS: z.string().default(""),
   // S3 / MinIO Settings for backup & media
   S3_ENDPOINT: z.string().default("http://localhost:9000"),
-  S3_ACCESS_KEY: z.string().default("minioadmin"),
-  S3_SECRET_KEY: z.string().default("minioadmin"),
+  // S3 credentials: Required in production, default only for development
+  S3_ACCESS_KEY: z.string().refine(
+    (val) => process.env.NODE_ENV !== "production" || val !== "minioadmin",
+    {
+      message:
+        "S3_ACCESS_KEY cannot be 'minioadmin' in production. Set a secure value in .env",
+    }
+  ).default("minioadmin"),
+  S3_SECRET_KEY: z.string().refine(
+    (val) => process.env.NODE_ENV !== "production" || val !== "minioadmin",
+    {
+      message:
+        "S3_SECRET_KEY cannot be 'minioadmin' in production. Set a secure value in .env",
+    }
+  ).default("minioadmin"),
   S3_BUCKET: z.string().default("cms-backups"),
   S3_REGION: z.string().default("us-east-1"),
 });

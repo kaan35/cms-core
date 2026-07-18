@@ -1,13 +1,16 @@
 "use client";
 
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { Loading } from "@/components/ui/Loading";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
 import { useApiMutation, useApiQuery } from "@/hooks/useApi";
 import { useToast } from "@/lib/toast";
-import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ClipboardList, Plus, Save, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -98,23 +101,32 @@ export default function FormEditPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Form</h1>
-          <p className="text-sm text-zinc-400">
-            Form ID: <span className="font-mono text-zinc-300">{formId}</span>
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" icon={ArrowLeft} onClick={() => router.push("/forms")}>
-            Back to Forms
-          </Button>
-          <Button variant="secondary" onClick={() => router.push(`/forms/${formId}`)}>
-            View Submissions
-          </Button>
-        </div>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "Forms & Submissions", href: "/forms" },
+          { label: formName || "Form", href: `/forms/${formId}` },
+          { label: "Edit Form" },
+        ]}
+      />
+
+      <PageHeader
+        title="Edit Form"
+        description={`Form ID: ${formId}`}
+        actions={
+          <>
+            <Button variant="secondary" icon={ArrowLeft} onClick={() => router.push("/forms")}>
+              Back to Forms
+            </Button>
+            <Button
+              variant="secondary"
+              icon={ClipboardList}
+              onClick={() => router.push(`/forms/${formId}`)}
+            >
+              View Submissions
+            </Button>
+          </>
+        }
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Form Settings */}
@@ -135,79 +147,86 @@ export default function FormEditPage() {
         >
           <div className="space-y-4">
             {fields.length === 0 && (
-              <p className="text-sm text-zinc-500 py-4 text-center">
-                No fields yet. Add one below.
-              </p>
+              <EmptyState icon={ClipboardList} title="No fields yet" description="Add one below." />
             )}
 
             {fields.map((field, index) => (
               <div
                 key={index}
-                className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_120px_auto_auto] gap-3 items-end p-4 rounded-lg bg-zinc-900/40 border border-white/5"
+                className="p-5 rounded-lg bg-muted/40 border border-border space-y-4"
               >
-                <Input
-                  label="Field Name (key)"
-                  value={field.name}
-                  onChange={(e) =>
-                    updateField(index, {
-                      name: e.target.value.toLowerCase().replace(/\s+/g, "_"),
-                    })
-                  }
-                  placeholder="e.g. email"
-                  required
-                />
-                <Input
-                  label="Label (display)"
-                  value={field.label}
-                  onChange={(e) => updateField(index, { label: e.target.value })}
-                  placeholder="e.g. Email Address"
-                />
-                <Input
-                  label="Placeholder"
-                  value={field.placeholder || ""}
-                  onChange={(e) => updateField(index, { placeholder: e.target.value })}
-                  placeholder="e.g. enter your email"
-                />
-                <Select
-                  label="Type"
-                  value={field.type}
-                  onChange={(e) => updateField(index, { type: e.target.value as FieldType })}
-                >
-                  {FIELD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </Select>
-
-                {/* Required toggle */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs text-zinc-400">Required</label>
-                  <button
-                    type="button"
-                    onClick={() => updateField(index, { required: !field.required })}
-                    className={`
-                      w-10 h-5 rounded-full transition-colors relative
-                      ${field.required ? "bg-violet-600" : "bg-zinc-700"}
-                    `}
-                  >
-                    <span
-                      className={`
-                        absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform
-                        ${field.required ? "translate-x-5" : "translate-x-0.5"}
-                      `}
-                    />
-                  </button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Input
+                    label="Field Name (key)"
+                    value={field.name}
+                    onChange={(e) =>
+                      updateField(index, {
+                        name: e.target.value.toLowerCase().replace(/\s+/g, "_"),
+                      })
+                    }
+                    placeholder="e.g. email"
+                    required
+                  />
+                  <Input
+                    label="Label (display)"
+                    value={field.label}
+                    onChange={(e) => updateField(index, { label: e.target.value })}
+                    placeholder="e.g. Email Address"
+                  />
+                  <Input
+                    label="Placeholder"
+                    value={field.placeholder || ""}
+                    onChange={(e) => updateField(index, { placeholder: e.target.value })}
+                    placeholder="e.g. enter your email"
+                  />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => removeField(index)}
-                  className="p-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-400/10 transition-colors self-end"
-                  aria-label="Remove field"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-border">
+                  <div className="flex flex-wrap items-center gap-6">
+                    <div className="w-44">
+                      <Select
+                        label="Type"
+                        value={field.type}
+                        onChange={(e) => updateField(index, { type: e.target.value as FieldType })}
+                      >
+                        {FIELD_TYPES.map((t) => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    <label className="flex items-center gap-2.5 mt-6 cursor-pointer group select-none">
+                      <span
+                        className={`flex-shrink-0 h-4 w-4 rounded-sm border flex items-center justify-center transition-colors ${
+                          field.required
+                            ? "bg-primary border-primary"
+                            : "bg-background border-border group-hover:border-muted-foreground"
+                        }`}
+                      >
+                        {field.required && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={field.required}
+                        onChange={() => updateField(index, { required: !field.required })}
+                        className="sr-only"
+                      />
+                      <span className="text-xs font-semibold text-muted-foreground">Required</span>
+                    </label>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    icon={Trash2}
+                    onClick={() => removeField(index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
               </div>
             ))}
 
@@ -218,11 +237,16 @@ export default function FormEditPage() {
         </Card>
 
         {/* Save */}
-        <div className="border-t border-white/5 pt-6 flex items-center gap-4">
+        <div className="sticky bottom-0 -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-background/95 backdrop-blur-sm border-t border-border flex items-center gap-4">
           <Button type="submit" isLoading={isMutating} icon={Save}>
             Save Changes
           </Button>
-          <Button type="button" variant="secondary" onClick={() => router.push(`/forms/${formId}`)}>
+          <Button
+            type="button"
+            variant="secondary"
+            icon={ArrowLeft}
+            onClick={() => router.push(`/forms/${formId}`)}
+          >
             Cancel
           </Button>
         </div>

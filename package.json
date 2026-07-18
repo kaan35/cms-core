@@ -6,8 +6,7 @@
     "packages/*",
     "plugins/*/api",
     "plugins/*/admin",
-    "templates/*",
-    "cli"
+    "templates/*"
   ],
   "scripts": {
     "dev:api": "npm run dev --workspace=templates/api",

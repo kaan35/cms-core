@@ -21,16 +21,8 @@ export class SettingsRepository {
     this.settingsCollection = this.db.getCollection<SystemSettings>(COLLECTIONS.SETTINGS);
   }
 
-  async get(): Promise<SystemSettings> {
-    const settings = await this.settingsCollection.findOne({});
-    if (!settings) {
-      return {
-        brandName: "ModularCMS",
-        primaryColor: "#8b5cf6",
-        secondaryColor: "#4f46e5",
-      } as SystemSettings;
-    }
-    return settings;
+  async get(): Promise<SystemSettings | null> {
+    return await this.settingsCollection.findOne({});
   }
 
   async update(settings: Omit<SystemSettings, "_id">): Promise<void> {

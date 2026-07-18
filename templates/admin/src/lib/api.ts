@@ -11,7 +11,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public data?: unknown
+    public data?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -33,12 +33,17 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
 
   // Ensure requests are routed via Next.js rewrites proxy (/api/* -> backend:3001/*)
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const proxyPath = normalizedPath.startsWith("/api") ? normalizedPath : `/api${normalizedPath}`;
+  const proxyPath = normalizedPath.startsWith("/api")
+    ? normalizedPath
+    : `/api${normalizedPath}`;
 
   const response = await fetch(proxyPath, defaultOptions);
 
   if (response.status === 401 && !path.includes("/auth/login")) {
-    if (typeof window !== "undefined") {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/login"
+    ) {
       window.location.href = "/login";
     }
   }
@@ -48,7 +53,7 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     throw new ApiError(
       data.message || "Something went wrong",
       response.status,
-      data
+      data,
     );
   }
 

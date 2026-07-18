@@ -76,7 +76,7 @@ async function register(fastify: FastifyInstance, _options: Record<string, unkno
 
       return {
         status: "success",
-        message: `Plugin ${toggleResult.isEnabled ? "enabled" : "disabled"}. Changes applied immediately.`,
+        message: `Plugin ${toggleResult.isEnabled ? "enabled" : "disabled"}.`,
         isEnabled: toggleResult.isEnabled,
       };
     },

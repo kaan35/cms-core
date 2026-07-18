@@ -1,9 +1,11 @@
 "use client";
 
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Loading } from "@/components/ui/Loading";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { useApiMutation, useApiQuery } from "@/hooks/useApi";
@@ -102,12 +104,10 @@ export default function BlogEditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Post</h1>
-          <p className="text-sm text-zinc-400">Update article content and publishing settings</p>
-        </div>
-      </div>
+      <Breadcrumb
+        items={[{ label: "Blog Posts", href: "/blog" }, { label: formData.title || "Edit Post" }]}
+      />
+      <PageHeader title="Edit Post" description="Update article content and publishing settings" />
 
       <form onSubmit={savePost} className="space-y-6">
         <Card
@@ -169,7 +169,7 @@ export default function BlogEditPage() {
           </div>
         </Card>
 
-        <div className="border-t border-white/5 pt-6 flex items-center gap-4">
+        <div className="sticky bottom-0 -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 bg-background/95 backdrop-blur-sm border-t border-border flex items-center gap-4">
           <Button type="submit" isLoading={isMutating} icon={Save}>
             Save Changes
           </Button>

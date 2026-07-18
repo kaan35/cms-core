@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { UserForm } from "@/components/forms/UserForm";
+import { Loading } from "@/components/ui/Loading";
+import { useApiQuery } from "@/hooks/useApi";
 import { ApiError } from "@/lib/api";
 import { useToast } from "@/lib/toast";
-import { useApiQuery } from "@/hooks/useApi";
-import { UserForm } from "@/components/UserForm";
-import { Loading } from "@/components/ui/Loading";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 interface RoleTemplate {
   id: string;
@@ -39,7 +42,11 @@ export default function UserDetailPage() {
   const [roles, setRoles] = useState<RoleTemplate[]>([]);
 
   const { data: rolesData, isLoading: rolesLoading } = useApiQuery<any>("/auth/roles");
-  const { data: userData, error: userError, isLoading: userLoading } = useApiQuery<any>(`/auth/users/${userId}`);
+  const {
+    data: userData,
+    error: userError,
+    isLoading: userLoading,
+  } = useApiQuery<any>(`/auth/users/${userId}`);
 
   useEffect(() => {
     if (rolesData?.roles) {
@@ -84,12 +91,13 @@ export default function UserDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Manage User</h1>
-        <p className="text-sm text-zinc-400">
-          Configure role templates and granular access control.
-        </p>
-      </div>
+      <Breadcrumb
+        items={[{ label: "Users & RBAC", href: "/users" }, { label: user.email || "Edit User" }]}
+      />
+      <PageHeader
+        title="Manage User"
+        description="Configure role templates and granular access control."
+      />
 
       <UserForm
         mode="update"

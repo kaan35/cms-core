@@ -35,4 +35,10 @@ export interface IDatabase {
    * @throws Error if database is not connected
    */
   getDb(): Db;
+
+  /**
+   * Check if database is currently connected
+   * @returns true if connected, false otherwise
+   */
+  isConnected(): boolean;
 }

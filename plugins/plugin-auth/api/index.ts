@@ -40,13 +40,27 @@ export const name = "@cms/plugin-auth-api";
 export const version = "1.0.0";
 
 const SYSTEM_PERMISSIONS = [
-  "pages:read", "pages:write", "pages:delete",
-  "blog:read", "blog:read:draft", "blog:write", "blog:delete",
-  "forms:read", "forms:write", "forms:delete", "forms:submissions:read",
-  "users:read", "users:write", "users:delete",
-  "settings:read", "settings:write",
-  "webhooks:read", "webhooks:write", "webhooks:delete",
-  "backups:read", "backups:write"
+  "pages:read",
+  "pages:write",
+  "pages:delete",
+  "blog:read",
+  "blog:read:draft",
+  "blog:write",
+  "blog:delete",
+  "forms:read",
+  "forms:write",
+  "forms:delete",
+  "forms:submissions:read",
+  "users:read",
+  "users:write",
+  "users:delete",
+  "settings:read",
+  "settings:write",
+  "webhooks:read",
+  "webhooks:write",
+  "webhooks:delete",
+  "backups:read",
+  "backups:write",
 ];
 
 export async function register(fastify: FastifyInstance, _options: Record<string, unknown> = {}) {
@@ -152,7 +166,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
           permissions: user.permissions || [],
         },
         config.JWT_SECRET,
-        { expiresIn: "1d" }
+        { expiresIn: "1d" },
       );
 
       // Set cookie
@@ -173,7 +187,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
           permissions: user.permissions || [],
         },
       };
-    }
+    },
   );
 
   // Logout Endpoint
@@ -194,7 +208,48 @@ export async function register(fastify: FastifyInstance, _options: Record<string
         status: "success",
         user,
       };
-    }
+    },
+  );
+
+  fastify.post(
+    "/auth/change-password",
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        body: z.object({
+          currentPassword: z.string(),
+          newPassword: z.string().min(6),
+        }),
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { currentPassword, newPassword } = request.body as any;
+      const currentUser = request.user;
+      if (!currentUser) {
+        reply.status(401).send({ status: "error", message: "Unauthorized" });
+        return;
+      }
+
+      // Fetch user from DB to verify old password
+      const user = await usersRepo.findById(currentUser.id);
+      if (!user) {
+        reply.status(404).send({ status: "error", message: "User not found" });
+        return;
+      }
+
+      // Verify current password
+      const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isMatch) {
+        reply.status(400).send({ status: "error", message: "Invalid current password" });
+        return;
+      }
+
+      // Hash new password
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await usersRepo.updatePassword(currentUser.id, passwordHash);
+
+      return { status: "success", message: "Password updated successfully" };
+    },
   );
 
   // Get All Permissions List
@@ -205,7 +260,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     },
     async () => {
       return { status: "success", permissions: SYSTEM_PERMISSIONS };
-    }
+    },
   );
 
   // Get All Users (Admin Only)
@@ -225,7 +280,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
           permissions: u.permissions || [],
         })),
       };
-    }
+    },
   );
 
   // Create User (Admin Only)
@@ -263,7 +318,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
           permissions: createdUser.permissions,
         },
       };
-    }
+    },
   );
 
   // Get Single User (Admin Only)
@@ -288,7 +343,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
           permissions: user.permissions || [],
         },
       };
-    }
+    },
   );
 
   // Update User (Admin Only)
@@ -321,7 +376,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
           permissions: body.permissions,
         },
       };
-    }
+    },
   );
 
   // Delete User (Admin Only)
@@ -336,7 +391,9 @@ export async function register(fastify: FastifyInstance, _options: Record<string
       // Check if trying to delete self
       const currentUser = request.user;
       if (currentUser && currentUser.id === id) {
-        reply.status(400).send({ status: "error", message: "Cannot delete your own admin account" });
+        reply
+          .status(400)
+          .send({ status: "error", message: "Cannot delete your own admin account" });
         return;
       }
 
@@ -347,7 +404,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
       }
 
       return { status: "success", message: "User deleted successfully" };
-    }
+    },
   );
 
   // --- ROLE TEMPLATES ---
@@ -359,7 +416,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     async () => {
       const roles = await rolesRepo.findAll();
       return { status: "success", roles };
-    }
+    },
   );
 
   // Get role by ID
@@ -368,21 +425,21 @@ export async function register(fastify: FastifyInstance, _options: Record<string
     { preHandler: [fastify.authenticate, checkPermission("users:read")] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      
+
       const role = await rolesRepo.findById(id);
       if (!role) {
         reply.status(404).send({ status: "error", message: "Role not found" });
         return;
       }
 
-      return { 
-        status: "success", 
+      return {
+        status: "success",
         role: {
           ...role,
           id: role._id ? role._id.toString() : "",
-        }
+        },
       };
-    }
+    },
   );
 
   // Create role
@@ -399,10 +456,13 @@ export async function register(fastify: FastifyInstance, _options: Record<string
         reply.status(400).send({ status: "error", message: "Role name already exists" });
         return;
       }
-      
+
       const createdRole = await rolesRepo.create(body);
-      return { status: "success", role: { ...createdRole, id: createdRole._id ? createdRole._id.toString() : "" } };
-    }
+      return {
+        status: "success",
+        role: { ...createdRole, id: createdRole._id ? createdRole._id.toString() : "" },
+      };
+    },
   );
 
   // Update role
@@ -422,7 +482,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
         return;
       }
       return { status: "success", message: "Role updated" };
-    }
+    },
   );
 
   // Delete role
@@ -437,7 +497,7 @@ export async function register(fastify: FastifyInstance, _options: Record<string
         return;
       }
       return { status: "success", message: "Role deleted" };
-    }
+    },
   );
 }
 

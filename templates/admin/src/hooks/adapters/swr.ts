@@ -1,6 +1,6 @@
 /**
  * SWR adapter for useApiQuery and useApiMutation.
- * 
+ *
  * To switch to TanStack Query:
  *   In hooks/useApi.ts, change:
  *     import { useApiQuery, useApiMutation } from "./adapters/swr";
@@ -19,11 +19,12 @@ import type {
 
 export function useApiQuery<T = unknown>(
   path: string | null,
-  options: ApiQueryOptions<T> = {}
+  options: ApiQueryOptions<T> = {},
 ): ApiQueryResult<T> {
   const {
     enabled = true,
     revalidateOnFocus = true,
+    revalidateOnReconnect = true,
     retryOnError = false,
     staleTime = 0,
     onSuccess,
@@ -37,13 +38,14 @@ export function useApiQuery<T = unknown>(
     key,
     () => apiFetch(path!),
     {
-      revalidateOnFocus,
-      shouldRetryOnError: retryOnError,
       dedupingInterval: staleTime,
+      revalidateOnFocus,
+      revalidateOnReconnect,
+      shouldRetryOnError: retryOnError,
       // Only include callbacks when defined — SWR throws if undefined is passed
       ...(onSuccess && { onSuccess }),
       ...(onError && { onError }),
-    }
+    },
   );
 
   return {
@@ -51,14 +53,16 @@ export function useApiQuery<T = unknown>(
     error,
     isLoading,
     isRefreshing: isValidating && !isLoading,
-    refetch: () => { mutate(); },
+    refetch: () => {
+      mutate();
+    },
   };
 }
 
 export function useApiMutation<T = unknown, Arg = unknown>(
   options: {
     method?: "POST" | "PUT" | "DELETE" | "PATCH";
-  } & ApiMutationOptions<T, Arg>
+  } & ApiMutationOptions<T, Arg>,
 ): ApiMutationResult<T, Arg> {
   const { path, method = "POST", onSuccess, onError } = options;
 
@@ -69,33 +73,39 @@ export function useApiMutation<T = unknown, Arg = unknown>(
   const fetcher = async (_key: string, { arg }: { arg: Arg }) => {
     const resolvedPath = typeof path === "function" ? path(arg) : path;
     return apiFetch(resolvedPath, {
-      method,
       // Only send body when path is static (body mutation). Dynamic path = no body.
-      body: typeof path === "string" && arg !== undefined ? JSON.stringify(arg) : undefined,
+      body:
+        typeof path === "string" && arg !== undefined
+          ? JSON.stringify(arg)
+          : undefined,
+      method,
     });
   };
 
-  const { trigger, data, error, isMutating } = useSWRMutation<T, unknown, string, Arg>(
-    swrKey,
-    fetcher,
-    {
-      // Only include callbacks when defined — SWR throws if undefined is passed
-      ...(onSuccess && { onSuccess }),
-      ...(onError && {
-        onError: (err: unknown) => {
-          onError(err instanceof Error ? err : new Error(String(err)));
-        }
-      }),
-    }
-  );
+  const { trigger, data, error, isMutating } = useSWRMutation<
+    T,
+    unknown,
+    string,
+    Arg
+  >(swrKey, fetcher, {
+    // Only include callbacks when defined — SWR throws if undefined is passed
+    ...(onSuccess && { onSuccess }),
+    ...(onError && {
+      onError: (err: unknown) => {
+        onError(err instanceof Error ? err : new Error(String(err)));
+      },
+    }),
+  });
 
   return {
-    trigger: async (arg?: Arg) => {
-      const result = await (trigger as (extraArgument?: Arg) => Promise<T>)(arg);
-      return result;
-    },
     data,
     error: (error as Error) || null,
     isMutating,
+    trigger: async (arg?: Arg) => {
+      const result = await (trigger as (extraArgument?: Arg) => Promise<T>)(
+        arg,
+      );
+      return result;
+    },
   };
 }

@@ -1,10 +1,12 @@
-import { MongoClient } from "mongodb";
 import { config } from "@cms/core";
+import { MongoClient } from "mongodb";
 
 /**
- * Generate 200 test form submissions for testing pagination
- * Usage: node --experimental-strip-types src/generate-test-submissions.ts
+ * Generate test form submissions for testing pagination.
+ * Usage: npm run generate-test-data --workspace=templates/api          (defaults to 200)
+ *        npm run generate-test-data --workspace=templates/api -- 10    (custom count)
  */
+const SUBMISSION_COUNT = Number(process.argv[2]) > 0 ? Number(process.argv[2]) : 200;
 
 const names = [
   "Ali Yılmaz", "Ayşe Demir", "Mehmet Kaya", "Fatma Çelik", "Ahmet Şahin",
@@ -66,19 +68,22 @@ async function generateTestSubmissions() {
     // Check if contact-form exists
     const formsCol = db.collection("cms_forms");
     const form = await formsCol.findOne({ formId: "contact-form" });
-    
+
     if (!form) {
       console.error("❌ contact-form not found! Run seed.ts first.");
       return;
     }
 
-    // Generate 200 submissions
+    // Idempotent re-runs: clear only this form's previous test submissions
+    await submissionsCol.deleteMany({ formId: "contact-form" });
+
+    // Generate SUBMISSION_COUNT submissions
     const submissions = [];
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30); // Last 30 days
 
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < SUBMISSION_COUNT; i++) {
       submissions.push({
         formId: "contact-form",
         data: {
@@ -98,7 +103,7 @@ async function generateTestSubmissions() {
 
     console.log(`✅ Successfully inserted ${submissions.length} test submissions`);
     console.log(`📊 Date range: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`);
-    
+
     // Show stats
     const total = await submissionsCol.countDocuments({ formId: "contact-form" });
     console.log(`📈 Total submissions for contact-form: ${total}`);
