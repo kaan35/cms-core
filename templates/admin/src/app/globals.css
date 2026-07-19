@@ -169,3 +169,24 @@ body {
 .animate-slideInRight {
   animation: slideInRight 0.3s ease-out;
 }
+
+/* Toast progress bar animation */
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Pause animation on hover */
+[id^="toast-"]:hover [style*="toast-progress"] {
+  animation-play-state: paused !important;
+}
+
+/* Toast progress bar countdown */
+@keyframes toast-progress {
+  from { width: 100%; }
+  to   { width: 0%; }
+}

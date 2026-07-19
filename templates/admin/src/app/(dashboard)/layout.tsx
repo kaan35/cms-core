@@ -406,7 +406,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ToastProvider>
+    <ToastProvider
+      config={{
+        duration: 4000,
+        maxToasts: 3,
+        showProgress: true,
+      }}
+    >
       <Suspense fallback={<Loading />}>
         <DashboardContent>{children}</DashboardContent>
       </Suspense>

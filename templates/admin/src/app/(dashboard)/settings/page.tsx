@@ -50,7 +50,7 @@ export default function SettingsPage() {
     path: "/settings",
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!formData.brandName) {
       showToast({ message: "Brand Name is required", type: "warning" });
