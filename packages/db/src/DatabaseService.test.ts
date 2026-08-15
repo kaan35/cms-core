@@ -20,4 +20,9 @@ describe("DatabaseService", () => {
       },
     );
   });
+
+  it("isAlive() returns false before connect() is called", async () => {
+    const db = new DatabaseService("mongodb://localhost:27017", "test", stubLogger);
+    assert.equal(await db.isAlive(), false);
+  });
 });

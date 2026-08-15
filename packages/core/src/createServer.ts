@@ -1,3 +1,5 @@
+import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { ConfigService } from "./ConfigService.js";
@@ -28,6 +30,43 @@ export async function createServer(
   const app = Fastify({
     trustProxy: true,
     logger: false,
+  });
+
+  await app.register(helmet);
+
+  const allowedOriginsRaw = config.getOrDefault("CORS_ALLOWED_ORIGINS", "");
+  const allowedOrigins = allowedOriginsRaw
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  await app.register(cors, {
+    origin: (
+      origin: string | undefined,
+      cb: (err: Error | null, allow: boolean) => void,
+    ) => {
+      if (!origin) {
+        return cb(null, true);
+      }
+      if (allowedOrigins.includes(origin)) {
+        return cb(null, true);
+      }
+      return cb(null, false);
+    },
+    credentials: true,
+  });
+
+  app.get("/health", async (_request, reply) => {
+    const [dbAlive, cacheAlive] = await Promise.all([
+      db.isAlive().catch(() => false),
+      cache.isAlive().catch(() => false),
+    ]);
+    const status = dbAlive && cacheAlive ? "ok" : "degraded";
+    return reply.status(200).send({
+      status,
+      db: dbAlive ? "ok" : "down",
+      cache: cacheAlive ? "ok" : "down",
+    });
   });
 
   app.setErrorHandler((error, _request, reply) => {

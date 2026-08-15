@@ -98,6 +98,16 @@ export class DatabaseService implements IDatabase {
     this.logger.info("Disconnected from MongoDB");
   }
 
+  async isAlive(): Promise<boolean> {
+    try {
+      if (this.db === null) return false;
+      const res = await this.db.command({ ping: 1 });
+      return Boolean(res && res["ok"] === 1);
+    } catch {
+      return false;
+    }
+  }
+
   collection<T extends Record<string, unknown>>(name: string): ICollection<T> {
     if (this.db === null) {
       throw new Error("DatabaseService not connected — call connect() first");

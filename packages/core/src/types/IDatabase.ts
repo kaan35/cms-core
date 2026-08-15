@@ -30,5 +30,6 @@ export interface ICollection<T extends Record<string, unknown>> {
 export interface IDatabase {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
+  isAlive(): Promise<boolean>;
   collection<T extends Record<string, unknown>>(name: string): ICollection<T>;
 }

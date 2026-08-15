@@ -6,6 +6,7 @@ const stubCache: ICache = {
   get: async (_key: string) => null,
   set: async (_key: string, _value: string, _ttl?: number) => {},
   del: async (..._keys: string[]) => {},
+  isAlive: async () => true,
   quit: async () => {},
 };
 

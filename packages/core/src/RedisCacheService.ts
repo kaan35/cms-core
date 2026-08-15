@@ -39,6 +39,15 @@ export class RedisCacheService implements ICache {
     }
   }
 
+  async isAlive(): Promise<boolean> {
+    try {
+      const res = await this.client.ping();
+      return res === "PONG";
+    } catch {
+      return false;
+    }
+  }
+
   async quit(): Promise<void> {
     await this.client.quit();
     this.logger.info("Redis connection closed");
