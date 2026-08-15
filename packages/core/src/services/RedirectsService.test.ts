@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { RedirectsService } from "./RedirectsService.js";
-import type { ICollection, IDatabase } from "./types/IDatabase.js";
+import type { ICollection, IDatabase } from "../types/IDatabase.js";
 
 const stubLogger = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 

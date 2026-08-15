@@ -6,6 +6,7 @@ COPY package.json ./
 COPY packages/core/package.json ./packages/core/
 COPY packages/db/package.json ./packages/db/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY plugins/plugin-auth/api/package.json ./plugins/plugin-auth/api/
 COPY api/package.json ./api/
 
 RUN npm install

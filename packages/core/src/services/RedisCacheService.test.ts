@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ICache } from "./types/ICache.js";
+import type { ICache } from "../types/ICache.js";
 
 const stubCache: ICache = {
   get: async (_key: string) => null,

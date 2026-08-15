@@ -1,6 +1,6 @@
 import { createClient } from "redis";
-import type { ICache } from "./types/ICache.js";
-import type { ILogger } from "./types/ILogger.js";
+import type { ICache } from "../types/ICache.js";
+import type { ILogger } from "../types/ILogger.js";
 
 export class RedisCacheService implements ICache {
   private readonly url: string;

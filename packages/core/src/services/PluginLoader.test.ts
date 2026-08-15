@@ -2,8 +2,8 @@ import Fastify from "fastify";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PluginLoader } from "./PluginLoader.js";
-import type { ICollection, IDatabase } from "./types/IDatabase.js";
-import type { CoreServices, PluginManifestEntry } from "./types/plugin.js";
+import type { ICollection, IDatabase } from "../types/IDatabase.js";
+import type { CoreServices, PluginManifestEntry } from "../types/plugin.js";
 
 const stubLogger = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 const stubServices = {} as CoreServices;

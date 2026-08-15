@@ -1,4 +1,4 @@
-import type { ILogger } from "./types/ILogger.js";
+import type { ILogger } from "../types/ILogger.js";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 

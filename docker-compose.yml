@@ -45,15 +45,13 @@ services:
       - /app/packages/core/node_modules
       - /app/packages/db/node_modules
       - /app/packages/eslint-config/node_modules
+      - /app/plugins/plugin-auth/api/node_modules
       - /app/api/node_modules
+    env_file:
+      - ./api/.env
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=${PORT:-3001}
-      - HOST=${HOST:-0.0.0.0}
-      - LOG_LEVEL=${LOG_LEVEL:-debug}
-      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017/cms_dev}
-      - MONGO_DB_NAME=${MONGO_DB_NAME:-cms_dev}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - MONGO_URI=mongodb://mongo:27017/${MONGO_DB_NAME:-cms_dev}
+      - REDIS_URL=redis://redis:6379
     depends_on:
       mongo:
         condition: service_healthy

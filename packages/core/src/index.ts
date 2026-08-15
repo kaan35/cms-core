@@ -1,4 +1,5 @@
 // Types
+export type { AuthUser } from "./types/auth.js";
 export type { ICache } from "./types/ICache.js";
 export type {
   CreateIndexOptions,
@@ -21,8 +22,8 @@ export {
 } from "./errors/AppError.js";
 
 // Pagination
-export { buildPaginatedResult, parsePaginationQuery } from "./pagination.js";
-export type { PaginatedResult } from "./pagination.js";
+export { buildPaginatedResult, parsePaginationQuery } from "./utils/pagination.js";
+export type { PaginatedResult } from "./utils/pagination.js";
 
 // Registries
 export { DECORATOR_KEYS } from "./decoratorKeys.js";
@@ -30,14 +31,14 @@ export { EVENTS } from "./events.js";
 export { PERMISSIONS } from "./permissions.js";
 
 // Services
-export { ConfigService } from "./ConfigService.js";
-export { HookManager } from "./HookManager.js";
-export { LogService } from "./LogService.js";
-export type { LogLevel } from "./LogService.js";
-export { PluginLoader } from "./PluginLoader.js";
-export { RedirectsService } from "./RedirectsService.js";
-export { RedisCacheService } from "./RedisCacheService.js";
-export { SettingsService } from "./SettingsService.js";
+export { ConfigService } from "./services/ConfigService.js";
+export { HookManager } from "./services/HookManager.js";
+export { LogService } from "./services/LogService.js";
+export type { LogLevel } from "./services/LogService.js";
+export { PluginLoader } from "./services/PluginLoader.js";
+export { RedirectsService } from "./services/RedirectsService.js";
+export { RedisCacheService } from "./services/RedisCacheService.js";
+export { SettingsService } from "./services/SettingsService.js";
 
 // Plugin manifest
 export { PLUGIN_MANIFEST } from "./pluginManifest.js";

@@ -8,12 +8,13 @@
   },
   "workspaces": [
     "packages/*",
-    "api"
+    "api",
+    "plugins/*/*"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "tsc --build",
-    "test": "node --import tsx/esm --test 'packages/**/*.test.ts' 'api/**/*.test.ts'",
+    "test": "node --import tsx/esm --test 'packages/**/*.test.ts' 'api/**/*.test.ts' 'plugins/**/*.test.ts'",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present"
   },

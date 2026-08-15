@@ -1,4 +1,4 @@
-import { ValidationError } from "./errors/AppError.js";
+import { ValidationError } from "../errors/AppError.js";
 
 export type PaginatedResult<T> = {
   data: T[];

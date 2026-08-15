@@ -1,4 +1,11 @@
-import type { AuthUser } from "./auth.js";
+import "fastify";
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  permissions: string[];
+  sessionId: string;
+}
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -12,8 +19,4 @@ declare module "fastify" {
   interface FastifyRequest {
     user?: AuthUser;
   }
-
-  interface FastifyReply {}
 }
-
-export type {};

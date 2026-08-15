@@ -1,5 +1,5 @@
-import type { IDatabase } from "./types/IDatabase.js";
-import type { ILogger } from "./types/ILogger.js";
+import type { IDatabase } from "../types/IDatabase.js";
+import type { ILogger } from "../types/ILogger.js";
 
 interface RedirectDoc extends Record<string, unknown> {
   from: string;

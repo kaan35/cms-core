@@ -75,18 +75,25 @@ export class DatabaseService implements IDatabase {
   private readonly uri: string;
   private readonly dbName: string;
   private readonly logger: ILogger;
+  private readonly serverSelectionTimeoutMS: number;
   private client: MongoClient | null = null;
   private db: Db | null = null;
 
-  constructor(uri: string, dbName: string, logger: ILogger) {
+  constructor(
+    uri: string,
+    dbName: string,
+    logger: ILogger,
+    serverSelectionTimeoutMS = 5000,
+  ) {
     this.uri = uri;
     this.dbName = dbName;
     this.logger = logger;
+    this.serverSelectionTimeoutMS = serverSelectionTimeoutMS;
   }
 
   async connect(): Promise<void> {
     this.client = new MongoClient(this.uri, {
-      serverSelectionTimeoutMS: 5_000, // fail fast on unreachable host
+      serverSelectionTimeoutMS: this.serverSelectionTimeoutMS,
     });
     await this.client.connect();
     this.db = this.client.db(this.dbName);

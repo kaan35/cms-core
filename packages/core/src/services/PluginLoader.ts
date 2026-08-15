@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { runMigrations } from "./migrations/runner.js";
-import type { IDatabase } from "./types/IDatabase.js";
-import type { ILogger } from "./types/ILogger.js";
-import type { CoreServices, Migration, PluginManifestEntry } from "./types/plugin.js";
+import { runMigrations } from "../migrations/runner.js";
+import type { IDatabase } from "../types/IDatabase.js";
+import type { ILogger } from "../types/ILogger.js";
+import type { CoreServices, Migration, PluginManifestEntry } from "../types/plugin.js";
 
 interface PluginRecord extends Record<string, unknown> {
   name: string;
