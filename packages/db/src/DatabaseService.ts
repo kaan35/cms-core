@@ -17,10 +17,14 @@ import {
 } from "mongodb";
 
 class MongoCollectionAdapter<T extends Record<string, unknown>> implements ICollection<T> {
-  constructor(private readonly col: Collection<any>) {}
+  private readonly col: Collection<Document>;
+
+  constructor(col: Collection<Document>) {
+    this.col = col;
+  }
 
   async findOne(filter: Record<string, unknown>): Promise<T | null> {
-    return (await this.col.findOne(filter as Filter<Document>)) as T | null;
+    return (await this.col.findOne(filter as Filter<Document>)) as unknown as T | null;
   }
 
   async find(filter: Record<string, unknown> = {}, options: FindOptions = {}): Promise<T[]> {
@@ -34,7 +38,7 @@ class MongoCollectionAdapter<T extends Record<string, unknown>> implements IColl
     if (options.limit !== undefined) {
       cursor.limit(options.limit);
     }
-    return (await cursor.toArray()) as T[];
+    return (await cursor.toArray()) as unknown as T[];
   }
 
   async insertOne(doc: Record<string, unknown>): Promise<void> {
@@ -68,14 +72,17 @@ class MongoCollectionAdapter<T extends Record<string, unknown>> implements IColl
 }
 
 export class DatabaseService implements IDatabase {
+  private readonly uri: string;
+  private readonly dbName: string;
+  private readonly logger: ILogger;
   private client: MongoClient | null = null;
   private db: Db | null = null;
 
-  constructor(
-    private readonly uri: string,
-    private readonly dbName: string,
-    private readonly logger: ILogger,
-  ) {}
+  constructor(uri: string, dbName: string, logger: ILogger) {
+    this.uri = uri;
+    this.dbName = dbName;
+    this.logger = logger;
+  }
 
   async connect(): Promise<void> {
     this.client = new MongoClient(this.uri, {

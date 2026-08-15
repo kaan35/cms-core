@@ -24,7 +24,8 @@ function makeDb(docs: Array<Record<string, unknown>> = []): IDatabase {
   return {
     connect: async () => {},
     disconnect: async () => {},
-    collection: () => collection as unknown as ICollection<any>,
+    collection: <T extends Record<string, unknown>>(): ICollection<T> =>
+      collection as unknown as ICollection<T>,
   };
 }
 

@@ -19,11 +19,11 @@ await cache.connect();
 const app = await createServer(db, cache, env);
 
 await app.listen({
-  port: config.getInt('PORT', 3000),
+  port: config.getInt('PORT', 3001),
   host: config.getOrDefault('HOST', '0.0.0.0'),
 });
 
 logger.info('Server listening', {
-  port: config.getInt('PORT', 3000),
+  port: config.getInt('PORT', 3001),
   host: config.getOrDefault('HOST', '0.0.0.0'),
 });

@@ -1,0 +1,17 @@
+FROM node:26
+
+WORKDIR /app
+
+COPY package.json ./
+COPY packages/core/package.json ./packages/core/
+COPY packages/db/package.json ./packages/db/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY api/package.json ./api/
+
+RUN npm install
+
+COPY . .
+
+EXPOSE 3001
+
+CMD ["npm", "run", "dev", "--workspace=api"]

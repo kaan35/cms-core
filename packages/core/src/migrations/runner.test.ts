@@ -32,7 +32,8 @@ function makeDb(alreadyApplied: string[] = []): {
   const db: IDatabase = {
     connect: async () => {},
     disconnect: async () => {},
-    collection: () => migrationsCollection as unknown as ICollection<any>,
+    collection: <T extends Record<string, unknown>>(): ICollection<T> =>
+      migrationsCollection as unknown as ICollection<T>,
   };
 
   return { db, inserted };

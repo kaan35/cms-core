@@ -3,7 +3,7 @@ import type { ICache } from "./ICache.js";
 import type { IDatabase } from "./IDatabase.js";
 import type { ILogger } from "./ILogger.js";
 
-type AnyService = any;
+type AnyService = unknown;
 
 export interface CoreServices {
   config: AnyService; // ConfigService

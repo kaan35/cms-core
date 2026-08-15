@@ -9,6 +9,8 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "node --import tsx/esm --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },

@@ -20,7 +20,8 @@ function makeStubCollection(): ICollection<Record<string, unknown>> {
 const stubDb: IDatabase = {
   connect: async () => {},
   disconnect: async () => {},
-  collection: () => makeStubCollection() as unknown as ICollection<any>,
+  collection: <T extends Record<string, unknown>>(): ICollection<T> =>
+    makeStubCollection() as unknown as ICollection<T>,
 };
 
 const stubCache: ICache = {

@@ -30,8 +30,8 @@ function makeDb(pluginEnabled: boolean): IDatabase {
   return {
     connect: async () => {},
     disconnect: async () => {},
-    collection: (name: string) =>
-      (name === "cms_plugins" ? pluginsCol : migrationsCol) as unknown as ICollection<any>,
+    collection: <T extends Record<string, unknown>>(name: string): ICollection<T> =>
+      (name === "cms_plugins" ? pluginsCol : migrationsCol) as unknown as ICollection<T>,
   };
 }
 
@@ -86,7 +86,7 @@ describe("PluginLoader", () => {
     const db: IDatabase = {
       connect: async () => {},
       disconnect: async () => {},
-      collection: () =>
+      collection: <T extends Record<string, unknown>>(): ICollection<T> =>
         ({
           findOne: async () => ({ name: "p", enabled: true, createdAt: new Date() }),
           find: async () => [],
@@ -95,7 +95,7 @@ describe("PluginLoader", () => {
           deleteOne: async () => {},
           countDocuments: async () => 0,
           createIndex: async () => {},
-        }) as unknown as ICollection<any>,
+        }) as unknown as ICollection<T>,
     };
 
     const loader = new PluginLoader(db, stubLogger, app, stubServices);

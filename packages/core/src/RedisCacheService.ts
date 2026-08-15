@@ -3,12 +3,13 @@ import type { ICache } from "./types/ICache.js";
 import type { ILogger } from "./types/ILogger.js";
 
 export class RedisCacheService implements ICache {
+  private readonly url: string;
+  private readonly logger: ILogger;
   private readonly client: ReturnType<typeof createClient>;
 
-  constructor(
-    private readonly url: string,
-    private readonly logger: ILogger,
-  ) {
+  constructor(url: string, logger: ILogger) {
+    this.url = url;
+    this.logger = logger;
     this.client = createClient({ url });
     this.client.on("error", (err: Error) => {
       this.logger.error("Redis error", { error: err.message });
