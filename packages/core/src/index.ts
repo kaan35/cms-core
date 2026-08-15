@@ -21,7 +21,8 @@ export {
   ValidationError,
 } from "./errors/AppError.js";
 
-// Pagination
+// Pagination & Slugs
+export { assertUniqueSlug, generateSlug, searchPaginated } from "./slugUtils.js";
 export { buildPaginatedResult, parsePaginationQuery } from "./utils/pagination.js";
 export type { PaginatedResult } from "./utils/pagination.js";
 
@@ -33,7 +34,7 @@ export { PERMISSIONS } from "./permissions.js";
 // Services
 export { ConfigService } from "./services/ConfigService.js";
 export { HookManager } from "./services/HookManager.js";
-export { LogService } from "./services/LogService.js";
+export { LogService, stubLogger } from "./services/LogService.js";
 export type { LogLevel } from "./services/LogService.js";
 export { PluginLoader } from "./services/PluginLoader.js";
 export { RedirectsService } from "./services/RedirectsService.js";

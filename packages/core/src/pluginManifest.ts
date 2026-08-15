@@ -55,4 +55,22 @@ export const PLUGIN_MANIFEST: PluginManifestEntry[] = [
       await registerMediaPlugin(scope, services);
     },
   },
+  {
+    name: "plugin-pages",
+    priority: 15,
+    migrations: [
+      {
+        id: "202601040000_init_pages",
+        description: "Create indexes for cms_pages and cms_page_versions",
+        up: async (db) => {
+          const { initPagesMigration } = await import("@cms/plugin-pages-api" as string);
+          await initPagesMigration.up(db);
+        },
+      },
+    ],
+    register: async (scope, services) => {
+      const { registerPagesPlugin } = await import("@cms/plugin-pages-api" as string);
+      await registerPagesPlugin(scope, services);
+    },
+  },
 ];

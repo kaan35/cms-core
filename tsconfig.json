@@ -6,6 +6,7 @@
     { "path": "packages/db" },
     { "path": "plugins/plugin-auth/api" },
     { "path": "plugins/plugin-system/api" },
-    { "path": "plugins/plugin-media/api" }
+    { "path": "plugins/plugin-media/api" },
+    { "path": "plugins/plugin-pages/api" }
   ]
 }

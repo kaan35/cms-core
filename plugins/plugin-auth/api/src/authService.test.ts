@@ -1,4 +1,3 @@
-import type { ICollection, IDatabase, ILogger } from "@cms/core";
 import {
   ConflictError,
   ForbiddenError,
@@ -6,7 +5,9 @@ import {
   SettingsService,
   UnauthorizedError,
   ValidationError,
+  stubLogger,
 } from "@cms/core";
+import { createInMemoryDb } from "@cms/db";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { AuthService } from "./authService.js";
@@ -15,55 +16,9 @@ import { SessionsRepository } from "./repositories/sessionsRepository.js";
 import { UsersRepository } from "./repositories/usersRepository.js";
 import { SessionService } from "./sessionService.js";
 
-const stubLogger: ILogger = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
-
-function makeInMemoryDb(): IDatabase {
-  const tables = new Map<string, Record<string, unknown>[]>();
-  const getTable = (name: string) => {
-    if (!tables.has(name)) tables.set(name, []);
-    return tables.get(name)!;
-  };
-
-  const matches = (doc: Record<string, unknown>, filter: Record<string, unknown>) =>
-    Object.entries(filter).every(([k, v]) =>
-      v && typeof v === "object" && "$in" in v
-        ? (v as { $in: unknown[] }).$in.includes(doc[k])
-        : doc[k] === v,
-    );
-
-  return {
-    connect: async () => {},
-    disconnect: async () => {},
-    isAlive: async () => true,
-    collection: <T extends Record<string, unknown>>(name: string): ICollection<T> => {
-      const items = getTable(name);
-      return {
-        findOne: async (filter) => (items.find((item) => matches(item, filter)) as T) ?? null,
-        find: async (filter) =>
-          (filter && Object.keys(filter).length > 0
-            ? items.filter((item) => matches(item, filter))
-            : [...items]) as T[],
-        insertOne: async (doc) => {
-          items.push({ ...doc });
-        },
-        updateOne: async (filter, update) => {
-          const item = items.find((i) => matches(i, filter));
-          if (item && update["$set"]) Object.assign(item, update["$set"]);
-        },
-        deleteOne: async (filter) => {
-          const idx = items.findIndex((i) => matches(i, filter));
-          if (idx !== -1) items.splice(idx, 1);
-        },
-        countDocuments: async () => items.length,
-        createIndex: async () => {},
-      };
-    },
-  };
-}
-
 describe("AuthService unit tests", () => {
   const setupService = async (options: { setupEnabled?: boolean } = {}) => {
-    const db = makeInMemoryDb();
+    const db = createInMemoryDb();
     const usersRepo = new UsersRepository(db);
     const rolesRepo = new RolesRepository(db);
     const sessionsRepo = new SessionsRepository(db);

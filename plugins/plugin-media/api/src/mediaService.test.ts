@@ -1,74 +1,10 @@
-import type { ICollection, IDatabase } from "@cms/core";
-import { HookManager, NotFoundError, ValidationError } from "@cms/core";
+import { HookManager, NotFoundError, ValidationError, stubLogger } from "@cms/core";
+import { createInMemoryDb } from "@cms/db";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { MediaService } from "./mediaService.js";
 import { MediaRepository } from "./repositories/mediaRepository.js";
 import type { IStorageAdapter, StorageUploadResult } from "./storageAdapter.js";
-
-function makeInMemoryDb(): IDatabase {
-  const store = new Map<string, Array<Record<string, unknown>>>();
-
-  return {
-    collection<T extends Record<string, unknown>>(name: string): ICollection<T> {
-      if (!store.has(name)) {
-        store.set(name, []);
-      }
-      const docs = store.get(name)! as T[];
-
-      return {
-        async insertOne(doc: T): Promise<void> {
-          docs.push(structuredClone(doc));
-        },
-        async findOne(filter: Partial<T>): Promise<T | null> {
-          const match = docs.find((d) =>
-            Object.entries(filter).every(([k, v]) => (d as Record<string, unknown>)[k] === v),
-          );
-          return match ? structuredClone(match) : null;
-        },
-        async find(
-          _filter: Partial<T>,
-          options?: { skip?: number; limit?: number; sort?: Record<string, 1 | -1> },
-        ): Promise<T[]> {
-          let res = [...docs];
-          if (options?.sort?.["createdAt"] === -1) {
-            res.reverse();
-          }
-          if (options?.skip) {
-            res = res.slice(options.skip);
-          }
-          if (options?.limit) {
-            res = res.slice(0, options.limit);
-          }
-          return res.map((d) => structuredClone(d));
-        },
-        async updateOne(filter: Partial<T>, update: Partial<T>): Promise<void> {
-          const idx = docs.findIndex((d) =>
-            Object.entries(filter).every(([k, v]) => (d as Record<string, unknown>)[k] === v),
-          );
-          if (idx === -1) return;
-          docs[idx] = { ...docs[idx]!, ...update };
-        },
-        async deleteOne(filter: Partial<T>): Promise<void> {
-          const idx = docs.findIndex((d) =>
-            Object.entries(filter).every(([k, v]) => (d as Record<string, unknown>)[k] === v),
-          );
-          if (idx === -1) return;
-          docs.splice(idx, 1);
-        },
-        async countDocuments(): Promise<number> {
-          return docs.length;
-        },
-        async createIndex(): Promise<void> {},
-      };
-    },
-    async isAlive(): Promise<boolean> {
-      return true;
-    },
-    async connect(): Promise<void> {},
-    async disconnect(): Promise<void> {},
-  };
-}
 
 class MockStorageAdapter implements IStorageAdapter {
   public uploadedFiles = new Map<string, Buffer | Uint8Array>();
@@ -97,16 +33,9 @@ class MockStorageAdapter implements IStorageAdapter {
   }
 }
 
-const stubLogger = {
-  info: () => {},
-  warn: () => {},
-  error: () => {},
-  debug: () => {},
-};
-
 describe("MediaService", () => {
   it("uploads valid image and emits media.uploaded hook", async () => {
-    const db = makeInMemoryDb();
+    const db = createInMemoryDb();
     const mediaRepo = new MediaRepository(db);
     const storageAdapter = new MockStorageAdapter();
     const hooks = new HookManager();
@@ -135,7 +64,7 @@ describe("MediaService", () => {
   });
 
   it("rejects SVG and invalid formats", async () => {
-    const db = makeInMemoryDb();
+    const db = createInMemoryDb();
     const mediaRepo = new MediaRepository(db);
     const storageAdapter = new MockStorageAdapter();
     const hooks = new HookManager();
@@ -154,7 +83,7 @@ describe("MediaService", () => {
   });
 
   it("deletes file from storage first, then from DB", async () => {
-    const db = makeInMemoryDb();
+    const db = createInMemoryDb();
     const mediaRepo = new MediaRepository(db);
     const storageAdapter = new MockStorageAdapter();
     const hooks = new HookManager();
@@ -182,7 +111,7 @@ describe("MediaService", () => {
   });
 
   it("throws NotFoundError when deleting non-existent media", async () => {
-    const db = makeInMemoryDb();
+    const db = createInMemoryDb();
     const mediaRepo = new MediaRepository(db);
     const storageAdapter = new MockStorageAdapter();
     const hooks = new HookManager();

@@ -68,3 +68,10 @@ export class LogService implements ILogger {
     this.write("error", msg, data);
   }
 }
+
+export const stubLogger: ILogger = {
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  debug: () => {},
+};
