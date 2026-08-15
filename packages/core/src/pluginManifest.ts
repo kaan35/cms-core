@@ -73,4 +73,22 @@ export const PLUGIN_MANIFEST: PluginManifestEntry[] = [
       await registerPagesPlugin(scope, services);
     },
   },
+  {
+    name: "plugin-blog",
+    priority: 20,
+    migrations: [
+      {
+        id: "202601050000_init_blog",
+        description: "Create indexes for cms_blog_posts and cms_post_versions",
+        up: async (db) => {
+          const { initBlogMigration } = await import("@cms/plugin-blog-api" as string);
+          await initBlogMigration.up(db);
+        },
+      },
+    ],
+    register: async (scope, services) => {
+      const { registerBlogPlugin } = await import("@cms/plugin-blog-api" as string);
+      await registerBlogPlugin(scope, services);
+    },
+  },
 ];

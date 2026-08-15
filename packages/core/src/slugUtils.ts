@@ -41,8 +41,8 @@ export function generateSlug(text: string): string {
   return str || "untitled";
 }
 
-export async function assertUniqueSlug(
-  collection: ICollection<Record<string, unknown>>,
+export async function assertUniqueSlug<T extends Record<string, unknown>>(
+  collection: ICollection<T>,
   slug: string,
   excludeId?: string,
 ): Promise<void> {
