@@ -8,7 +8,10 @@ export const initAuthMigration: Migration = {
     await usersCol.createIndex({ email: 1 }, { unique: true });
 
     const sessionsCol = db.collection("cms_sessions");
-    await sessionsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 } as Record<string, unknown>);
+    await sessionsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 } as Record<
+      string,
+      unknown
+    >);
 
     const rolesCol = db.collection("cms_roles");
     const existingAdmin = await rolesCol.findOne({ name: "admin" });

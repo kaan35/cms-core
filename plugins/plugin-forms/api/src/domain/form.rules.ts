@@ -1,4 +1,4 @@
-import { ValidationError } from "@cms/core";
+import { validateWithSchema, ValidationError } from "@cms/core";
 import { z } from "zod";
 
 // 1. Permissions & Events
@@ -94,25 +94,11 @@ export interface FormSubmissionDoc {
 
 // 4. Validation Helpers
 export function validateCreateForm(input: unknown): CreateFormInput {
-  const result = CreateFormSchema.safeParse(input);
-  if (!result.success) {
-    const errorDetails = result.error.issues
-      .map((e) => `${e.path.join(".")}: ${e.message}`)
-      .join(", ");
-    throw new ValidationError(`Invalid form payload: ${errorDetails}`);
-  }
-  return result.data;
+  return validateWithSchema(CreateFormSchema, input, "Invalid form payload");
 }
 
 export function validateUpdateForm(input: unknown): UpdateFormInput {
-  const result = UpdateFormSchema.safeParse(input);
-  if (!result.success) {
-    const errorDetails = result.error.issues
-      .map((e) => `${e.path.join(".")}: ${e.message}`)
-      .join(", ");
-    throw new ValidationError(`Invalid form update payload: ${errorDetails}`);
-  }
-  return result.data;
+  return validateWithSchema(UpdateFormSchema, input, "Invalid form update payload");
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

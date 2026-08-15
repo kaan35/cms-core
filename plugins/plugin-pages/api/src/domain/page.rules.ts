@@ -1,4 +1,4 @@
-import { ValidationError } from "@cms/core";
+import { validateWithSchema } from "@cms/core";
 import { z } from "zod";
 
 export const PAGES_PERMISSIONS = {
@@ -156,19 +156,9 @@ export interface PageVersionDoc {
 }
 
 export function validateCreatePage(input: unknown): CreatePageInput {
-  const result = CreatePageSchema.safeParse(input);
-  if (!result.success) {
-    const errorMsg = result.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
-    throw new ValidationError(`Validation failed: ${errorMsg}`);
-  }
-  return result.data;
+  return validateWithSchema(CreatePageSchema, input, "Validation failed");
 }
 
 export function validateUpdatePage(input: unknown): UpdatePageInput {
-  const result = UpdatePageSchema.safeParse(input);
-  if (!result.success) {
-    const errorMsg = result.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
-    throw new ValidationError(`Validation failed: ${errorMsg}`);
-  }
-  return result.data;
+  return validateWithSchema(UpdatePageSchema, input, "Validation failed");
 }

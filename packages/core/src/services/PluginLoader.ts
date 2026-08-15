@@ -29,9 +29,7 @@ export class PluginLoader {
     const targetDb = db ?? this.db;
     const pluginsCollection = targetDb.collection<PluginRecord>("cms_plugins");
     const records = await pluginsCollection.find();
-    this.enabledPlugins = new Set(
-      records.filter((r) => r.enabled !== false).map((r) => r.name),
-    );
+    this.enabledPlugins = new Set(records.filter((r) => r.enabled !== false).map((r) => r.name));
     this.logger.info("Plugin states reloaded", { enabled: Array.from(this.enabledPlugins) });
   }
 

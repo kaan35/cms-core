@@ -5,6 +5,7 @@ import {
   generateSlug,
   NotFoundError,
   parsePaginationQuery,
+  resolveUpdatedSlug,
   searchPaginated,
 } from "@cms/core";
 import { randomUUID } from "node:crypto";
@@ -72,17 +73,14 @@ export class BlogPostsRepository {
       throw new NotFoundError(`Blog post '${id}' not found`);
     }
 
-    let newSlug = existing.slug;
-    if (input.slug !== undefined || (input.title && input.slug === undefined)) {
-      if (input.slug !== undefined) {
-        newSlug = generateSlug(input.slug);
-      }
-      if (newSlug !== existing.slug) {
-        await assertUniqueSlug(this.postsCollection, newSlug, id);
-        // Automatically record 301 redirect
-        await this.redirectsService.create(existing.slug, newSlug);
-      }
-    }
+    const newSlug = await resolveUpdatedSlug(
+      this.postsCollection,
+      existing.slug,
+      input,
+      existing.title,
+      id,
+      this.redirectsService,
+    );
 
     const now = new Date().toISOString();
     const newVersion = existing.version + 1;

@@ -5,6 +5,7 @@ import {
   generateSlug,
   NotFoundError,
   parsePaginationQuery,
+  resolveUpdatedSlug,
   searchPaginated,
 } from "@cms/core";
 import { randomUUID } from "node:crypto";
@@ -91,13 +92,14 @@ export class PagesRepository {
       throw new NotFoundError(`Page with ID '${id}' not found`);
     }
 
-    let newSlug = existing.slug;
-    if (input.slug && input.slug !== existing.slug) {
-      newSlug = generateSlug(input.slug);
-      await assertUniqueSlug(this.pagesCollection, newSlug, id);
-      // Auto-record 301 redirect from old slug to new slug
-      await this.redirectsService.create(existing.slug, newSlug);
-    }
+    const newSlug = await resolveUpdatedSlug(
+      this.pagesCollection,
+      existing.slug,
+      input,
+      existing.title,
+      id,
+      this.redirectsService,
+    );
 
     const now = new Date().toISOString();
     const nextVersion = existing.version + 1;

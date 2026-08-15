@@ -1,4 +1,4 @@
-import { ValidationError } from "@cms/core";
+import { validateWithSchema } from "@cms/core";
 import { z } from "zod";
 
 // 1. Permissions & Events
@@ -72,23 +72,9 @@ export interface BlogPostVersionDoc {
 
 // 3. Validation Helpers
 export function validateCreateBlogPost(input: unknown): CreateBlogPostInput {
-  const result = CreateBlogPostSchema.safeParse(input);
-  if (!result.success) {
-    const errorDetails = result.error.issues
-      .map((e) => `${e.path.join(".")}: ${e.message}`)
-      .join(", ");
-    throw new ValidationError(`Invalid blog post payload: ${errorDetails}`);
-  }
-  return result.data;
+  return validateWithSchema(CreateBlogPostSchema, input, "Invalid blog post payload");
 }
 
 export function validateUpdateBlogPost(input: unknown): UpdateBlogPostInput {
-  const result = UpdateBlogPostSchema.safeParse(input);
-  if (!result.success) {
-    const errorDetails = result.error.issues
-      .map((e) => `${e.path.join(".")}: ${e.message}`)
-      .join(", ");
-    throw new ValidationError(`Invalid blog post update payload: ${errorDetails}`);
-  }
-  return result.data;
+  return validateWithSchema(UpdateBlogPostSchema, input, "Invalid blog post update payload");
 }

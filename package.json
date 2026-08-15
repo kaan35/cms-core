@@ -23,7 +23,10 @@
     "@eslint/js": "^10",
     "@types/node": "^26",
     "eslint": "^10",
+    "eslint-config-prettier": "^10",
+    "eslint-plugin-prettier": "^5",
     "globals": "^17",
+    "prettier": "^3",
     "tsx": "^4",
     "typescript": "^6",
     "typescript-eslint": "^8"

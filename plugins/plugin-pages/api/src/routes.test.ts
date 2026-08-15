@@ -1,6 +1,5 @@
-import { HookManager, RedirectsService, stubLogger } from "@cms/core";
+import { decorateTestAuth, HookManager, RedirectsService, stubLogger } from "@cms/core";
 import { createInMemoryDb } from "@cms/db";
-import type { FastifyReply, FastifyRequest } from "fastify";
 import fastify from "fastify";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -18,28 +17,7 @@ async function buildTestApp() {
   const service = new PageService(repo, hooks, stubLogger);
   const controller = new PageController(service, redirects);
 
-  // Mock decorators
-  app.decorate("authenticate", async (req: FastifyRequest) => {
-    if (!req.headers["x-test-user"]) {
-      throw new Error("Unauthorized");
-    }
-    req.user = {
-      id: String(req.headers["x-test-user"]),
-      email: "admin@example.com",
-      permissions: req.headers["x-test-perms"]
-        ? String(req.headers["x-test-perms"]).split(",")
-        : ["pages:write", "pages:read:draft"],
-      sessionId: "session-1",
-    };
-  });
-  app.decorate("verifyCsrf", async () => {});
-  app.decorate("checkPermission", (requiredPerm: string) => {
-    return async (req: FastifyRequest, reply: FastifyReply) => {
-      if (!req.user?.permissions.includes(requiredPerm)) {
-        return reply.status(403).send({ error: "Forbidden" });
-      }
-    };
-  });
+  decorateTestAuth(app);
 
   registerPageRoutes(app, controller);
   await app.ready();

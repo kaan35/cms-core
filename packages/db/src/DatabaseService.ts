@@ -80,12 +80,7 @@ export class DatabaseService implements IDatabase {
   private client: MongoClient | null = null;
   private db: Db | null = null;
 
-  constructor(
-    uri: string,
-    dbName: string,
-    logger: ILogger,
-    serverSelectionTimeoutMS = 5000,
-  ) {
+  constructor(uri: string, dbName: string, logger: ILogger, serverSelectionTimeoutMS = 5000) {
     this.uri = uri;
     this.dbName = dbName;
     this.logger = logger;

@@ -100,9 +100,11 @@ export async function createServer(
   const fallbackAuth = async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {
     return reply.status(401).send({ error: "Unauthorized" });
   };
-  const fallbackCheckPermission = (_permission: string) => async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {
-    return reply.status(403).send({ error: "Forbidden" });
-  };
+  const fallbackCheckPermission =
+    (_permission: string) =>
+    async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      return reply.status(403).send({ error: "Forbidden" });
+    };
   const fallbackCsrf = async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {
     return reply.status(403).send({ error: "Forbidden: CSRF token missing or invalid" });
   };

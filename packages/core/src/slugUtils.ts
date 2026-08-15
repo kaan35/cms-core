@@ -52,6 +52,29 @@ export async function assertUniqueSlug<T extends Record<string, unknown>>(
   }
 }
 
+export async function resolveUpdatedSlug<T extends Record<string, unknown>>(
+  collection: ICollection<T>,
+  existingSlug: string,
+  input: { slug?: string | undefined; title?: string | undefined },
+  existingTitle?: string,
+  excludeId?: string,
+  redirects?: { create(from: string, to: string): Promise<unknown> },
+): Promise<string> {
+  if (input.slug !== undefined || (input.title !== undefined && input.title !== existingTitle)) {
+    const candidate = input.slug
+      ? generateSlug(input.slug)
+      : generateSlug(input.title ?? existingTitle ?? "");
+    if (candidate !== existingSlug) {
+      await assertUniqueSlug(collection, candidate, excludeId);
+      if (redirects) {
+        await redirects.create(existingSlug, candidate);
+      }
+      return candidate;
+    }
+  }
+  return existingSlug;
+}
+
 export async function searchPaginated<T extends Record<string, unknown>>(
   collection: ICollection<T>,
   query: string,

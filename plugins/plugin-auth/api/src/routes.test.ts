@@ -308,7 +308,9 @@ describe("plugin-auth routes & workflows", () => {
       },
     });
     assert.equal(createUserRes.statusCode, 201);
-    const userBody = JSON.parse(createUserRes.body) as { user: { email: string; roleIds: string[] } };
+    const userBody = JSON.parse(createUserRes.body) as {
+      user: { email: string; roleIds: string[] };
+    };
     assert.equal(userBody.user.email, "editor@example.com");
     assert.deepEqual(userBody.user.roleIds, [roleObj.role.id]);
 

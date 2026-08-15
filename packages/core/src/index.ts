@@ -21,10 +21,17 @@ export {
   ValidationError,
 } from "./errors/AppError.js";
 
-// Pagination & Slugs
-export { assertUniqueSlug, generateSlug, searchPaginated } from "./slugUtils.js";
+// Validation, Pagination & Slugs
+export {
+  assertUniqueSlug,
+  generateSlug,
+  resolveUpdatedSlug,
+  searchPaginated,
+} from "./slugUtils.js";
+export { decorateTestAuth } from "./testUtils.js";
 export { buildPaginatedResult, parsePaginationQuery } from "./utils/pagination.js";
 export type { PaginatedResult } from "./utils/pagination.js";
+export { validateWithSchema } from "./utils/validation.js";
 
 // Registries
 export { DECORATOR_KEYS } from "./decoratorKeys.js";
