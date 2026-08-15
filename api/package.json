@@ -1,0 +1,19 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env --import tsx/esm --watch src/main.ts",
+    "start": "node --env-file=.env --import tsx/esm src/main.ts",
+    "test": "node --import tsx/esm --test 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cms/core": "*",
+    "@cms/db": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0"
+  }
+}
