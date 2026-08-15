@@ -1,6 +1,7 @@
-import { ConfigService, LogService, RedisCacheService, createServer } from '@cms/core';
-import type { LogLevel } from '@cms/core';
-import { DatabaseService } from '@cms/db';
+import process from "node:process";
+import { ConfigService, LogService, RedisCacheService, createServer } from "@cms/core";
+import type { LogLevel } from "@cms/core";
+import { DatabaseService } from "@cms/db";
 
 const env = process.env;
 const config = new ConfigService(env);

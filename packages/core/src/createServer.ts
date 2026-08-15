@@ -2,16 +2,16 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import Fastify from "fastify";
-import { ConfigService } from "./services/ConfigService.js";
 import { AppError } from "./errors/AppError.js";
+import { coreMigrations } from "./migrations/index.js";
+import { PLUGIN_MANIFEST } from "./pluginManifest.js";
+import { ConfigService } from "./services/ConfigService.js";
 import { HookManager } from "./services/HookManager.js";
 import type { LogLevel } from "./services/LogService.js";
 import { LogService } from "./services/LogService.js";
-import { coreMigrations } from "./migrations/index.js";
 import { PluginLoader } from "./services/PluginLoader.js";
-import { PLUGIN_MANIFEST } from "./pluginManifest.js";
 import { RedirectsService } from "./services/RedirectsService.js";
 import { SettingsService } from "./services/SettingsService.js";
 import type { ICache } from "./types/ICache.js";
@@ -97,6 +97,48 @@ export async function createServer(
     return reply.status(500).send({ error: "Internal server error" });
   });
 
+  const fallbackAuth = async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    return reply.status(401).send({ error: "Unauthorized" });
+  };
+  const fallbackCheckPermission = (_permission: string) => async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    return reply.status(403).send({ error: "Forbidden" });
+  };
+  const fallbackCsrf = async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    return reply.status(403).send({ error: "Forbidden: CSRF token missing or invalid" });
+  };
+
+  const authState = {
+    authenticate: fallbackAuth,
+    checkPermission: fallbackCheckPermission,
+    verifyCsrf: fallbackCsrf,
+  };
+
+  app.decorate("authenticate", (req: FastifyRequest, reply: FastifyReply) =>
+    authState.authenticate(req, reply),
+  );
+  app.decorate(
+    "checkPermission",
+    (perm: string) => (req: FastifyRequest, reply: FastifyReply) =>
+      authState.checkPermission(perm)(req, reply),
+  );
+  app.decorate("verifyCsrf", (req: FastifyRequest, reply: FastifyReply) =>
+    authState.verifyCsrf(req, reply),
+  );
+  app.decorate(
+    "setAuthMiddlewares",
+    (middlewares: {
+      authenticate?: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+      checkPermission?: (
+        permission: string,
+      ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+      verifyCsrf?: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    }) => {
+      if (middlewares.authenticate) authState.authenticate = middlewares.authenticate;
+      if (middlewares.checkPermission) authState.checkPermission = middlewares.checkPermission;
+      if (middlewares.verifyCsrf) authState.verifyCsrf = middlewares.verifyCsrf;
+    },
+  );
+
   const pluginLoader = new PluginLoader(db, logger, app, {
     config,
     logger,
@@ -106,6 +148,9 @@ export async function createServer(
     redirects,
     settings,
   });
+
+  app.decorate("pluginLoader", pluginLoader);
+  app.decorate("hooks", hooks);
 
   await pluginLoader.loadAll(PLUGIN_MANIFEST, coreMigrations);
 

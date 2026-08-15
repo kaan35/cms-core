@@ -1,11 +1,14 @@
 {
-  "name": "api",
+  "name": "@cms/plugin-system-api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
-    "dev": "node --env-file=.env --import tsx/esm --watch src/main.ts",
-    "start": "node --env-file=.env --import tsx/esm src/main.ts",
+    "build": "tsc --project tsconfig.build.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "node --import tsx/esm --test 'src/**/*.test.ts'",
@@ -13,9 +16,7 @@
   },
   "dependencies": {
     "@cms/core": "*",
-    "@cms/db": "*",
-    "@cms/plugin-auth-api": "*",
-    "@cms/plugin-system-api": "*"
+    "@cms/db": "*"
   },
   "devDependencies": {
     "@types/node": "^26"

@@ -13,6 +13,7 @@ import {
   type Document,
   type Filter,
   type IndexSpecification,
+  type MongoClientOptions,
   type Sort,
 } from "mongodb";
 
@@ -94,7 +95,7 @@ export class DatabaseService implements IDatabase {
   async connect(): Promise<void> {
     this.client = new MongoClient(this.uri, {
       serverSelectionTimeoutMS: this.serverSelectionTimeoutMS,
-    });
+    } as MongoClientOptions);
     await this.client.connect();
     this.db = this.client.db(this.dbName);
     this.logger.info("Connected to MongoDB", { db: this.dbName });

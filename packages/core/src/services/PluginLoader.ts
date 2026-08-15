@@ -8,6 +8,7 @@ interface PluginRecord extends Record<string, unknown> {
   name: string;
   enabled: boolean;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 export class PluginLoader {
@@ -15,12 +16,23 @@ export class PluginLoader {
   private readonly logger: ILogger;
   private readonly app: FastifyInstance;
   private readonly services: CoreServices;
+  private enabledPlugins: Set<string> = new Set();
 
   constructor(db: IDatabase, logger: ILogger, app: FastifyInstance, services: CoreServices) {
     this.db = db;
     this.logger = logger;
     this.app = app;
     this.services = services;
+  }
+
+  async reloadStates(db?: IDatabase): Promise<void> {
+    const targetDb = db ?? this.db;
+    const pluginsCollection = targetDb.collection<PluginRecord>("cms_plugins");
+    const records = await pluginsCollection.find();
+    this.enabledPlugins = new Set(
+      records.filter((r) => r.enabled !== false).map((r) => r.name),
+    );
+    this.logger.info("Plugin states reloaded", { enabled: Array.from(this.enabledPlugins) });
   }
 
   async loadAll(manifest: PluginManifestEntry[], coreMigrations: Migration[] = []): Promise<void> {
@@ -41,14 +53,16 @@ export class PluginLoader {
     const pluginMigrations = manifest.flatMap((e) => e.migrations ?? []);
     const allMigrations: Migration[] = [...coreMigrations, ...pluginMigrations];
     await runMigrations(this.db, this.logger, allMigrations);
+
+    await this.reloadStates();
+
     const sorted = [...manifest].sort((a, b) => a.priority - b.priority);
 
     for (const entry of sorted) {
       const capturedName = entry.name;
       await this.app.register(async (scope) => {
         scope.addHook("preHandler", async (_request, reply) => {
-          const record = await pluginsCollection.findOne({ name: capturedName });
-          if (record === null || !record.enabled) {
+          if (!this.enabledPlugins.has(capturedName)) {
             return reply.status(503).send({ error: "Service temporarily unavailable" });
           }
         });

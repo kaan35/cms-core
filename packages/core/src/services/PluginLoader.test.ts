@@ -11,7 +11,7 @@ const stubServices = {} as CoreServices;
 function makeDb(pluginEnabled: boolean): IDatabase {
   const pluginsCol: ICollection<Record<string, unknown>> = {
     findOne: async () => ({ name: "test-plugin", enabled: pluginEnabled, createdAt: new Date() }),
-    find: async () => [],
+    find: async () => [{ name: "test-plugin", enabled: pluginEnabled, createdAt: new Date() }],
     insertOne: async () => {},
     updateOne: async () => {},
     deleteOne: async () => {},

@@ -142,8 +142,11 @@ export class AuthService {
     const email = this.validateEmail(emailRaw);
     this.validatePassword(passwordRaw);
 
-    const adminRole = await this.rolesRepo.findByName("admin");
-    const roleIds = adminRole ? [adminRole.id] : [];
+    let adminRole = await this.rolesRepo.findByName("admin");
+    if (!adminRole) {
+      adminRole = await this.rolesRepo.create({ name: "admin", permissions: ["*"] });
+    }
+    const roleIds = [adminRole.id];
     const passwordHash = await hashPassword(passwordRaw, this.saltRounds);
     const user = await this.usersRepo.create({ email, passwordHash, roleIds });
 

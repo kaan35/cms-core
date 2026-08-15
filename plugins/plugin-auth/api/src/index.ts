@@ -64,14 +64,29 @@ export async function registerAuthPlugin(
   const checkPermission = createCheckPermissionMiddleware();
   const verifyCsrf = createVerifyCsrfMiddleware();
 
-  if (!app.hasDecorator("authenticate")) {
-    app.decorate("authenticate", authenticate);
-  }
-  if (!app.hasDecorator("checkPermission")) {
-    app.decorate("checkPermission", checkPermission);
-  }
-  if (!app.hasDecorator("verifyCsrf")) {
-    app.decorate("verifyCsrf", verifyCsrf);
+  const customApp = app as unknown as {
+    setAuthMiddlewares?: (middlewares: Record<string, unknown>) => void;
+  };
+  if (typeof customApp.setAuthMiddlewares === "function") {
+    customApp.setAuthMiddlewares({ authenticate, checkPermission, verifyCsrf });
+  } else {
+    if (app.hasDecorator("authenticate")) {
+      app.authenticate = authenticate;
+    } else {
+      app.decorate("authenticate", authenticate);
+    }
+
+    if (app.hasDecorator("checkPermission")) {
+      app.checkPermission = checkPermission;
+    } else {
+      app.decorate("checkPermission", checkPermission);
+    }
+
+    if (app.hasDecorator("verifyCsrf")) {
+      app.verifyCsrf = verifyCsrf;
+    } else {
+      app.decorate("verifyCsrf", verifyCsrf);
+    }
   }
 
   const cookieDomain = config.getOrDefault("COOKIE_DOMAIN", "") || undefined;
