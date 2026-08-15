@@ -91,4 +91,22 @@ export const PLUGIN_MANIFEST: PluginManifestEntry[] = [
       await registerBlogPlugin(scope, services);
     },
   },
+  {
+    name: "plugin-forms",
+    priority: 25,
+    migrations: [
+      {
+        id: "202601060000_init_forms",
+        description: "Create indexes for cms_forms and cms_form_submissions",
+        up: async (db) => {
+          const { initFormsMigration } = await import("@cms/plugin-forms-api" as string);
+          await initFormsMigration.up(db);
+        },
+      },
+    ],
+    register: async (scope, services) => {
+      const { registerFormsPlugin } = await import("@cms/plugin-forms-api" as string);
+      await registerFormsPlugin(scope, services);
+    },
+  },
 ];
