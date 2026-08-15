@@ -15,7 +15,8 @@
     "@cms/core": "*",
     "@cms/db": "*",
     "@cms/plugin-auth-api": "*",
-    "@cms/plugin-system-api": "*"
+    "@cms/plugin-system-api": "*",
+    "@cms/plugin-media-api": "*"
   },
   "devDependencies": {
     "@types/node": "^26"

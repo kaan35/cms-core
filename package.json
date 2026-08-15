@@ -12,13 +12,14 @@
     "plugins/*/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "tsc --build",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "node --import tsx/esm --test 'packages/**/*.test.ts' 'api/**/*.test.ts' 'plugins/**/*.test.ts'",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present"
   },
   "devDependencies": {
+    "@cms/tsconfig": "*",
     "@eslint/js": "^10",
     "@types/node": "^26",
     "eslint": "^10",

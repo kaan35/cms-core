@@ -37,4 +37,22 @@ export const PLUGIN_MANIFEST: PluginManifestEntry[] = [
       await registerSystemPlugin(scope, services);
     },
   },
+  {
+    name: "plugin-media",
+    priority: 10,
+    migrations: [
+      {
+        id: "202601030000_init_media",
+        description: "Create indexes for cms_media",
+        up: async (db) => {
+          const { initMediaMigration } = await import("@cms/plugin-media-api" as string);
+          await initMediaMigration.up(db);
+        },
+      },
+    ],
+    register: async (scope, services) => {
+      const { registerMediaPlugin } = await import("@cms/plugin-media-api" as string);
+      await registerMediaPlugin(scope, services);
+    },
+  },
 ];
