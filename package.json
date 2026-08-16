@@ -9,7 +9,8 @@
   "workspaces": [
     "packages/*",
     "api",
-    "plugins/*/*"
+    "plugins/*/*",
+    "admin"
   ],
   "scripts": {
     "build": "tsc --build",

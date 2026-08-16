@@ -36,14 +36,25 @@ export class SystemController {
   }
 
   async updateSettings(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const body = request.body as { brandColor?: string; brandFont?: string } | undefined;
+    const body = request.body as Record<string, unknown> | undefined;
     if (!body || typeof body !== "object") {
       throw new ValidationError("Request body is required");
     }
 
-    const patch: { brandColor?: string; brandFont?: string } = {
-      ...(typeof body.brandColor === "string" ? { brandColor: body.brandColor } : {}),
-      ...(typeof body.brandFont === "string" ? { brandFont: body.brandFont } : {}),
+    const patch = {
+      siteTitle: typeof body["siteTitle"] === "string" ? body["siteTitle"] : undefined,
+      siteDescription:
+        typeof body["siteDescription"] === "string" ? body["siteDescription"] : undefined,
+      brandColor: typeof body["brandColor"] === "string" ? body["brandColor"] : undefined,
+      brandFont: typeof body["brandFont"] === "string" ? body["brandFont"] : undefined,
+      primaryColor: typeof body["primaryColor"] === "string" ? body["primaryColor"] : undefined,
+      fontFamily: typeof body["fontFamily"] === "string" ? body["fontFamily"] : undefined,
+      allowRegistration:
+        typeof body["allowRegistration"] === "boolean" ? body["allowRegistration"] : undefined,
+      sessionTimeoutMinutes:
+        typeof body["sessionTimeoutMinutes"] === "number"
+          ? body["sessionTimeoutMinutes"]
+          : undefined,
     };
     const updated = await this.systemService.updateSettings(patch, request.user?.id);
 
@@ -99,5 +110,10 @@ export class SystemController {
     const { page, limit } = parsePaginationQuery(request.query as Record<string, unknown>);
     const paginated = await this.systemService.listAuditLogs(page, limit);
     return reply.send(paginated);
+  }
+
+  async getStats(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const stats = await this.systemService.getStats();
+    return reply.send(stats);
   }
 }

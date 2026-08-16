@@ -91,8 +91,10 @@ export class AuthService {
     user: UserDoc,
     meta: { userAgent?: string | undefined; ip?: string | undefined },
   ): Promise<AuthResult> {
-    const roles = await this.rolesRepo.findByIds(user.roleIds);
-    const permissions = Array.from(new Set(roles.flatMap((r) => r.permissions)));
+    const roles = await this.rolesRepo.findByIds(user.roleIds || []);
+    const rolePermissions = roles.flatMap((r) => r.permissions || []);
+    const directPermissions = user.permissions || [];
+    const permissions = Array.from(new Set([...rolePermissions, ...directPermissions]));
 
     const session = await this.sessionService.createSession(user.id, permissions, meta);
 
@@ -276,23 +278,58 @@ export class AuthService {
   // ---------------------------------------------------------------------------
   async listUsers(page: number, limit: number) {
     const skip = (page - 1) * limit;
-    const [users, total] = await Promise.all([
+    const [users, total, roles] = await Promise.all([
       this.usersRepo.list(skip, limit),
       this.usersRepo.count(),
+      this.rolesRepo.list(),
     ]);
 
-    const sanitized = users.map((u) => ({
-      id: u.id,
-      email: u.email,
-      roleIds: u.roleIds,
-      createdAt: u.createdAt,
-      updatedAt: u.updatedAt,
-    }));
+    const sanitized = users.map((u) => {
+      const primaryRole =
+        roles.find((r) => u.roleIds?.includes(r.id) || u.roleIds?.includes(r.name))?.name ||
+        (u.permissions?.includes("*") ? "admin" : "user");
+      return {
+        id: u.id,
+        email: u.email,
+        name: u.name || "",
+        role: primaryRole,
+        roleIds: u.roleIds || [],
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      };
+    });
 
     return buildPaginatedResult(sanitized, total, page, limit);
   }
 
-  async createUser(emailRaw: string, passwordRaw: string, roleIds: string[]) {
+  async getUser(id: string) {
+    const user = await this.usersRepo.findById(id);
+    if (!user) {
+      throw new NotFoundError(`User '${id}' not found`);
+    }
+    const roles = await this.rolesRepo.list();
+    const primaryRole =
+      roles.find((r) => user.roleIds?.includes(r.id) || user.roleIds?.includes(r.name))?.name ||
+      (user.permissions?.includes("*") ? "admin" : "user");
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name || "",
+      role: primaryRole,
+      roleIds: user.roleIds || [],
+      permissions: user.permissions || [],
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  async createUser(
+    emailRaw: string,
+    passwordRaw: string,
+    roleIds: string[] = [],
+    name?: string | undefined,
+    permissions?: string[] | undefined,
+  ) {
     const email = this.validateEmail(emailRaw);
     this.validatePassword(passwordRaw);
 
@@ -302,21 +339,102 @@ export class AuthService {
     }
 
     const passwordHash = await hashPassword(passwordRaw, this.saltRounds);
-    const user = await this.usersRepo.create({ email, passwordHash, roleIds });
+    const user = await this.usersRepo.create({
+      email,
+      passwordHash,
+      roleIds,
+      name,
+      permissions,
+    });
 
     return {
       id: user.id,
       email: user.email,
+      name: user.name,
       roleIds: user.roleIds,
+      permissions: user.permissions,
       createdAt: user.createdAt,
     };
+  }
+
+  async updateUser(
+    id: string,
+    data: {
+      email?: string | undefined;
+      name?: string | undefined;
+      role?: string | undefined;
+      roleIds?: string[] | undefined;
+      permissions?: string[] | undefined;
+      password?: string | undefined;
+    },
+  ) {
+    const user = await this.usersRepo.findById(id);
+    if (!user) {
+      throw new NotFoundError(`User '${id}' not found`);
+    }
+
+    const updates: Partial<Omit<UserDoc, "id" | "createdAt">> = {};
+    if (data.email) {
+      const email = this.validateEmail(data.email);
+      const existing = await this.usersRepo.findByEmail(email);
+      if (existing && existing.id !== id) {
+        throw new ConflictError("A user with this email address already exists");
+      }
+      updates["email"] = email;
+    }
+
+    if (data.name !== undefined) {
+      updates["name"] = data.name.trim();
+    }
+
+    if (data.password && data.password.trim().length > 0) {
+      this.validatePassword(data.password);
+      updates["passwordHash"] = await hashPassword(data.password, this.saltRounds);
+    }
+
+    if (data.role) {
+      let roleDoc =
+        (await this.rolesRepo.findByName(data.role)) || (await this.rolesRepo.findById(data.role));
+      if (!roleDoc && (data.role === "admin" || data.role === "editor" || data.role === "user")) {
+        roleDoc = await this.rolesRepo.create({ name: data.role, permissions: [] });
+      }
+      if (roleDoc) {
+        updates["roleIds"] = [roleDoc.id];
+      }
+    } else if (data.roleIds) {
+      updates["roleIds"] = data.roleIds;
+    }
+
+    if (data.permissions !== undefined) {
+      updates["permissions"] = data.permissions;
+    }
+
+    await this.usersRepo.update(id, updates);
+    return this.getUser(id);
+  }
+
+  async deleteUser(id: string) {
+    const user = await this.usersRepo.findById(id);
+    if (!user) {
+      throw new NotFoundError(`User '${id}' not found`);
+    }
+    await this.usersRepo.deleteById(id);
+    await this.sessionsRepo.deleteByUserId(id);
   }
 
   async listRoles() {
     return this.rolesRepo.list();
   }
 
-  async createRole(nameRaw: string, permissions: string[]) {
+  async getRole(id: string) {
+    const role = (await this.rolesRepo.findById(id)) || (await this.rolesRepo.findByName(id));
+    if (!role) {
+      throw new NotFoundError(`Role '${id}' not found`);
+    }
+    return role;
+  }
+
+  async createRole(nameRaw: string, permissions: string[], description?: string | undefined) {
     const name = nameRaw.trim();
     if (!name) {
       throw new ValidationError("Role name is required");
@@ -327,6 +445,34 @@ export class AuthService {
       throw new ConflictError(`Role '${name}' already exists`);
     }
 
-    return this.rolesRepo.create({ name, permissions });
+    return this.rolesRepo.create({ name, description, permissions });
+  }
+
+  async updateRole(
+    id: string,
+    data: {
+      name?: string | undefined;
+      description?: string | undefined;
+      permissions?: string[] | undefined;
+    },
+  ) {
+    const role = (await this.rolesRepo.findById(id)) || (await this.rolesRepo.findByName(id));
+    if (!role) {
+      throw new NotFoundError(`Role '${id}' not found`);
+    }
+
+    const updated = await this.rolesRepo.update(role.id, data);
+    return updated;
+  }
+
+  async deleteRole(id: string) {
+    const role = (await this.rolesRepo.findById(id)) || (await this.rolesRepo.findByName(id));
+    if (!role) {
+      throw new NotFoundError(`Role '${id}' not found`);
+    }
+    if (role.isSystem) {
+      throw new ForbiddenError("Cannot delete a system role");
+    }
+    await this.rolesRepo.deleteById(role.id);
   }
 }

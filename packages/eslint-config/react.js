@@ -52,3 +52,5 @@ export function reactConfig(tsconfigRootDir) {
     },
   ]);
 }
+
+export default reactConfig;

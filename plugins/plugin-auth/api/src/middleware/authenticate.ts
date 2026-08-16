@@ -1,11 +1,13 @@
 import { UnauthorizedError } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type { RolesRepository } from "../repositories/rolesRepository.js";
 import type { UsersRepository } from "../repositories/usersRepository.js";
 import type { SessionService } from "../sessionService.js";
 
 export function createAuthenticateMiddleware(
   sessionService: SessionService,
   usersRepo: UsersRepository,
+  rolesRepo?: RolesRepository,
 ) {
   return async function authenticate(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
     const cookieToken = request.cookies["token"];
@@ -29,10 +31,34 @@ export function createAuthenticateMiddleware(
       throw new UnauthorizedError("User no longer exists");
     }
 
+    let permissions = sessionUser.permissions || [];
+    let roleNames: string[] = [];
+    if (rolesRepo) {
+      let roleIds = userDoc.roleIds || [];
+      if (roleIds.length === 0) {
+        const adminRole = await rolesRepo.findByName("admin");
+        if (adminRole) {
+          roleIds = [adminRole.id];
+          await usersRepo.update(userDoc.id, { roleIds });
+        }
+      }
+      const roles = await rolesRepo.findByIds(roleIds);
+      roleNames = roles.map((r) => r.name);
+      const rolePermissions = roles.flatMap((r) => r.permissions || []);
+      const directPermissions = userDoc.permissions || [];
+      permissions = Array.from(new Set([...permissions, ...rolePermissions, ...directPermissions]));
+    }
+
+    const primaryRole = roleNames[0] || (permissions.includes("*") ? "admin" : "user");
+
     request.user = {
       id: userDoc.id,
       email: userDoc.email,
-      permissions: sessionUser.permissions,
+      name: userDoc.name,
+      role: primaryRole,
+      roles: roleNames,
+      roleIds: userDoc.roleIds,
+      permissions,
       sessionId: sessionUser.sessionId,
     };
   };

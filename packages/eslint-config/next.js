@@ -59,3 +59,5 @@ export function nextConfig(tsconfigRootDir) {
     },
   ]);
 }
+
+export default nextConfig;

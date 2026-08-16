@@ -60,7 +60,7 @@ export async function registerAuthPlugin(
     slideThresholdMinutes,
   );
 
-  const authenticate = createAuthenticateMiddleware(sessionService, usersRepo);
+  const authenticate = createAuthenticateMiddleware(sessionService, usersRepo, rolesRepo);
   const checkPermission = createCheckPermissionMiddleware();
   const verifyCsrf = createVerifyCsrfMiddleware();
 

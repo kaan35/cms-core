@@ -8,10 +8,18 @@ export function registerPageRoutes(app: FastifyInstance, controller: PageControl
   const checkPermission = (permission: string) => (req: FastifyRequest, reply: FastifyReply) =>
     app.checkPermission(permission)(req, reply);
 
+  const optionalAuth = async (req: FastifyRequest, reply: FastifyReply) => {
+    try {
+      await app.authenticate(req, reply);
+    } catch {
+      // Unauthenticated / public visitor
+    }
+  };
+
   // 1. Public / Optional-auth routes
-  app.get("/pages/search", controller.search.bind(controller));
-  app.get("/pages", controller.list.bind(controller));
-  app.get("/pages/:slug", controller.getBySlug.bind(controller));
+  app.get("/pages/search", { preHandler: [optionalAuth] }, controller.search.bind(controller));
+  app.get("/pages", { preHandler: [optionalAuth] }, controller.list.bind(controller));
+  app.get("/pages/:slug", { preHandler: [optionalAuth] }, controller.getBySlug.bind(controller));
 
   // 2. Authenticated Admin routes
   app.post(

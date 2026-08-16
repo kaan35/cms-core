@@ -1,9 +1,48 @@
-node_modules
-dist
-.next
-.git
-.env
-.env.local
-.env.*.local
-*.log
-.tsbuildinfo
+# Version Control & IDEs
+**/.git
+**/.gitignore
+**/.gitattributes
+**/.github
+**/.vscode
+**/.idea
+**/.DS_Store
+*.swp
+*.swo
+
+# Dependencies (Root, packages, plugins, apps)
+**/node_modules
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+**/.pnpm-store
+
+# Build Artifacts & Caches
+**/dist
+**/.next
+**/.turbo
+**/.cache
+**/build
+**/out
+**/coverage
+**/*.tsbuildinfo
+**/.tsbuildinfo
+
+# Environment & Secret Files
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+
+# Logs & Temporary Files
+**/*.log
+**/logs
+**/.temp
+**/.tmp
+
+# Documentation, Assets & Media
+docs
+screenshots
+*.md
+!packages/**/README.md
+!plugins/**/README.md

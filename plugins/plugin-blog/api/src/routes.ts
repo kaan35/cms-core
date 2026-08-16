@@ -8,10 +8,18 @@ export function registerBlogRoutes(app: FastifyInstance, controller: BlogPostCon
   const checkPermission = (permission: string) => (req: FastifyRequest, reply: FastifyReply) =>
     app.checkPermission(permission)(req, reply);
 
+  const optionalAuth = async (req: FastifyRequest, reply: FastifyReply) => {
+    try {
+      await app.authenticate(req, reply);
+    } catch {
+      // Unauthenticated / public visitor
+    }
+  };
+
   // 1. Public / Optional-auth routes
-  app.get("/blog/search", controller.search.bind(controller));
-  app.get("/blog", controller.list.bind(controller));
-  app.get("/blog/:slug", controller.getBySlug.bind(controller));
+  app.get("/blog/search", { preHandler: [optionalAuth] }, controller.search.bind(controller));
+  app.get("/blog", { preHandler: [optionalAuth] }, controller.list.bind(controller));
+  app.get("/blog/:slug", { preHandler: [optionalAuth] }, controller.getBySlug.bind(controller));
 
   // 2. Authenticated Admin routes
   app.post(

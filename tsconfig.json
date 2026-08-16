@@ -4,8 +4,11 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/db" },
+    { "path": "packages/admin-shell" },
     { "path": "plugins/plugin-auth/api" },
+    { "path": "plugins/plugin-auth/admin" },
     { "path": "plugins/plugin-system/api" },
+    { "path": "plugins/plugin-system/admin" },
     { "path": "plugins/plugin-media/api" },
     { "path": "plugins/plugin-pages/api" },
     { "path": "plugins/plugin-blog/api" },

@@ -13,9 +13,12 @@ export class BlogPostController {
   }
 
   async list(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
+    const perms = request.user?.permissions || [];
     const canViewDraft = Boolean(
-      request.user?.permissions?.includes(BLOG_PERMISSIONS.READ_DRAFT) ||
-      request.user?.permissions?.includes(BLOG_PERMISSIONS.WRITE),
+      perms.includes("*") ||
+      perms.includes(BLOG_PERMISSIONS.READ_DRAFT) ||
+      perms.includes(BLOG_PERMISSIONS.WRITE) ||
+      perms.includes("blog:*"),
     );
     const result = await this.blogService.listBlogPosts(
       request.query as Record<string, unknown>,
@@ -30,21 +33,30 @@ export class BlogPostController {
       return reply.status(404).send({ error: "Blog post not found" });
     }
 
+    const perms = request.user?.permissions || [];
     const canViewDraft = Boolean(
-      request.user?.permissions?.includes(BLOG_PERMISSIONS.READ_DRAFT) ||
-      request.user?.permissions?.includes(BLOG_PERMISSIONS.WRITE),
+      perms.includes("*") ||
+      perms.includes(BLOG_PERMISSIONS.READ_DRAFT) ||
+      perms.includes(BLOG_PERMISSIONS.WRITE) ||
+      perms.includes("blog:*"),
     );
 
-    const post = await this.blogService.getBlogPostBySlug(slug, canViewDraft);
-    if (post) {
-      return reply.send(post);
+    let post = await this.blogService.getBlogPostBySlug(slug, canViewDraft);
+
+    if (!post) {
+      // Check if slug was redirected
+      const redirect = await this.redirectsService.findByFrom(slug);
+      if (redirect) {
+        // 301 Permanent Redirect
+        return reply.status(301).redirect(`/blog/${redirect.to}`);
+      }
+
+      // Fallback: check if param is an ID
+      post = await this.blogService.getBlogPostById(slug);
     }
 
-    // Check if slug was redirected
-    const redirect = await this.redirectsService.findByFrom(slug);
-    if (redirect) {
-      // 301 Permanent Redirect
-      return reply.status(301).redirect(`/blog/${redirect.to}`);
+    if (post) {
+      return reply.send(post);
     }
 
     return reply.status(404).send({ error: "Blog post not found" });

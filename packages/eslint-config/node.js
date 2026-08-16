@@ -48,3 +48,5 @@ export function nodeConfig(tsconfigRootDir) {
     },
   ]);
 }
+
+export default nodeConfig;

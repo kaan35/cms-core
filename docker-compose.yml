@@ -62,11 +62,6 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-      - /app/packages/core/node_modules
-      - /app/packages/db/node_modules
-      - /app/packages/eslint-config/node_modules
-      - /app/plugins/plugin-auth/api/node_modules
-      - /app/api/node_modules
     env_file:
       - ./api/.env
     environment:
@@ -79,6 +74,24 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+
+  admin:
+    container_name: ${PROJECT_NAME:-cms}-admin
+    build:
+      context: .
+      dockerfile: admin/Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_PORT:-3002}:3002"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - API_URL=http://api:3001
+      - PORT=3002
+      - HOSTNAME=0.0.0.0
+    depends_on:
+      - api
 
 volumes:
   mongo_data:

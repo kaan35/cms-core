@@ -65,11 +65,7 @@ export function registerAuthRoutes(
   );
 
   // Authenticated routes with CSRF verification on state changes
-  app.post(
-    "/auth/logout",
-    { preHandler: [authenticate, verifyCsrf] },
-    controller.logout.bind(controller),
-  );
+  app.post("/auth/logout", { preHandler: [authenticate] }, controller.logout.bind(controller));
 
   app.get("/auth/me", { preHandler: [authenticate] }, controller.me.bind(controller));
 
@@ -131,12 +127,36 @@ export function registerAuthRoutes(
     controller.listUsers.bind(controller),
   );
 
+  app.get(
+    "/users/:id",
+    {
+      preHandler: [authenticate, checkPermission(AUTH_PERMISSIONS.USERS_READ)],
+    },
+    controller.getUser.bind(controller),
+  );
+
   app.post(
     "/users",
     {
       preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.USERS_WRITE)],
     },
     controller.createUser.bind(controller),
+  );
+
+  app.put(
+    "/users/:id",
+    {
+      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.USERS_WRITE)],
+    },
+    controller.updateUser.bind(controller),
+  );
+
+  app.delete(
+    "/users/:id",
+    {
+      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.USERS_WRITE)],
+    },
+    controller.deleteUser.bind(controller),
   );
 
   // Roles management
@@ -148,11 +168,35 @@ export function registerAuthRoutes(
     controller.listRoles.bind(controller),
   );
 
+  app.get(
+    "/roles/:id",
+    {
+      preHandler: [authenticate, checkPermission(AUTH_PERMISSIONS.ROLES_READ)],
+    },
+    controller.getRole.bind(controller),
+  );
+
   app.post(
     "/roles",
     {
       preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.ROLES_WRITE)],
     },
     controller.createRole.bind(controller),
+  );
+
+  app.put(
+    "/roles/:id",
+    {
+      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.ROLES_WRITE)],
+    },
+    controller.updateRole.bind(controller),
+  );
+
+  app.delete(
+    "/roles/:id",
+    {
+      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.ROLES_WRITE)],
+    },
+    controller.deleteRole.bind(controller),
   );
 }

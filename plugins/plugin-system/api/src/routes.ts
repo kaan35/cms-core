@@ -90,4 +90,13 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
     },
     controller.listAuditLogs.bind(controller),
   );
+
+  // System Stats
+  app.get(
+    "/system/stats",
+    {
+      preHandler: [authenticate],
+    },
+    controller.getStats.bind(controller),
+  );
 }

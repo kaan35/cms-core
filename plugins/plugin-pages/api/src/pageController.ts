@@ -13,9 +13,12 @@ export class PageController {
   }
 
   async list(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
+    const perms = request.user?.permissions || [];
     const canViewDraft = Boolean(
-      request.user?.permissions?.includes(PAGES_PERMISSIONS.READ_DRAFT) ||
-      request.user?.permissions?.includes(PAGES_PERMISSIONS.WRITE),
+      perms.includes("*") ||
+      perms.includes(PAGES_PERMISSIONS.READ_DRAFT) ||
+      perms.includes(PAGES_PERMISSIONS.WRITE) ||
+      perms.includes("pages:*"),
     );
     const result = await this.pageService.listPages(
       request.query as Record<string, unknown>,
@@ -30,21 +33,30 @@ export class PageController {
       return reply.status(404).send({ error: "Page not found" });
     }
 
+    const perms = request.user?.permissions || [];
     const canViewDraft = Boolean(
-      request.user?.permissions?.includes(PAGES_PERMISSIONS.READ_DRAFT) ||
-      request.user?.permissions?.includes(PAGES_PERMISSIONS.WRITE),
+      perms.includes("*") ||
+      perms.includes(PAGES_PERMISSIONS.READ_DRAFT) ||
+      perms.includes(PAGES_PERMISSIONS.WRITE) ||
+      perms.includes("pages:*"),
     );
 
-    const page = await this.pageService.getPageBySlug(slug, canViewDraft);
-    if (page) {
-      return reply.send(page);
+    let page = await this.pageService.getPageBySlug(slug, canViewDraft);
+
+    if (!page) {
+      // Check if slug was redirected
+      const redirect = await this.redirectsService.findByFrom(slug);
+      if (redirect) {
+        // 301 Permanent Redirect
+        return reply.status(301).redirect(`/pages/${redirect.to}`);
+      }
+
+      // Fallback: check if param is an ID
+      page = await this.pageService.getPageById(slug);
     }
 
-    // Check if slug was redirected
-    const redirect = await this.redirectsService.findByFrom(slug);
-    if (redirect) {
-      // 301 Permanent Redirect
-      return reply.status(301).redirect(`/pages/${redirect.to}`);
+    if (page) {
+      return reply.send(page);
     }
 
     return reply.status(404).send({ error: "Page not found" });

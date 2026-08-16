@@ -68,25 +68,98 @@ export class SystemService {
   // ---------------------------------------------------------------------------
   // Brand Settings
   // ---------------------------------------------------------------------------
-  async getSettings(): Promise<{ brandColor: string; brandFont: string }> {
-    const brandColor = await this.settingsService.get<string>("system.brand.color", "#4f46e5");
+  // System & Brand Settings
+  // ---------------------------------------------------------------------------
+  async getSettings(): Promise<{
+    siteTitle: string;
+    siteDescription: string;
+    brandColor: string;
+    brandFont: string;
+    primaryColor: string;
+    fontFamily: string;
+    allowRegistration: boolean;
+    sessionTimeoutMinutes: number;
+  }> {
+    const siteTitle = await this.settingsService.get<string>("system.site.title", "CMS Core");
+    const siteDescription = await this.settingsService.get<string>(
+      "system.site.description",
+      "Headless CMS Engine",
+    );
+    const brandColor = await this.settingsService.get<string>("system.brand.color", "#3b82f6");
     const brandFont = await this.settingsService.get<string>("system.brand.font", "Inter");
-    return { brandColor, brandFont };
+    const allowRegistration = await this.settingsService.get<boolean>(
+      "auth.registrationEnabled",
+      true,
+    );
+    const sessionTimeoutMinutes = await this.settingsService.get<number>(
+      "system.session.timeoutMinutes",
+      60,
+    );
+
+    return {
+      siteTitle,
+      siteDescription,
+      brandColor,
+      brandFont,
+      primaryColor: brandColor,
+      fontFamily: brandFont,
+      allowRegistration,
+      sessionTimeoutMinutes,
+    };
   }
 
   async updateSettings(
-    patch: { brandColor?: string; brandFont?: string },
+    patch: {
+      siteTitle?: string | undefined;
+      siteDescription?: string | undefined;
+      brandColor?: string | undefined;
+      brandFont?: string | undefined;
+      primaryColor?: string | undefined;
+      fontFamily?: string | undefined;
+      allowRegistration?: boolean | undefined;
+      sessionTimeoutMinutes?: number | undefined;
+    },
     actorId?: string,
-  ): Promise<{ brandColor: string; brandFont: string }> {
-    if (patch.brandColor !== undefined) {
-      if (!validateHexColor(patch.brandColor)) {
-        throw new ValidationError("Invalid hex color format. Expected format: #fff or #ffffff");
-      }
-      await this.settingsService.set("system.brand.color", patch.brandColor.trim());
+  ): Promise<{
+    siteTitle: string;
+    siteDescription: string;
+    brandColor: string;
+    brandFont: string;
+    primaryColor: string;
+    fontFamily: string;
+    allowRegistration: boolean;
+    sessionTimeoutMinutes: number;
+  }> {
+    if (patch.siteTitle !== undefined) {
+      await this.settingsService.set("system.site.title", patch.siteTitle.trim());
     }
 
-    if (patch.brandFont !== undefined) {
-      await this.settingsService.set("system.brand.font", patch.brandFont.trim());
+    if (patch.siteDescription !== undefined) {
+      await this.settingsService.set("system.site.description", patch.siteDescription.trim());
+    }
+
+    const color = patch.brandColor ?? patch.primaryColor;
+    if (color !== undefined) {
+      if (!validateHexColor(color)) {
+        throw new ValidationError("Invalid hex color format. Expected format: #fff or #ffffff");
+      }
+      await this.settingsService.set("system.brand.color", color.trim());
+    }
+
+    const font = patch.brandFont ?? patch.fontFamily;
+    if (font !== undefined) {
+      await this.settingsService.set("system.brand.font", font.trim());
+    }
+
+    if (patch.allowRegistration !== undefined) {
+      await this.settingsService.set("auth.registrationEnabled", Boolean(patch.allowRegistration));
+    }
+
+    if (patch.sessionTimeoutMinutes !== undefined) {
+      await this.settingsService.set(
+        "system.session.timeoutMinutes",
+        Number(patch.sessionTimeoutMinutes),
+      );
     }
 
     const current = await this.getSettings();
@@ -234,5 +307,46 @@ export class SystemService {
         }
       });
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // System Stats
+  // ---------------------------------------------------------------------------
+  async getStats(): Promise<{
+    pagesCount: number;
+    postsCount: number;
+    formsCount: number;
+    usersCount: number;
+    pluginsCount: number;
+    totalPlugins: number;
+  }> {
+    const [pagesCount, postsCount, formsCount, usersCount, plugins] = await Promise.all([
+      this.db
+        .collection("cms_pages")
+        .countDocuments()
+        .catch(() => 0),
+      this.db
+        .collection("cms_posts")
+        .countDocuments()
+        .catch(() => 0),
+      this.db
+        .collection("cms_forms")
+        .countDocuments()
+        .catch(() => 0),
+      this.db
+        .collection("cms_users")
+        .countDocuments()
+        .catch(() => 0),
+      this.listPlugins().catch(() => []),
+    ]);
+
+    return {
+      pagesCount,
+      postsCount,
+      formsCount,
+      usersCount,
+      pluginsCount: plugins.filter((p) => p.enabled).length,
+      totalPlugins: plugins.length,
+    };
   }
 }

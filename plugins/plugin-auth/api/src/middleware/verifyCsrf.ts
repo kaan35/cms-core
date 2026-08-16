@@ -8,8 +8,9 @@ export function createVerifyCsrfMiddleware() {
       return;
     }
 
-    const cookieCsrf = request.cookies["csrfToken"];
-    const headerCsrf = request.headers["x-csrf-token"];
+    const cookieCsrf =
+      request.cookies["csrfToken"] || request.cookies["csrf_token"] || request.cookies["_csrf"];
+    const headerCsrf = request.headers["x-csrf-token"] || request.headers["x-xsrf-token"];
 
     if (!cookieCsrf || !headerCsrf || typeof headerCsrf !== "string" || cookieCsrf !== headerCsrf) {
       throw new ForbiddenError("Invalid or missing CSRF token");

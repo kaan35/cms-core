@@ -148,7 +148,9 @@ export class AuthController {
   }
 
   async me(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    return reply.send({ user: request.user });
+    const sessionCsrf =
+      request.cookies["csrfToken"] || request.cookies["csrf_token"] || request.cookies["_csrf"];
+    return reply.send({ user: request.user, csrfToken: sessionCsrf });
   }
 
   // ---------------------------------------------------------------------------
@@ -212,10 +214,67 @@ export class AuthController {
     const body = request.body as Record<string, unknown> | undefined;
     const email = typeof body?.["email"] === "string" ? body["email"] : "";
     const password = typeof body?.["password"] === "string" ? body["password"] : "";
-    const roleIds = Array.isArray(body?.["roleIds"]) ? (body["roleIds"] as string[]) : [];
+    const name = typeof body?.["name"] === "string" ? body["name"] : undefined;
+    const role = typeof body?.["role"] === "string" ? body["role"] : undefined;
+    const roleIds = Array.isArray(body?.["roleIds"])
+      ? (body["roleIds"] as string[])
+      : role
+        ? []
+        : [];
+    const permissions = Array.isArray(body?.["permissions"])
+      ? (body["permissions"] as string[])
+      : undefined;
 
-    const user = await this.authService.createUser(email, password, roleIds);
+    let finalRoleIds = roleIds;
+    if (role && finalRoleIds.length === 0) {
+      const allRoles = await this.authService.listRoles();
+      const matched = allRoles.find((r) => r.name === role);
+      if (matched) finalRoleIds = [matched.id];
+    }
+
+    const user = await this.authService.createUser(
+      email,
+      password,
+      finalRoleIds,
+      name,
+      permissions,
+    );
     return reply.status(201).send({ user });
+  }
+
+  async getUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = (request.params as { id?: string }) ?? {};
+    const user = await this.authService.getUser(id ?? "");
+    return reply.send({ user });
+  }
+
+  async updateUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = (request.params as { id?: string }) ?? {};
+    const body = request.body as Record<string, unknown> | undefined;
+    const email = typeof body?.["email"] === "string" ? body["email"] : undefined;
+    const name = typeof body?.["name"] === "string" ? body["name"] : undefined;
+    const role = typeof body?.["role"] === "string" ? body["role"] : undefined;
+    const roleIds = Array.isArray(body?.["roleIds"]) ? (body["roleIds"] as string[]) : undefined;
+    const permissions = Array.isArray(body?.["permissions"])
+      ? (body["permissions"] as string[])
+      : undefined;
+    const password = typeof body?.["password"] === "string" ? body["password"] : undefined;
+
+    const user = await this.authService.updateUser(id ?? "", {
+      email,
+      name,
+      role,
+      roleIds,
+      permissions,
+      password,
+    });
+    return reply.send({ user });
+  }
+
+  async deleteUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = (request.params as { id?: string }) ?? {};
+    await this.authService.deleteUser(id ?? "");
+    return reply.status(204).send();
   }
 
   async listRoles(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -223,14 +282,40 @@ export class AuthController {
     return reply.send({ roles });
   }
 
+  async getRole(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = (request.params as { id?: string }) ?? {};
+    const role = await this.authService.getRole(id ?? "");
+    return reply.send({ role });
+  }
+
   async createRole(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const body = request.body as Record<string, unknown> | undefined;
     const name = typeof body?.["name"] === "string" ? body["name"] : "";
+    const description = typeof body?.["description"] === "string" ? body["description"] : undefined;
     const permissions = Array.isArray(body?.["permissions"])
       ? (body["permissions"] as string[])
       : [];
 
-    const role = await this.authService.createRole(name, permissions);
+    const role = await this.authService.createRole(name, permissions, description);
     return reply.status(201).send({ role });
+  }
+
+  async updateRole(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = (request.params as { id?: string }) ?? {};
+    const body = request.body as Record<string, unknown> | undefined;
+    const name = typeof body?.["name"] === "string" ? body["name"] : undefined;
+    const description = typeof body?.["description"] === "string" ? body["description"] : undefined;
+    const permissions = Array.isArray(body?.["permissions"])
+      ? (body["permissions"] as string[])
+      : undefined;
+
+    const role = await this.authService.updateRole(id ?? "", { name, description, permissions });
+    return reply.send({ role });
+  }
+
+  async deleteRole(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { id } = (request.params as { id?: string }) ?? {};
+    await this.authService.deleteRole(id ?? "");
+    return reply.status(204).send();
   }
 }

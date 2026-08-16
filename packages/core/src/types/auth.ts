@@ -5,6 +5,10 @@ export interface AuthUser {
   email: string;
   permissions: string[];
   sessionId: string;
+  name?: string | undefined;
+  role?: string | undefined;
+  roles?: string[] | undefined;
+  roleIds?: string[] | undefined;
 }
 
 declare module "fastify" {
