@@ -35,4 +35,6 @@ export * from "./hooks/useApi";
 export * from "./hooks/useAuth";
 export * from "./lib/api-client";
 export * from "./lib/csrf";
+export * from "./lib/format";
+export * from "./lib/string";
 export * from "./lib/utils";

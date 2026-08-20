@@ -165,9 +165,14 @@ export function SessionsList() {
             <Skeleton className="h-8 w-full" />
           </div>
         ) : sessions.length === 0 ? (
-          <div className="p-8 text-center">
-            <Key className="size-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-            <p className="text-xs font-medium text-foreground">No active sessions</p>
+          <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
+              <Key className="size-6 opacity-80" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">No active sessions</h3>
+            <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+              No authenticated device sessions were found for your account.
+            </p>
           </div>
         ) : (
           <Table>
@@ -277,8 +282,11 @@ export function SessionsList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSessionToRevoke(null)}>
-              <X />
+            <AlertDialogCancel
+              className="h-8 text-xs gap-1.5"
+              onClick={() => setSessionToRevoke(null)}
+            >
+              <X className="size-3.5" />
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -307,8 +315,11 @@ export function SessionsList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setRevokeAllModalOpen(false)}>
-              <X />
+            <AlertDialogCancel
+              className="h-8 text-xs gap-1.5"
+              onClick={() => setRevokeAllModalOpen(false)}
+            >
+              <X className="size-3.5" />
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

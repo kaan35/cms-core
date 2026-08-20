@@ -51,6 +51,7 @@ export function DashboardHomePage() {
   const isPagesEnabled = !disabledPlugins.has("plugin-pages");
   const isBlogEnabled = !disabledPlugins.has("plugin-blog");
   const isFormsEnabled = !disabledPlugins.has("plugin-forms");
+  const isMediaEnabled = !disabledPlugins.has("plugin-media");
   const isAuthEnabled = !disabledPlugins.has("plugin-auth");
 
   const pagesCount = statsData?.pagesCount ?? 0;
@@ -102,7 +103,7 @@ export function DashboardHomePage() {
       {/* Grid: Quick Actions & Management Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions (2 Columns) */}
-        <div className="lg:col-span-2 rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
+        <div className="lg:col-span-2 rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
@@ -115,7 +116,7 @@ export function DashboardHomePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {isPagesEnabled && (
               <Link
                 href="/dashboard/pages/new"
@@ -156,6 +157,26 @@ export function DashboardHomePage() {
               </Link>
             )}
 
+            {isFormsEnabled && (
+              <Link
+                href="/dashboard/forms/new"
+                className="flex flex-col justify-between p-4 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="size-8 flex items-center justify-center rounded-lg bg-purple-500/10 text-purple-500 border border-purple-500/20 group-hover:scale-105 transition-transform">
+                    <ClipboardList className="size-4" />
+                  </div>
+                  <Plus className="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-foreground">New Form</div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Create lead capture or contact form
+                  </p>
+                </div>
+              </Link>
+            )}
+
             {isAuthEnabled && (
               <>
                 <Link
@@ -163,7 +184,7 @@ export function DashboardHomePage() {
                   className="flex flex-col justify-between p-4 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <div className="size-8 flex items-center justify-center rounded-lg bg-purple-500/10 text-purple-500 border border-purple-500/20 group-hover:scale-105 transition-transform">
+                    <div className="size-8 flex items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 group-hover:scale-105 transition-transform">
                       <UserPlus className="size-4" />
                     </div>
                     <Plus className="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -199,7 +220,7 @@ export function DashboardHomePage() {
         </div>
 
         {/* Content & Management Shortcuts (1 Column) */}
-        <div className="rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
+        <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Shortcuts</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Quick navigation to key modules</p>
@@ -209,7 +230,7 @@ export function DashboardHomePage() {
             {isPagesEnabled && (
               <Link
                 href="/dashboard/pages"
-                className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
+                className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
               >
                 <div className="flex items-center gap-2.5">
                   <FileText className="size-4 text-blue-500" />
@@ -222,7 +243,7 @@ export function DashboardHomePage() {
             {isBlogEnabled && (
               <Link
                 href="/dashboard/blog"
-                className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
+                className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
               >
                 <div className="flex items-center gap-2.5">
                   <BookOpen className="size-4 text-teal-500" />
@@ -235,7 +256,7 @@ export function DashboardHomePage() {
             {isFormsEnabled && (
               <Link
                 href="/dashboard/forms"
-                className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
+                className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
               >
                 <div className="flex items-center gap-2.5">
                   <ClipboardList className="size-4 text-purple-500" />
@@ -245,9 +266,22 @@ export function DashboardHomePage() {
               </Link>
             )}
 
+            {isMediaEnabled && (
+              <Link
+                href="/dashboard/media"
+                className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Plug className="size-4 text-amber-500" />
+                  <span className="text-xs font-medium text-foreground">Media Library</span>
+                </div>
+                <ArrowRight className="size-3.5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+              </Link>
+            )}
+
             <Link
               href="/dashboard/settings"
-              className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
+              className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
             >
               <div className="flex items-center gap-2.5">
                 <Settings className="size-4 text-muted-foreground" />

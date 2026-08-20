@@ -1,4 +1,11 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  CreateBucketCommand,
+  DeleteObjectCommand,
+  HeadBucketCommand,
+  PutBucketPolicyCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 
 export interface StorageUploadResult {
   key: string;
@@ -28,6 +35,7 @@ export class S3StorageAdapter implements IStorageAdapter {
   private readonly endpoint: string;
   private readonly region: string;
   private readonly publicUrl: string | undefined;
+  private bucketChecked = false;
 
   constructor(config: S3StorageConfig, s3Client?: S3Client) {
     this.bucket = config.bucket;
@@ -56,11 +64,46 @@ export class S3StorageAdapter implements IStorageAdapter {
     }
   }
 
+  async ensureBucketExists(): Promise<void> {
+    if (this.bucketChecked) return;
+    try {
+      await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      this.bucketChecked = true;
+    } catch {
+      try {
+        await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }));
+        const policy = {
+          Version: "2012-10-17",
+          Statement: [
+            {
+              Sid: "PublicReadGetObject",
+              Effect: "Allow",
+              Principal: "*",
+              Action: ["s3:GetObject"],
+              Resource: [`arn:aws:s3:::${this.bucket}/*`],
+            },
+          ],
+        };
+        await this.client.send(
+          new PutBucketPolicyCommand({
+            Bucket: this.bucket,
+            Policy: JSON.stringify(policy),
+          }),
+        );
+      } catch {
+        // Continue even if bucket creation or policy set fails
+      }
+      this.bucketChecked = true;
+    }
+  }
+
   async upload(
     key: string,
     body: Buffer | Uint8Array,
     mimeType: string,
   ): Promise<StorageUploadResult> {
+    await this.ensureBucketExists();
+
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,

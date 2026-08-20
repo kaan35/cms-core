@@ -1,10 +1,13 @@
 "use client";
 
-import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Lock, Pencil, RefreshCw, Shield, ShieldPlus, Trash2 } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   apiClient,
   Badge,
   Button,
@@ -15,16 +18,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
   toast,
   useApi,
 } from "@cms/admin-shell";
+import { Lock, Pencil, RefreshCw, Shield, ShieldPlus, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import * as React from "react";
 
 interface RoleItem {
   id: string;
@@ -38,8 +38,13 @@ export function RoleList() {
   const router = useRouter();
 
   // Deletion alert dialog state
-  const [deleteTarget, setDeleteTarget] = React.useState<RoleItem | null>(null);
-  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [deleteModal, setDeleteModal] = React.useState<{
+    target: RoleItem | null;
+    isDeleting: boolean;
+  }>({
+    target: null,
+    isDeleting: false,
+  });
 
   const {
     data: rawData,
@@ -59,18 +64,17 @@ export function RoleList() {
           : [];
 
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
+    if (!deleteModal.target) return;
+    setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
     try {
-      await apiClient(`/api/roles/${deleteTarget.id}`, { method: "DELETE" });
+      await apiClient(`/api/roles/${deleteModal.target.id}`, { method: "DELETE" });
       toast.success("Role deleted successfully!");
-      setDeleteTarget(null);
+      setDeleteModal({ target: null, isDeleting: false });
       mutate();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to delete role";
       toast.error(msg);
-    } finally {
-      setIsDeleting(false);
+      setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
     }
   };
 
@@ -117,9 +121,14 @@ export function RoleList() {
             <Skeleton className="h-8 w-full" />
           </div>
         ) : roles.length === 0 ? (
-          <div className="p-8 text-center">
-            <Shield className="size-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-            <p className="text-xs font-medium text-foreground">No roles configured</p>
+          <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
+              <Shield className="size-6 opacity-80" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">No roles configured</h3>
+            <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+              Create and manage customized access control roles and permissions.
+            </p>
           </div>
         ) : (
           <Table>
@@ -171,7 +180,7 @@ export function RoleList() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => setDeleteTarget(r)}
+                          onClick={() => setDeleteModal({ target: r, isDeleting: false })}
                           title="Delete Role"
                           className="hover:text-destructive"
                         >
@@ -188,7 +197,10 @@ export function RoleList() {
       </div>
 
       {/* Custom Shadcn Delete Alert Dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={Boolean(deleteModal.target)}
+        onOpenChange={(open) => !open && setDeleteModal({ target: null, isDeleting: false })}
+      >
         <AlertDialogContent className="max-w-md p-5 rounded-2xl bg-card border-border/80 shadow-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-sm font-semibold text-foreground">
@@ -196,23 +208,26 @@ export function RoleList() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
               Are you sure you want to delete role template{" "}
-              <strong className="text-foreground font-semibold">"{deleteTarget?.name}"</strong>?
-              Users currently assigned to this template will have their permissions decoupled.
+              <strong className="text-foreground font-semibold">
+                "{deleteModal.target?.name}"
+              </strong>
+              ? Users currently assigned to this template will have their permissions decoupled.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 pt-3">
-            <AlertDialogCancel className="h-8 text-xs" disabled={isDeleting}>
+            <AlertDialogCancel className="h-8 text-xs gap-1.5" disabled={deleteModal.isDeleting}>
+              <X className="size-3.5" />
               Cancel
             </AlertDialogCancel>
             <Button
               variant="destructive"
               size="sm"
-              className="h-8 text-xs gap-1.5"
+              className="h-8 text-xs font-semibold gap-1.5"
               onClick={handleConfirmDelete}
-              disabled={isDeleting}
+              loading={deleteModal.isDeleting}
+              iconStart={<Trash2 className="size-3.5" />}
             >
-              <Trash2 className="size-3.5" />
-              <span>{isDeleting ? "Deleting..." : "Delete Role"}</span>
+              {deleteModal.isDeleting ? "Deleting..." : "Delete Role"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

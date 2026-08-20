@@ -46,9 +46,9 @@ describe("S3StorageAdapter", () => {
     assert.equal(result.key, "uuid-photo.png");
     assert.equal(result.size, buffer.length);
     assert.equal(result.url, "http://localhost:9000/cms-media/uuid-photo.png");
-    assert.equal(sentCommands.length, 1);
+    assert.equal(sentCommands.length, 2); // HeadBucketCommand + PutObjectCommand
 
     await adapter.delete("uuid-photo.png");
-    assert.equal(sentCommands.length, 2);
+    assert.equal(sentCommands.length, 3); // + DeleteObjectCommand
   });
 });

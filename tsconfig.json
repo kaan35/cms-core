@@ -10,8 +10,12 @@
     { "path": "plugins/plugin-system/api" },
     { "path": "plugins/plugin-system/admin" },
     { "path": "plugins/plugin-media/api" },
+    { "path": "plugins/plugin-media/admin" },
     { "path": "plugins/plugin-pages/api" },
+    { "path": "plugins/plugin-pages/admin" },
     { "path": "plugins/plugin-blog/api" },
-    { "path": "plugins/plugin-forms/api" }
+    { "path": "plugins/plugin-blog/admin" },
+    { "path": "plugins/plugin-forms/api" },
+    { "path": "plugins/plugin-forms/admin" }
   ]
 }

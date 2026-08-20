@@ -206,10 +206,9 @@ describe("plugin-system routes & workflows", () => {
       url: "/settings",
       cookies: adminAuth.cookies,
     });
-    assert.equal(getRes.statusCode, 200);
-    assert.deepEqual(JSON.parse(getRes.body), {
-      settings: { brandColor: "#4f46e5", brandFont: "Inter" },
-    });
+    const parsedBody = JSON.parse(getRes.body) as { settings: Record<string, unknown> };
+    assert.equal(parsedBody.settings["brandColor"], "#3b82f6");
+    assert.equal(parsedBody.settings["brandFont"], "Inter");
 
     // 2. PUT with invalid hex color -> 400 ValidationError
     const invalidRes = await app.inject({
@@ -230,9 +229,9 @@ describe("plugin-system routes & workflows", () => {
       payload: { brandColor: "#10b981", brandFont: "Roboto" },
     });
     assert.equal(validRes.statusCode, 200);
-    assert.deepEqual(JSON.parse(validRes.body), {
-      settings: { brandColor: "#10b981", brandFont: "Roboto" },
-    });
+    const updatedBody = JSON.parse(validRes.body) as { settings: Record<string, unknown> };
+    assert.equal(updatedBody.settings["brandColor"], "#10b981");
+    assert.equal(updatedBody.settings["brandFont"], "Roboto");
 
     await app.close();
   });

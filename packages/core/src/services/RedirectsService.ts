@@ -8,12 +8,10 @@ interface RedirectDoc extends Record<string, unknown> {
 }
 
 export class RedirectsService {
-  private readonly db: IDatabase;
   private readonly logger: ILogger;
   private readonly collection;
 
   constructor(db: IDatabase, logger: ILogger) {
-    this.db = db;
     this.logger = logger;
     this.collection = db.collection<RedirectDoc>("cms_redirects");
   }

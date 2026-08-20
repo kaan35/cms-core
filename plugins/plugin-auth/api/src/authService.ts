@@ -150,7 +150,12 @@ export class AuthService {
     }
     const roleIds = [adminRole.id];
     const passwordHash = await hashPassword(passwordRaw, this.saltRounds);
-    const user = await this.usersRepo.create({ email, passwordHash, roleIds });
+    const user = await this.usersRepo.create({
+      email,
+      passwordHash,
+      roleIds,
+      permissions: ["*"],
+    });
 
     await this.settingsService.set("auth.setupCompleted", true);
     await this.hooks.emit("user.created", { userId: user.id, email: user.email });

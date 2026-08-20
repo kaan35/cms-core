@@ -64,6 +64,8 @@ export async function apiClient<T = unknown>(
 
   if (body instanceof FormData) {
     config.body = body;
+  } else if (typeof body === "string") {
+    config.body = body;
   } else if (body !== undefined) {
     config.body = JSON.stringify(body);
   }

@@ -1,22 +1,22 @@
 "use client";
 
-import * as React from "react";
-import { Save, Globe, Palette, Shield } from "lucide-react";
 import {
+  apiClient,
   Button,
   Input,
   Label,
-  Switch,
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
+  Switch,
   toast,
   useApi,
-  apiClient,
 } from "@cms/admin-shell";
+import { Globe, Palette, Save, Shield } from "lucide-react";
+import * as React from "react";
 
 interface SystemSettingsData {
   siteTitle?: string;
@@ -95,29 +95,29 @@ export function SettingsEditor() {
   }
 
   return (
-    <form onSubmit={handleSave} className="space-y-6 max-w-4xl pb-16">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <form onSubmit={handleSave} className="space-y-6 w-full pb-16">
+      {/* Subheader / Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">System Settings</h1>
+          <h2 className="text-sm font-semibold text-foreground">Global Parameters & Policies</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Configure global CMS parameters, branding and security policies
+            Adjust system metadata, color branding, and registration rules
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             type="submit"
             loading={formState.isSubmitting}
-            iconStart={<Save />}
-            className="text-xs h-8"
+            iconStart={<Save className="size-3.5" />}
+            className="h-8 text-xs font-semibold gap-1.5 shadow-sm"
           >
-            Save Settings
+            {formState.isSubmitting ? "Saving..." : "Save Settings"}
           </Button>
         </div>
       </div>
 
       {/* Card 1: General Info */}
-      <div className="rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
+      <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-5">
         <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
           <Globe className="size-4 text-primary" />
           <div>
@@ -126,7 +126,7 @@ export function SettingsEditor() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="space-y-1.5">
             <Label htmlFor="siteTitle" className="text-xs">
               Site Title
@@ -135,7 +135,6 @@ export function SettingsEditor() {
               id="siteTitle"
               value={inputData.siteTitle}
               onChange={(e) => setInputData((prev) => ({ ...prev, siteTitle: e.target.value }))}
-              className="text-xs"
               required
             />
           </div>
@@ -150,14 +149,13 @@ export function SettingsEditor() {
               onChange={(e) =>
                 setInputData((prev) => ({ ...prev, siteDescription: e.target.value }))
               }
-              className="text-xs"
             />
           </div>
         </div>
       </div>
 
       {/* Card 2: Branding & Appearance */}
-      <div className="rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
+      <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-5">
         <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
           <Palette className="size-4 text-primary" />
           <div>
@@ -166,7 +164,7 @@ export function SettingsEditor() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="space-y-1.5">
             <Label htmlFor="primaryColor" className="text-xs">
               Brand Primary Accent
@@ -178,7 +176,7 @@ export function SettingsEditor() {
                 onChange={(e) =>
                   setInputData((prev) => ({ ...prev, primaryColor: e.target.value }))
                 }
-                className="size-8 rounded-lg border border-border cursor-pointer bg-transparent"
+                className="size-9 rounded-lg border border-border cursor-pointer bg-transparent"
               />
               <Input
                 id="primaryColor"
@@ -186,7 +184,7 @@ export function SettingsEditor() {
                 onChange={(e) =>
                   setInputData((prev) => ({ ...prev, primaryColor: e.target.value }))
                 }
-                className="text-xs font-mono"
+                className="font-mono text-xs"
               />
             </div>
           </div>
@@ -201,7 +199,7 @@ export function SettingsEditor() {
                 if (val) setInputData((prev) => ({ ...prev, fontFamily: val }));
               }}
             >
-              <SelectTrigger id="fontFamily" className="text-xs">
+              <SelectTrigger id="fontFamily">
                 <SelectValue placeholder="Select a font" />
               </SelectTrigger>
               <SelectContent>
@@ -216,7 +214,7 @@ export function SettingsEditor() {
       </div>
 
       {/* Card 3: Security & Access */}
-      <div className="rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
+      <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-5">
         <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
           <Shield className="size-4 text-primary" />
           <div>
@@ -227,8 +225,8 @@ export function SettingsEditor() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-muted/20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/60 bg-muted/20">
             <div>
               <Label className="text-xs font-medium">Allow Self Registration</Label>
               <p className="text-[11px] text-muted-foreground mt-0.5">Let new users sign up</p>
@@ -254,7 +252,6 @@ export function SettingsEditor() {
               onChange={(e) =>
                 setInputData((prev) => ({ ...prev, sessionTimeoutMinutes: Number(e.target.value) }))
               }
-              className="text-xs"
             />
           </div>
         </div>

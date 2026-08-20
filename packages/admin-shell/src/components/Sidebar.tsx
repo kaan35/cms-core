@@ -5,6 +5,7 @@ import {
   ClipboardList,
   FileText,
   Flame,
+  Image as ImageIcon,
   LayoutDashboard,
   Plug,
   Settings,
@@ -40,6 +41,12 @@ export const defaultNavSections: NavSection[] = [
     items: [
       { name: "Pages", href: "/dashboard/pages", icon: FileText, pluginId: "plugin-pages" },
       { name: "Blog Posts", href: "/dashboard/blog", icon: BookOpen, pluginId: "plugin-blog" },
+      {
+        name: "Media Library",
+        href: "/dashboard/media",
+        icon: ImageIcon,
+        pluginId: "plugin-media",
+      },
       {
         name: "Forms & Submissions",
         href: "/dashboard/forms",

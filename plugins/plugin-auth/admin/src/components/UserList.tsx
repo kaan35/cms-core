@@ -1,10 +1,13 @@
 "use client";
 
-import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Pencil, RefreshCw, Search, Trash2, UserPlus, Users } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   apiClient,
   Badge,
   Button,
@@ -16,16 +19,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
   toast,
   useApi,
 } from "@cms/admin-shell";
+import { Pencil, RefreshCw, Search, Trash2, UserPlus, Users, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import * as React from "react";
 
 interface UserItem {
   id: string;
@@ -41,8 +41,13 @@ export function UserList() {
   const [search, setSearch] = React.useState("");
 
   // Deletion modal state
-  const [deleteTarget, setDeleteTarget] = React.useState<UserItem | null>(null);
-  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [deleteModal, setDeleteModal] = React.useState<{
+    target: UserItem | null;
+    isDeleting: boolean;
+  }>({
+    target: null,
+    isDeleting: false,
+  });
 
   const {
     data: rawData,
@@ -68,18 +73,17 @@ export function UserList() {
   );
 
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
+    if (!deleteModal.target) return;
+    setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
     try {
-      await apiClient(`/api/users/${deleteTarget.id}`, { method: "DELETE" });
+      await apiClient(`/api/users/${deleteModal.target.id}`, { method: "DELETE" });
       toast.success("User deleted successfully!");
-      setDeleteTarget(null);
+      setDeleteModal({ target: null, isDeleting: false });
       mutate();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to delete user";
       toast.error(msg);
-    } finally {
-      setIsDeleting(false);
+      setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
     }
   };
 
@@ -135,11 +139,15 @@ export function UserList() {
             <Skeleton className="h-8 w-full" />
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="p-8 text-center">
-            <Users className="size-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-            <p className="text-xs font-medium text-foreground">No users found</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {search ? "Try adjusting your search criteria" : "Get started by adding a user"}
+          <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
+              <Users className="size-6 opacity-80" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">No users found</h3>
+            <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+              {search
+                ? "No users matched your search criteria."
+                : "Get started by creating your first administrative user account."}
             </p>
           </div>
         ) : (
@@ -185,7 +193,7 @@ export function UserList() {
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        onClick={() => setDeleteTarget(u)}
+                        onClick={() => setDeleteModal({ target: u, isDeleting: false })}
                         title="Delete User"
                         className="hover:text-destructive"
                       >
@@ -201,7 +209,10 @@ export function UserList() {
       </div>
 
       {/* Custom Shadcn Delete Alert Dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={Boolean(deleteModal.target)}
+        onOpenChange={(open) => !open && setDeleteModal({ target: null, isDeleting: false })}
+      >
         <AlertDialogContent className="max-w-md p-5 rounded-2xl bg-card border-border/80 shadow-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-sm font-semibold text-foreground">
@@ -209,23 +220,28 @@ export function UserList() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
               Are you sure you want to delete user{" "}
-              <strong className="text-foreground font-semibold">{deleteTarget?.email}</strong>? This
-              action is permanent and will revoke all associated sessions and permissions.
+              <strong className="text-foreground font-semibold">
+                {deleteModal.target?.name
+                  ? `${deleteModal.target.name} (${deleteModal.target.email})`
+                  : deleteModal.target?.email}
+              </strong>
+              ? This action is permanent and will revoke all associated sessions and permissions.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 pt-3">
-            <AlertDialogCancel className="h-8 text-xs" disabled={isDeleting}>
+            <AlertDialogCancel className="h-8 text-xs gap-1.5" disabled={deleteModal.isDeleting}>
+              <X className="size-3.5" />
               Cancel
             </AlertDialogCancel>
             <Button
               variant="destructive"
               size="sm"
-              className="h-8 text-xs gap-1.5"
+              className="h-8 text-xs font-semibold gap-1.5"
               onClick={handleConfirmDelete}
-              disabled={isDeleting}
+              loading={deleteModal.isDeleting}
+              iconStart={<Trash2 className="size-3.5" />}
             >
-              <Trash2 className="size-3.5" />
-              <span>{isDeleting ? "Deleting..." : "Delete User"}</span>
+              {deleteModal.isDeleting ? "Deleting..." : "Delete User"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

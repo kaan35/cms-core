@@ -32,6 +32,7 @@ export function nextConfig(tsconfigRootDir) {
         },
         parserOptions: {
           tsconfigRootDir,
+          jsxPragma: null,
           ecmaFeatures: {
             jsx: true,
           },

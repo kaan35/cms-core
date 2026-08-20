@@ -64,9 +64,6 @@ services:
       - /app/node_modules
     env_file:
       - ./api/.env
-    environment:
-      - MONGO_URI=mongodb://mongo:27017/${MONGO_DB_NAME:-cms_dev}
-      - REDIS_URL=redis://redis:6379
     depends_on:
       mongo:
         condition: service_healthy

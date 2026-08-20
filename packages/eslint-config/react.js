@@ -25,6 +25,7 @@ export function reactConfig(tsconfigRootDir) {
         },
         parserOptions: {
           tsconfigRootDir,
+          jsxPragma: null,
           ecmaFeatures: {
             jsx: true,
           },

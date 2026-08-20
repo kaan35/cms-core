@@ -1,22 +1,21 @@
 "use client";
 
-import * as React from "react";
-import { RefreshCw } from "lucide-react";
 import {
-  Button,
+  apiClient,
   Badge,
+  Button,
+  Skeleton,
   Switch,
   Table,
-  TableHeader,
   TableBody,
-  TableRow,
-  TableHead,
   TableCell,
-  Skeleton,
+  TableHead,
+  TableHeader,
+  TableRow,
   toast,
   useApi,
-  apiClient,
 } from "@cms/admin-shell";
+import { RefreshCw } from "lucide-react";
 
 interface FeatureFlag {
   key: string;

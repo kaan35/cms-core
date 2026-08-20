@@ -6,11 +6,16 @@
     "dev": "next dev -p 3002",
     "build": "next build",
     "start": "next start",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint"
   },
   "dependencies": {
     "@cms/admin-shell": "*",
     "@cms/plugin-auth-admin": "*",
+    "@cms/plugin-blog-admin": "*",
+    "@cms/plugin-forms-admin": "*",
+    "@cms/plugin-media-admin": "*",
+    "@cms/plugin-pages-admin": "*",
     "@cms/plugin-system-admin": "*",
     "lucide-react": "^1",
     "next": "^16",

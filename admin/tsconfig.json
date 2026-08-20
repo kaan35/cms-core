@@ -2,7 +2,14 @@
   "extends": "@cms/tsconfig/next.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@cms/admin-shell": ["../packages/admin-shell/src/index.ts"],
+      "@cms/plugin-auth-admin": ["../plugins/plugin-auth/admin/src/index.ts"],
+      "@cms/plugin-blog-admin": ["../plugins/plugin-blog/admin/src/index.ts"],
+      "@cms/plugin-forms-admin": ["../plugins/plugin-forms/admin/src/index.ts"],
+      "@cms/plugin-media-admin": ["../plugins/plugin-media/admin/src/index.ts"],
+      "@cms/plugin-pages-admin": ["../plugins/plugin-pages/admin/src/index.ts"],
+      "@cms/plugin-system-admin": ["../plugins/plugin-system/admin/src/index.ts"]
     }
   },
   "include": [

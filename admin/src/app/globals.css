@@ -3,6 +3,10 @@
 @source "../../../packages/admin-shell/src";
 @source "../../../plugins/plugin-auth/admin/src";
 @source "../../../plugins/plugin-system/admin/src";
+@source "../../../plugins/plugin-media/admin/src";
+@source "../../../plugins/plugin-pages/admin/src";
+@source "../../../plugins/plugin-blog/admin/src";
+@source "../../../plugins/plugin-forms/admin/src";
 @source "..";
 
 @custom-variant dark (&:is(.dark *));

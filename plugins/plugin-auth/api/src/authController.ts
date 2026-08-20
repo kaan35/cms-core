@@ -1,5 +1,6 @@
 import { parsePaginationQuery, ValidationError } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import crypto from "node:crypto";
 import type { AuthService } from "./authService.js";
 
 export class AuthController {
@@ -148,8 +149,19 @@ export class AuthController {
   }
 
   async me(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const sessionCsrf =
+    let sessionCsrf =
       request.cookies["csrfToken"] || request.cookies["csrf_token"] || request.cookies["_csrf"];
+
+    if (!sessionCsrf) {
+      sessionCsrf = crypto.randomBytes(32).toString("hex");
+      reply.setCookie("csrfToken", sessionCsrf, {
+        httpOnly: false,
+        secure: this.cookieSecure,
+        sameSite: this.cookieSameSite,
+        path: "/",
+      });
+    }
+
     return reply.send({ user: request.user, csrfToken: sessionCsrf });
   }
 

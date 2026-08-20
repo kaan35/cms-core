@@ -18,21 +18,41 @@ export function setCsrfToken(token: string): void {
   }
 }
 
-export function getCsrfToken(): string | null {
+export function getCsrfToken(): string {
   const fromCookie =
     getCookie("csrfToken") ||
     getCookie("csrf_token") ||
     getCookie("_csrf") ||
     getCookie("XSRF-TOKEN");
-  if (fromCookie) return fromCookie;
+
+  if (fromCookie) {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("cms_csrf_token", fromCookie);
+      } catch {
+        // ignore
+      }
+    }
+    return fromCookie;
+  }
 
   if (typeof window !== "undefined") {
     try {
       const stored = localStorage.getItem("cms_csrf_token");
-      if (stored) return stored;
+      if (stored) {
+        setCsrfToken(stored);
+        return stored;
+      }
     } catch {
       // ignore
     }
   }
-  return null;
+
+  const generated =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+  setCsrfToken(generated);
+  return generated;
 }

@@ -4,6 +4,7 @@ import {
   apiClient,
   Badge,
   Button,
+  cn,
   Input,
   Label,
   PageHeader,
@@ -14,19 +15,57 @@ import {
   toast,
   useAuth,
 } from "@cms/admin-shell";
-import { CheckCircle2, Copy, Key, Lock, Mail, Save, Shield, User } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  Copy,
+  Key,
+  Laptop,
+  Lock,
+  Mail,
+  Moon,
+  Palette,
+  Save,
+  Shield,
+  Sun,
+  User,
+} from "lucide-react";
 import * as React from "react";
 import { SessionsList } from "./SessionsList";
 
 export function AccountPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = React.useState("profile");
+  const [theme, setTheme] = React.useState<"light" | "dark" | "system">("dark");
 
-  const [passwordData, setPasswordData] = React.useState({
+  React.useEffect(() => {
+    const saved = (localStorage.getItem("theme") as "light" | "dark" | "system") || "dark";
+    setTheme(saved);
+  }, []);
+
+  const changeTheme = (newTheme: "light" | "dark" | "system") => {
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+
+    if (newTheme === "system") {
+      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.classList.add(systemDark ? "dark" : "light");
+    } else {
+      root.classList.add(newTheme);
+    }
+    toast.success(`Theme switched to ${newTheme}`);
+  };
+
+  const [inputData, setInputData] = React.useState({
     newPassword: "",
     confirmPassword: "",
   });
-  const [isUpdatingPassword, setIsUpdatingPassword] = React.useState(false);
+  const [formState, setFormState] = React.useState({
+    isSubmitting: false,
+  });
   const [copiedId, setCopiedId] = React.useState(false);
 
   const handleCopyId = () => {
@@ -40,15 +79,15 @@ export function AccountPage() {
 
   const handleChangePassword = async (e: React.SubmitEvent) => {
     e.preventDefault();
-    if (!passwordData.newPassword) {
+    if (!inputData.newPassword) {
       toast.error("Please enter a new password");
       return;
     }
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
+    if (inputData.newPassword !== inputData.confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
-    if (passwordData.newPassword.length < 6) {
+    if (inputData.newPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
@@ -58,19 +97,19 @@ export function AccountPage() {
       return;
     }
 
-    setIsUpdatingPassword(true);
+    setFormState({ isSubmitting: true });
     try {
       await apiClient(`/api/users/${user.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ password: passwordData.newPassword }),
+        body: { password: inputData.newPassword },
       });
       toast.success("Password updated successfully!");
-      setPasswordData({ newPassword: "", confirmPassword: "" });
+      setInputData({ newPassword: "", confirmPassword: "" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to update password";
       toast.error(msg);
     } finally {
-      setIsUpdatingPassword(false);
+      setFormState({ isSubmitting: false });
     }
   };
 
@@ -81,14 +120,14 @@ export function AccountPage() {
     <div className="space-y-6">
       <PageHeader
         title="My Account"
-        description="Manage your personal profile, credentials, and active login sessions"
+        description="Manage your personal profile, credentials, appearance preferences, and active sessions."
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="w-fit">
           <TabsTrigger value="profile" className="flex items-center gap-2 px-3.5 py-1.5 text-xs">
             <User className="size-4" />
-            <span>Profile & Security</span>
+            <span>Profile & Preferences</span>
           </TabsTrigger>
           <TabsTrigger value="sessions" className="flex items-center gap-2 px-3.5 py-1.5 text-xs">
             <Shield className="size-4" />
@@ -96,7 +135,7 @@ export function AccountPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Profile & Security */}
+        {/* Tab 1: Profile & Preferences */}
         <TabsContent value="profile" className="space-y-6">
           {/* Card 1: Personal Info */}
           <div className="rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
@@ -105,7 +144,7 @@ export function AccountPage() {
               <div>
                 <h2 className="text-sm font-semibold text-foreground">Personal Information</h2>
                 <p className="text-xs text-muted-foreground">
-                  Your identity and account role in this workspace
+                  Your identity and account details in this workspace
                 </p>
               </div>
             </div>
@@ -161,7 +200,103 @@ export function AccountPage() {
             </div>
           </div>
 
-          {/* Card 2: Security & Password */}
+          {/* Card 2: Appearance & Theme Preference */}
+          <div className="rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
+              <Palette className="size-4 text-primary" />
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Appearance & Theme</h2>
+                <p className="text-xs text-muted-foreground">
+                  Customize the interface theme and visual mode for your account
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {/* Dark Theme Option */}
+              <button
+                type="button"
+                onClick={() => changeTheme("dark")}
+                className={cn(
+                  "group relative flex flex-col items-start rounded-xl border p-4 text-left transition-all cursor-pointer",
+                  theme === "dark"
+                    ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
+                    : "border-border/80 bg-card hover:bg-muted/40 hover:border-border",
+                )}
+              >
+                <div className="flex w-full items-center justify-between mb-2">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-zinc-900 text-zinc-100 border border-zinc-700">
+                    <Moon className="size-4" />
+                  </div>
+                  {theme === "dark" && (
+                    <div className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="size-3" />
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-semibold text-xs text-foreground">Dark Theme</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Deep black canvas with sleek contrast and glass highlights.
+                </p>
+              </button>
+
+              {/* Light Theme Option */}
+              <button
+                type="button"
+                onClick={() => changeTheme("light")}
+                className={cn(
+                  "group relative flex flex-col items-start rounded-xl border p-4 text-left transition-all cursor-pointer",
+                  theme === "light"
+                    ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
+                    : "border-border/80 bg-card hover:bg-muted/40 hover:border-border",
+                )}
+              >
+                <div className="flex w-full items-center justify-between mb-2">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-900 border border-zinc-300">
+                    <Sun className="size-4" />
+                  </div>
+                  {theme === "light" && (
+                    <div className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="size-3" />
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-semibold text-xs text-foreground">Light Theme</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Crisp white canvas with high legibility and light borders.
+                </p>
+              </button>
+
+              {/* System Theme Option */}
+              <button
+                type="button"
+                onClick={() => changeTheme("system")}
+                className={cn(
+                  "group relative flex flex-col items-start rounded-xl border p-4 text-left transition-all cursor-pointer",
+                  theme === "system"
+                    ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
+                    : "border-border/80 bg-card hover:bg-muted/40 hover:border-border",
+                )}
+              >
+                <div className="flex w-full items-center justify-between mb-2">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground border border-border/80">
+                    <Laptop className="size-4" />
+                  </div>
+                  {theme === "system" && (
+                    <div className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="size-3" />
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-semibold text-xs text-foreground">System Default</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Automatically synchronize with your operating system theme.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Security & Password */}
           <div className="rounded-xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
               <Key className="size-4 text-primary" />
@@ -184,9 +319,9 @@ export function AccountPage() {
                     type="password"
                     placeholder="Minimum 6 characters"
                     iconStart={<Lock />}
-                    value={passwordData.newPassword}
+                    value={inputData.newPassword}
                     onChange={(e) =>
-                      setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))
+                      setInputData((prev) => ({ ...prev, newPassword: e.target.value }))
                     }
                     className="text-xs"
                     required
@@ -202,9 +337,9 @@ export function AccountPage() {
                     type="password"
                     placeholder="Re-enter new password"
                     iconStart={<Lock />}
-                    value={passwordData.confirmPassword}
+                    value={inputData.confirmPassword}
                     onChange={(e) =>
-                      setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                      setInputData((prev) => ({ ...prev, confirmPassword: e.target.value }))
                     }
                     className="text-xs"
                     required
@@ -215,8 +350,8 @@ export function AccountPage() {
               <div className="flex justify-end pt-2">
                 <Button
                   type="submit"
-                  disabled={isUpdatingPassword}
-                  loading={isUpdatingPassword}
+                  disabled={formState.isSubmitting}
+                  loading={formState.isSubmitting}
                   iconStart={<Save />}
                   className="text-xs h-8"
                 >

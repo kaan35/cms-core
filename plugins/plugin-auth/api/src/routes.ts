@@ -65,7 +65,11 @@ export function registerAuthRoutes(
   );
 
   // Authenticated routes with CSRF verification on state changes
-  app.post("/auth/logout", { preHandler: [authenticate] }, controller.logout.bind(controller));
+  app.post(
+    "/auth/logout",
+    { preHandler: [authenticate, verifyCsrf] },
+    controller.logout.bind(controller),
+  );
 
   app.get("/auth/me", { preHandler: [authenticate] }, controller.me.bind(controller));
 

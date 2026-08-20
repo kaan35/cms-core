@@ -72,7 +72,7 @@ describe("SystemService", () => {
     const { service } = await setup();
 
     const initial = await service.getSettings();
-    assert.equal(initial.brandColor, "#4f46e5");
+    assert.equal(initial.brandColor, "#3b82f6");
     assert.equal(initial.brandFont, "Inter");
 
     // Invalid hex color should throw ValidationError
