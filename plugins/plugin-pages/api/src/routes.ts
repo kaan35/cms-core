@@ -17,6 +17,7 @@ export function registerPageRoutes(app: FastifyInstance, controller: PageControl
   };
 
   // 1. Public / Optional-auth routes
+  app.get("/pages/home", { preHandler: [optionalAuth] }, controller.getHome.bind(controller));
   app.get("/pages/search", { preHandler: [optionalAuth] }, controller.search.bind(controller));
   app.get("/pages", { preHandler: [optionalAuth] }, controller.list.bind(controller));
   app.get("/pages/:slug", { preHandler: [optionalAuth] }, controller.getBySlug.bind(controller));

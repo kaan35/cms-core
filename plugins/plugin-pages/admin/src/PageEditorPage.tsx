@@ -2,6 +2,7 @@
 
 import {
   apiClient,
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -20,8 +21,9 @@ import {
   Textarea,
   toast,
   useApi,
+  useSaveShortcut,
 } from "@cms/admin-shell";
-import { ArrowLeft, Clock, Layers, RotateCcw, Save } from "lucide-react";
+import { ArrowLeft, Clock, History, RotateCcw, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -32,6 +34,7 @@ interface PageDoc {
   title: string;
   slug: string;
   status: "draft" | "published";
+  pageType?: "standard" | "home" | undefined;
   blocks: PageBlock[];
   metaTitle?: string | undefined;
   metaDescription?: string | undefined;
@@ -44,7 +47,15 @@ interface PageVersion {
   id: string;
   pageId: string;
   version: number;
-  data: Omit<PageDoc, "id">;
+  data: {
+    title: string;
+    slug: string;
+    status: "draft" | "published";
+    pageType?: "standard" | "home" | undefined;
+    blocks: PageBlock[];
+    metaTitle?: string | undefined;
+    metaDescription?: string | undefined;
+  };
   changedBy?: string | undefined;
   createdAt: string;
 }
@@ -59,6 +70,7 @@ export function PageEditorPage({ id }: { id: string }) {
     title: "",
     slug: "",
     status: "draft" as "draft" | "published",
+    pageType: "standard" as "standard" | "home",
     metaTitle: "",
     metaDescription: "",
     blocks: [] as PageBlock[],
@@ -98,6 +110,7 @@ export function PageEditorPage({ id }: { id: string }) {
         title: pageDoc.title || "",
         slug: pageDoc.slug || "",
         status: pageDoc.status || "draft",
+        pageType: pageDoc.pageType || "standard",
         metaTitle: pageDoc.metaTitle || "",
         metaDescription: pageDoc.metaDescription || "",
         blocks: Array.isArray(pageDoc.blocks) ? pageDoc.blocks : [],
@@ -135,11 +148,28 @@ export function PageEditorPage({ id }: { id: string }) {
     }
 
     setFormState({ isSubmitting: true });
+    const cleanBlocks = inputData.blocks.map((block) => {
+      if (block.type === "hero") {
+        const hero = { ...block };
+        const pCta = hero["primaryCta"] as { label?: string; url?: string } | undefined;
+        const sCta = hero["secondaryCta"] as { label?: string; url?: string } | undefined;
+        if (pCta && !pCta.label?.trim() && !pCta.url?.trim()) {
+          delete hero["primaryCta"];
+        }
+        if (sCta && !sCta.label?.trim() && !sCta.url?.trim()) {
+          delete hero["secondaryCta"];
+        }
+        return hero;
+      }
+      return block;
+    });
+
     const payload = {
       title: inputData.title.trim(),
       slug: inputData.slug.trim() || slugify(inputData.title),
       status: inputData.status,
-      blocks: inputData.blocks,
+      pageType: inputData.pageType,
+      blocks: cleanBlocks,
       metaTitle: inputData.metaTitle.trim() || undefined,
       metaDescription: inputData.metaDescription.trim() || undefined,
     };
@@ -168,6 +198,8 @@ export function PageEditorPage({ id }: { id: string }) {
     }
   };
 
+  useSaveShortcut(handleSave);
+
   const handleOpenVersions = () => {
     setIsVersionsOpen(true);
   };
@@ -178,110 +210,127 @@ export function PageEditorPage({ id }: { id: string }) {
       title: ver.data.title || "",
       slug: ver.data.slug || "",
       status: ver.data.status || "draft",
+      pageType: ver.data.pageType || "standard",
       metaTitle: ver.data.metaTitle || "",
       metaDescription: ver.data.metaDescription || "",
       blocks: Array.isArray(ver.data.blocks) ? ver.data.blocks : [],
       version: ver.version,
     });
     setIsVersionsOpen(false);
-    toast.success(`Restored snapshot from version #${ver.version}. Click Save to apply changes.`);
+    toast.success(`Restored draft from version ${ver.version}. Click Save to apply.`);
   };
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-8 w-32" />
-        </div>
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-96 w-full" />
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Header Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="space-y-6 pb-24">
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/pages">
-            <Button variant="ghost" size="icon-sm" className="rounded-xl">
-              <ArrowLeft className="size-4" />
+            <Button variant="outline" iconStart={<ArrowLeft />}>
+              Back
             </Button>
           </Link>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-foreground">
-                {isNew ? "New Page" : inputData.title || "Untitled Page"}
-              </h1>
+            <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              <span>{isNew ? "Create Dynamic Page" : `Edit Page: ${inputData.title}`}</span>
               {!isNew && (
-                <span className="text-[11px] font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded-md border border-border">
+                <Badge variant="outline" className="text-[10px] font-mono">
                   v{inputData.version}
-                </span>
+                </Badge>
               )}
-            </div>
+            </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {isNew
-                ? "Create a new modular content page"
-                : `Route: /pages/${inputData.slug || "..."}`}
+              Assemble interactive visual blocks with live preview and SEO controls.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5">
           {!isNew && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleOpenVersions}
-              className="h-8 text-xs gap-1.5"
-            >
-              <Clock className="size-3.5" />
+            <Button variant="outline" iconStart={<History />} onClick={handleOpenVersions}>
               History
             </Button>
           )}
 
           <Button
-            type="button"
-            size="sm"
             onClick={handleSave}
             loading={formState.isSubmitting}
-            iconStart={<Save className="size-3.5" />}
-            className="h-8 text-xs font-semibold gap-1.5 shadow-sm"
+            iconStart={<Save />}
+            shortcut="save"
           >
-            {formState.isSubmitting ? "Saving..." : isNew ? "Create Page" : "Save Changes"}
+            Save Page
           </Button>
         </div>
       </div>
 
-      {/* Meta & Configuration Card */}
-      <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-5">
-        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-          <Layers className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold text-foreground">Page Settings & Metadata</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="space-y-1.5">
-            <Label htmlFor="page-title">Page Title *</Label>
+      {/* Metadata & Settings Card */}
+      <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-xs space-y-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="space-y-1.5 md:col-span-1">
+            <Label htmlFor="page-title" className="text-xs font-semibold">
+              Page Title <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="page-title"
               placeholder="e.g. Products & Solutions"
               value={inputData.title}
               onChange={(e) => handleTitleChange(e.target.value)}
-              required
+              className="font-medium"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="page-status">Publish Status</Label>
+            <Label htmlFor="page-type" className="text-xs font-semibold">
+              Page Role / Type
+            </Label>
+            <Select
+              value={inputData.pageType}
+              onValueChange={(val) => {
+                if (val) {
+                  setInputData((prev) => ({ ...prev, pageType: val as "standard" | "home" }));
+                }
+              }}
+            >
+              <SelectTrigger id="page-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">
+                  <span className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-blue-500" />
+                    Standard Page
+                  </span>
+                </SelectItem>
+                <SelectItem value="home">
+                  <span className="flex items-center gap-2 font-medium text-amber-500">
+                    <span className="size-2 rounded-full bg-amber-500" />
+                    🏠 Home Page (Root /)
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="page-status" className="text-xs font-semibold">
+              Publication Status
+            </Label>
             <Select
               value={inputData.status}
-              onValueChange={(val) =>
-                setInputData((prev) => ({ ...prev, status: val as "draft" | "published" }))
-              }
+              onValueChange={(val) => {
+                if (val) {
+                  setInputData((prev) => ({ ...prev, status: val as "draft" | "published" }));
+                }
+              }}
             >
               <SelectTrigger id="page-status">
                 <SelectValue />
@@ -412,12 +461,10 @@ export function PageEditorPage({ id }: { id: string }) {
 
                   <Button
                     type="button"
-                    size="sm"
                     variant="outline"
                     onClick={() => handleRestoreVersion(ver)}
-                    className="h-7 text-xs gap-1"
+                    iconStart={<RotateCcw />}
                   >
-                    <RotateCcw className="size-3" />
                     Restore
                   </Button>
                 </div>

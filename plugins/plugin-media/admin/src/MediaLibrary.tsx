@@ -296,19 +296,17 @@ export function MediaLibrary({
 
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
             onClick={() => mutate()}
-            className="border-border/80 shrink-0"
-          >
-            <RefreshCw className="size-3.5" />
-          </Button>
+            iconStart={<RefreshCw />}
+          />
 
           <Button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="gap-2 flex-1 sm:flex-none"
+            iconStart={<UploadCloud />}
+            className="flex-1 sm:flex-none"
           >
-            <UploadCloud className="size-4" />
             {isUploading ? "Uploading..." : "Upload File"}
           </Button>
         </div>
@@ -473,15 +471,13 @@ export function MediaLibrary({
                     <td className="px-4 py-3 text-right">
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeleteModal({ target: item, isDeleting: false });
                         }}
-                        className="text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
+                        iconStart={<Trash2 className="text-destructive" />}
+                      />
                     </td>
                   </tr>
                 );
@@ -537,12 +533,10 @@ export function MediaLibrary({
                     />
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={() => handleCopyUrl(previewItem.url)}
-                      className="shrink-0"
-                    >
-                      {copiedUrl ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                    </Button>
+                      iconStart={copiedUrl ? <Check /> : <Copy />}
+                    />
                     <a
                       href={previewItem.url}
                       target="_blank"
@@ -558,19 +552,16 @@ export function MediaLibrary({
               <DialogFooter className="gap-2 sm:justify-between">
                 <Button
                   variant="destructive"
-                  size="sm"
                   onClick={() => {
                     setDeleteModal({ target: previewItem, isDeleting: false });
                   }}
-                  className="gap-1.5"
+                  iconStart={<Trash2 />}
                 >
-                  <Trash2 className="size-3.5" />
                   Delete
                 </Button>
 
                 {selectable && onSelect && (
                   <Button
-                    size="sm"
                     onClick={() => {
                       onSelect(previewItem);
                       setPreviewItem(null);
@@ -600,16 +591,14 @@ export function MediaLibrary({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs gap-1.5" disabled={deleteModal.isDeleting}>
+            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
               <X className="size-3.5" />
               Cancel
             </AlertDialogCancel>
             <Button
               variant="destructive"
-              size="sm"
-              className="h-8 text-xs font-semibold gap-1.5"
               loading={deleteModal.isDeleting}
-              iconStart={<Trash2 className="size-3.5" />}
+              iconStart={<Trash2 />}
               onClick={handleDelete}
             >
               {deleteModal.isDeleting ? "Deleting..." : "Delete Permanently"}

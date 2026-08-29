@@ -86,8 +86,8 @@ export function BlogEditorPage({ id }: { id: string }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/blog">
-            <Button variant="ghost" size="icon-sm" className="rounded-xl">
-              <ArrowLeft className="size-4" />
+            <Button variant="outline" iconStart={<ArrowLeft />}>
+              Back
             </Button>
           </Link>
           <div>
@@ -111,14 +111,7 @@ export function BlogEditorPage({ id }: { id: string }) {
 
         <div className="flex items-center gap-2.5">
           {!isNew && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsHistoryOpen(true)}
-              className="h-8 text-xs gap-1.5"
-            >
-              <Clock className="size-3.5" />
+            <Button variant="outline" iconStart={<Clock />} onClick={() => setIsHistoryOpen(true)}>
               History
             </Button>
           )}
@@ -126,10 +119,9 @@ export function BlogEditorPage({ id }: { id: string }) {
           <Button
             type="submit"
             form="blog-post-form"
-            size="sm"
             loading={formState.isSubmitting}
-            iconStart={<Save className="size-3.5" />}
-            className="h-8 text-xs font-semibold gap-1.5 shadow-sm"
+            iconStart={<Save />}
+            shortcut="save"
           >
             {formState.isSubmitting ? "Saving..." : isNew ? "Publish Article" : "Save Changes"}
           </Button>

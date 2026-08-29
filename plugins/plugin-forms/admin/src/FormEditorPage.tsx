@@ -79,8 +79,8 @@ export function FormEditorPage({ id }: FormEditorPageProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/forms">
-            <Button variant="ghost" size="icon-sm" className="rounded-xl">
-              <ArrowLeft className="size-4" />
+            <Button variant="outline" iconStart={<ArrowLeft />}>
+              Back
             </Button>
           </Link>
           <div>
@@ -101,10 +101,9 @@ export function FormEditorPage({ id }: FormEditorPageProps) {
           <Button
             type="submit"
             form="form-builder-form"
-            size="sm"
             loading={formState.isSubmitting}
-            iconStart={<Save className="size-3.5" />}
-            className="h-8 text-xs font-semibold gap-1.5 shadow-sm"
+            iconStart={<Save />}
+            shortcut="save"
           >
             {formState.isSubmitting ? "Saving..." : isNew ? "Create Form" : "Save Changes"}
           </Button>

@@ -100,7 +100,8 @@ export class BlogPostsRepository {
       actorId: actorId ?? existing.actorId,
     };
 
-    await this.postsCollection.updateOne({ id }, updatedDoc);
+    const { _id, ...setDoc } = updatedDoc as Record<string, unknown>;
+    await this.postsCollection.updateOne({ id }, { $set: setDoc });
 
     // Save version snapshot
     const versionDoc: BlogPostVersionDoc = {

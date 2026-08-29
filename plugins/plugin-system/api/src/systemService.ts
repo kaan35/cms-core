@@ -1,6 +1,11 @@
 import type { HookManager, IDatabase, ILogger, PluginLoader, SettingsService } from "@cms/core";
 import { ConflictError, NotFoundError, ValidationError, buildPaginatedResult } from "@cms/core";
-import { validateFeatureFlagKey, validateHexColor } from "./domain/system.rules.js";
+import {
+  validateFeatureFlagKey,
+  validateHexColor,
+  validateTheme,
+  type NavigationMenuItem,
+} from "./domain/system.rules.js";
 import type { AuditLogDoc, AuditLogRepository } from "./repositories/auditLogRepository.js";
 import type {
   FeatureFlagDoc,
@@ -68,8 +73,6 @@ export class SystemService {
   // ---------------------------------------------------------------------------
   // Brand Settings
   // ---------------------------------------------------------------------------
-  // System & Brand Settings
-  // ---------------------------------------------------------------------------
   async getSettings(): Promise<{
     siteTitle: string;
     siteDescription: string;
@@ -77,6 +80,10 @@ export class SystemService {
     brandFont: string;
     primaryColor: string;
     fontFamily: string;
+    defaultTheme: string;
+    footerText: string;
+    headerMenu: NavigationMenuItem[];
+    footerMenu: NavigationMenuItem[];
     allowRegistration: boolean;
     sessionTimeoutMinutes: number;
   }> {
@@ -87,6 +94,19 @@ export class SystemService {
     );
     const brandColor = await this.settingsService.get<string>("system.brand.color", "#3b82f6");
     const brandFont = await this.settingsService.get<string>("system.brand.font", "Inter");
+    const defaultTheme = await this.settingsService.get<string>("system.brand.theme", "dark");
+    const footerText = await this.settingsService.get<string>("system.site.footerText", "");
+    const headerMenu = await this.settingsService.get<NavigationMenuItem[]>(
+      "system.navigation.header",
+      [
+        { id: "nav-home", label: "Home", url: "/" },
+        { id: "nav-blog", label: "Blog", url: "/blog" },
+      ],
+    );
+    const footerMenu = await this.settingsService.get<NavigationMenuItem[]>(
+      "system.navigation.footer",
+      [],
+    );
     const allowRegistration = await this.settingsService.get<boolean>(
       "auth.registrationEnabled",
       true,
@@ -103,6 +123,10 @@ export class SystemService {
       brandFont,
       primaryColor: brandColor,
       fontFamily: brandFont,
+      defaultTheme,
+      footerText,
+      headerMenu,
+      footerMenu,
       allowRegistration,
       sessionTimeoutMinutes,
     };
@@ -116,6 +140,10 @@ export class SystemService {
       brandFont?: string | undefined;
       primaryColor?: string | undefined;
       fontFamily?: string | undefined;
+      defaultTheme?: string | undefined;
+      footerText?: string | undefined;
+      headerMenu?: NavigationMenuItem[] | undefined;
+      footerMenu?: NavigationMenuItem[] | undefined;
       allowRegistration?: boolean | undefined;
       sessionTimeoutMinutes?: number | undefined;
     },
@@ -127,6 +155,10 @@ export class SystemService {
     brandFont: string;
     primaryColor: string;
     fontFamily: string;
+    defaultTheme: string;
+    footerText: string;
+    headerMenu: NavigationMenuItem[];
+    footerMenu: NavigationMenuItem[];
     allowRegistration: boolean;
     sessionTimeoutMinutes: number;
   }> {
@@ -149,6 +181,25 @@ export class SystemService {
     const font = patch.brandFont ?? patch.fontFamily;
     if (font !== undefined) {
       await this.settingsService.set("system.brand.font", font.trim());
+    }
+
+    if (patch.defaultTheme !== undefined) {
+      const themeVal = patch.defaultTheme.trim().toLowerCase();
+      if (validateTheme(themeVal)) {
+        await this.settingsService.set("system.brand.theme", themeVal);
+      }
+    }
+
+    if (patch.footerText !== undefined) {
+      await this.settingsService.set("system.site.footerText", patch.footerText.trim());
+    }
+
+    if (patch.headerMenu !== undefined && Array.isArray(patch.headerMenu)) {
+      await this.settingsService.set("system.navigation.header", patch.headerMenu);
+    }
+
+    if (patch.footerMenu !== undefined && Array.isArray(patch.footerMenu)) {
+      await this.settingsService.set("system.navigation.footer", patch.footerMenu);
     }
 
     if (patch.allowRegistration !== undefined) {

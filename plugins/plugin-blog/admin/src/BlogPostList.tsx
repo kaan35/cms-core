@@ -130,21 +130,15 @@ export function BlogPostList() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
-            size="icon-sm"
+            size="icon"
             onClick={() => mutate()}
             title="Refresh blog posts"
-            className="h-8 w-8 shrink-0 border-border/80"
-          >
-            <RefreshCw className="size-3.5" />
-          </Button>
+            iconStart={<RefreshCw />}
+          />
 
           <Link href="/dashboard/blog/new" className="flex-1 sm:flex-none">
-            <Button
-              size="sm"
-              className="h-8 w-full sm:w-auto gap-1.5 text-xs font-semibold shadow-xs"
-            >
-              <Plus className="size-3.5" />
-              <span>New Post</span>
+            <Button iconStart={<Plus />} className="w-full sm:w-auto">
+              New Post
             </Button>
           </Link>
         </div>
@@ -288,17 +282,15 @@ export function BlogPostList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 pt-3">
-            <AlertDialogCancel className="h-8 text-xs gap-1.5" disabled={deleteModal.isDeleting}>
+            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
               <X className="size-3.5" />
               Cancel
             </AlertDialogCancel>
             <Button
               variant="destructive"
-              size="sm"
-              className="h-8 text-xs font-semibold gap-1.5"
               onClick={handleDeleteConfirm}
               loading={deleteModal.isDeleting}
-              iconStart={<Trash2 className="size-3.5" />}
+              iconStart={<Trash2 />}
             >
               {deleteModal.isDeleting ? "Deleting..." : "Delete Post"}
             </Button>

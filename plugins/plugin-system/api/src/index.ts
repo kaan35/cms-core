@@ -13,7 +13,9 @@ export {
   SYSTEM_PERMISSIONS,
   validateFeatureFlagKey,
   validateHexColor,
+  validateTheme,
 } from "./domain/system.rules.js";
+export type { SiteTheme, NavigationMenuItem } from "./domain/system.rules.js";
 export { initSystemMigration } from "./migrations/202601020000_init_system.js";
 export { AuditLogRepository } from "./repositories/auditLogRepository.js";
 export type { AuditLogDoc } from "./repositories/auditLogRepository.js";

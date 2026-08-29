@@ -12,8 +12,19 @@ export const HeroBlockSchema = z.object({
   title: z.string().min(1, "Hero title is required"),
   subtitle: z.string().optional(),
   mediaId: z.string().optional(),
-  primaryCta: z.object({ label: z.string(), url: z.string() }).optional(),
-  secondaryCta: z.object({ label: z.string(), url: z.string() }).optional(),
+  mediaLayout: z.enum(["background", "featured", "banner"]).default("background").optional(),
+  primaryCta: z
+    .object({
+      label: z.string().optional().default(""),
+      url: z.string().optional().default(""),
+    })
+    .optional(),
+  secondaryCta: z
+    .object({
+      label: z.string().optional().default(""),
+      url: z.string().optional().default(""),
+    })
+    .optional(),
 });
 
 export const GalleryBlockSchema = z.object({
@@ -32,6 +43,9 @@ export const GalleryBlockSchema = z.object({
 
 export const BentoGridBlockSchema = z.object({
   type: z.literal("bento_grid"),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  columns: z.union([z.literal("2"), z.literal("3"), z.literal("4"), z.number()]).optional(),
   cards: z
     .array(
       z.object({
@@ -96,11 +110,13 @@ export const PageBlockSchema = z.discriminatedUnion("type", [
 
 // 2. Page Schemas
 export const PageStatusSchema = z.enum(["draft", "published"]);
+export const PageTypeSchema = z.enum(["standard", "home"]).default("standard");
 
 export const CreatePageSchema = z.object({
   title: z.string().min(1, "Page title is required"),
   slug: z.string().optional(),
   status: PageStatusSchema.default("draft"),
+  pageType: PageTypeSchema.optional(),
   blocks: z.array(PageBlockSchema).min(1, "Page must contain at least 1 block"),
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
@@ -110,6 +126,7 @@ export const UpdatePageSchema = z.object({
   title: z.string().min(1, "Page title cannot be empty").optional(),
   slug: z.string().optional(),
   status: PageStatusSchema.optional(),
+  pageType: PageTypeSchema.optional(),
   blocks: z.array(PageBlockSchema).min(1, "Page must contain at least 1 block").optional(),
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
@@ -126,6 +143,7 @@ export type FormBlock = z.infer<typeof FormBlockSchema>;
 export type BlogPostsBlock = z.infer<typeof BlogPostsBlockSchema>;
 export type PageBlock = z.infer<typeof PageBlockSchema>;
 export type PageStatus = z.infer<typeof PageStatusSchema>;
+export type PageType = z.infer<typeof PageTypeSchema>;
 export type CreatePageInput = z.infer<typeof CreatePageSchema>;
 export type UpdatePageInput = z.infer<typeof UpdatePageSchema>;
 
@@ -135,6 +153,7 @@ export interface PageDoc {
   title: string;
   slug: string;
   status: PageStatus;
+  pageType?: PageType;
   blocks: PageBlock[];
   metaTitle?: string | undefined;
   metaDescription?: string | undefined;

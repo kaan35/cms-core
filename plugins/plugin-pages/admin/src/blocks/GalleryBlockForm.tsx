@@ -94,11 +94,10 @@ export function GalleryBlockForm({ data, onChange }: GalleryBlockFormProps) {
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={handleAddImage}
-            className="h-7 text-xs gap-1 border-dashed"
+            iconStart={<Plus />}
+            className="border-dashed"
           >
-            <Plus className="size-3" />
             Add Image
           </Button>
         </div>
@@ -109,11 +108,10 @@ export function GalleryBlockForm({ data, onChange }: GalleryBlockFormProps) {
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={handleAddImage}
-              className="mt-2 text-xs gap-1.5"
+              iconStart={<Plus />}
+              className="mt-2"
             >
-              <Plus className="size-3" />
               Add First Image
             </Button>
           </div>
@@ -152,11 +150,9 @@ export function GalleryBlockForm({ data, onChange }: GalleryBlockFormProps) {
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
                       onClick={() => handleRemoveImage(index)}
-                      className="h-7 text-destructive hover:bg-destructive/10 text-xs gap-1"
+                      iconStart={<Trash2 className="text-destructive" />}
                     >
-                      <Trash2 className="size-3.5" />
                       Remove
                     </Button>
                   </div>

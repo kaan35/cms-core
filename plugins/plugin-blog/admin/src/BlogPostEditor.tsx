@@ -11,6 +11,7 @@ import {
   SelectValue,
   slugify,
   Textarea,
+  useSaveShortcut,
 } from "@cms/admin-shell";
 import { MediaPicker } from "@cms/plugin-media-admin";
 import { Sparkles } from "lucide-react";
@@ -84,8 +85,8 @@ export function BlogPostEditor({ initialData, onSave, className }: BlogPostEdito
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     await onSave({
       title: inputData.title.trim(),
       slug: inputData.slug.trim() || slugify(inputData.title),
@@ -97,6 +98,8 @@ export function BlogPostEditor({ initialData, onSave, className }: BlogPostEdito
       metaDescription: inputData.metaDescription?.trim() || undefined,
     });
   };
+
+  useSaveShortcut(() => handleSubmit());
 
   return (
     <form id="blog-post-form" onSubmit={handleSubmit} className={cn("space-y-6", className)}>

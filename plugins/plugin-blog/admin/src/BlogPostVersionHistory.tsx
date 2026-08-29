@@ -148,11 +148,9 @@ export function BlogPostVersionHistory({
 
                   <Button
                     type="button"
-                    size="sm"
                     onClick={() => handleRestore(selectedVersion)}
-                    className="h-8 text-xs font-semibold gap-1.5"
+                    iconStart={<RotateCcw />}
                   >
-                    <RotateCcw className="size-3.5" />
                     Restore This Version
                   </Button>
                 </div>

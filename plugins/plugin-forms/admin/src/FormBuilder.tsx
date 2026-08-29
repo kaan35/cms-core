@@ -22,6 +22,7 @@ import {
   slugify,
   toSnakeCase,
   toast,
+  useSaveShortcut,
 } from "@cms/admin-shell";
 import {
   ArrowDown,
@@ -216,8 +217,8 @@ export function FormBuilder({ initialData, onSave, className }: FormBuilderProps
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!inputData.title.trim()) {
       toast.error("Form title is required");
       return;
@@ -238,6 +239,8 @@ export function FormBuilder({ initialData, onSave, className }: FormBuilderProps
       successMessage: inputData.successMessage.trim() || "Thank you for your submission.",
     });
   };
+
+  useSaveShortcut(() => handleSubmit());
 
   return (
     <form id="form-builder-form" onSubmit={handleSubmit} className={cn("space-y-6", className)}>
@@ -300,11 +303,10 @@ export function FormBuilder({ initialData, onSave, className }: FormBuilderProps
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={handleOpenAddField}
-                className="h-8 text-xs gap-1.5 border-dashed"
+                iconStart={<Plus />}
+                className="border-dashed"
               >
-                <Plus className="size-3.5" />
                 Add Field
               </Button>
             </div>
@@ -314,12 +316,11 @@ export function FormBuilder({ initialData, onSave, className }: FormBuilderProps
                 <p className="text-xs text-muted-foreground">No fields configured yet.</p>
                 <Button
                   type="button"
-                  size="sm"
                   variant="outline"
                   onClick={handleOpenAddField}
-                  className="mt-3 text-xs gap-1.5"
+                  iconStart={<Plus />}
+                  className="mt-3"
                 >
-                  <Plus className="size-3.5" />
                   Add First Field
                 </Button>
               </div>
@@ -606,21 +607,10 @@ export function FormBuilder({ initialData, onSave, className }: FormBuilderProps
           </div>
 
           <DialogFooter className="border-t border-border/60 pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setFieldModalOpen(false)}
-              className="text-xs"
-            >
+            <Button type="button" variant="outline" onClick={() => setFieldModalOpen(false)}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleSaveFieldModal}
-              className="text-xs font-semibold"
-            >
+            <Button type="button" onClick={handleSaveFieldModal}>
               Apply Field
             </Button>
           </DialogFooter>

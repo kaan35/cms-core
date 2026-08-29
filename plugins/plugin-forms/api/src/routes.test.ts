@@ -54,7 +54,15 @@ describe("plugin-forms routes & workflows", () => {
     assert.equal(form.title, "Contact Form");
     assert.equal(form.slug, "contact-form");
 
-    // 2. Request Captcha (Public)
+    // 2. Fetch Form Definition (Public unauthenticated client embed)
+    const publicFormRes = await app.inject({
+      method: "GET",
+      url: `/forms/${form.id}`,
+    });
+    assert.equal(publicFormRes.statusCode, 200);
+    assert.equal(JSON.parse(publicFormRes.body).form.title, "Contact Form");
+
+    // 3. Request Captcha (Public)
     const captchaRes = await app.inject({
       method: "GET",
       url: `/forms/${form.id}/captcha`,

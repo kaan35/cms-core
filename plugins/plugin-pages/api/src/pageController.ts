@@ -27,6 +27,22 @@ export class PageController {
     return reply.send(result);
   }
 
+  async getHome(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
+    const perms = request.user?.permissions || [];
+    const canViewDraft = Boolean(
+      perms.includes("*") ||
+      perms.includes(PAGES_PERMISSIONS.READ_DRAFT) ||
+      perms.includes(PAGES_PERMISSIONS.WRITE) ||
+      perms.includes("pages:*"),
+    );
+
+    const page = await this.pageService.getHomePage(canViewDraft);
+    if (page) {
+      return reply.send(page);
+    }
+    return reply.status(404).send({ error: "Home page not found" });
+  }
+
   async getBySlug(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     const { slug } = (request.params as { slug?: string }) ?? {};
     if (!slug) {

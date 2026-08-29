@@ -90,14 +90,8 @@ export function FeatureFlagsTable() {
             Turn specific platform features on or off safely
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => mutate()}
-          className="gap-1.5 text-xs h-7"
-        >
-          <RefreshCw className="size-3" />
-          <span>Refresh</span>
+        <Button variant="outline" onClick={() => mutate()} iconStart={<RefreshCw />}>
+          Refresh
         </Button>
       </div>
 

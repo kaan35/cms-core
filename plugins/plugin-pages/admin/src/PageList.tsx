@@ -31,6 +31,7 @@ export interface PageListItem {
   title: string;
   slug: string;
   status: "published" | "draft";
+  pageType?: "standard" | "home" | undefined;
   blocks?: unknown[] | undefined;
   version?: number | undefined;
   updatedAt?: string | undefined;
@@ -147,16 +148,13 @@ export function PageList() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
             onClick={() => mutate()}
-            className="border-border/80 shrink-0"
-          >
-            <RefreshCw className="size-3.5" />
-          </Button>
+            iconStart={<RefreshCw />}
+          />
 
           <Link href="/dashboard/pages/new" className="flex-1 sm:flex-none">
-            <Button className="gap-2 shadow-xs w-full sm:w-auto">
-              <Plus className="size-4" />
+            <Button iconStart={<Plus />} className="w-full sm:w-auto">
               Create Page
             </Button>
           </Link>
@@ -236,9 +234,17 @@ export function PageList() {
                       </div>
                       <Link
                         href={`/dashboard/pages/${page.id}`}
-                        className="text-foreground hover:text-primary transition-colors"
+                        className="text-foreground hover:text-primary transition-colors font-semibold flex items-center gap-1.5"
                       >
-                        {page.title}
+                        <span>{page.title}</span>
+                        {page.pageType === "home" && (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500/40 text-amber-500 bg-amber-500/10 text-[9px] px-1.5 py-0"
+                          >
+                            Home
+                          </Badge>
+                        )}
                       </Link>
                     </div>
                   </TableCell>
@@ -262,19 +268,16 @@ export function PageList() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Link href={`/dashboard/pages/${page.id}`}>
-                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5">
-                          <Pencil className="size-3.5" />
+                        <Button variant="ghost" iconStart={<Pencil />}>
                           Edit
                         </Button>
                       </Link>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => setDeleteModal({ target: page, isDeleting: false })}
-                        className="h-8 text-xs text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
+                        iconStart={<Trash2 className="text-destructive" />}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -298,16 +301,14 @@ export function PageList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs gap-1.5" disabled={deleteModal.isDeleting}>
+            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
               <X className="size-3.5" />
               Cancel
             </AlertDialogCancel>
             <Button
               variant="destructive"
-              size="sm"
-              className="h-8 text-xs font-semibold gap-1.5"
               loading={deleteModal.isDeleting}
-              iconStart={<Trash2 className="size-3.5" />}
+              iconStart={<Trash2 />}
               onClick={handleConfirmDelete}
             >
               {deleteModal.isDeleting ? "Deleting..." : "Delete Page"}

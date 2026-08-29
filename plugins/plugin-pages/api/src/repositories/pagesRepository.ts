@@ -33,6 +33,7 @@ export class PagesRepository {
       title: string;
       slug?: string | undefined;
       status?: PageStatus | undefined;
+      pageType?: "standard" | "home" | undefined;
       blocks: PageBlock[];
       metaTitle?: string | undefined;
       metaDescription?: string | undefined;
@@ -44,12 +45,22 @@ export class PagesRepository {
 
     const now = new Date().toISOString();
     const pageId = randomUUID();
+    const pageType = input.pageType ?? "standard";
+
+    if (pageType === "home") {
+      // Invariant: demote any other home page to standard
+      const existingHomes = await this.pagesCollection.find({ pageType: "home" });
+      for (const h of existingHomes) {
+        await this.pagesCollection.updateOne({ id: h.id }, { $set: { pageType: "standard" } });
+      }
+    }
 
     const pageDoc: PageDoc = {
       id: pageId,
       title: input.title,
       slug,
       status: input.status ?? "draft",
+      pageType,
       blocks: input.blocks,
       ...(input.metaTitle ? { metaTitle: input.metaTitle } : {}),
       ...(input.metaDescription ? { metaDescription: input.metaDescription } : {}),
@@ -104,11 +115,22 @@ export class PagesRepository {
     const now = new Date().toISOString();
     const nextVersion = existing.version + 1;
 
+    if (input.pageType === "home") {
+      // Invariant: demote any other home page to standard
+      const existingHomes = await this.pagesCollection.find({ pageType: "home" });
+      for (const h of existingHomes) {
+        if (h.id !== id) {
+          await this.pagesCollection.updateOne({ id: h.id }, { $set: { pageType: "standard" } });
+        }
+      }
+    }
+
     const updatedDoc: PageDoc = {
       ...existing,
       ...(input.title !== undefined ? { title: input.title } : {}),
       slug: newSlug,
       ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.pageType !== undefined ? { pageType: input.pageType } : {}),
       ...(input.blocks !== undefined ? { blocks: input.blocks } : {}),
       ...(input.metaTitle !== undefined ? { metaTitle: input.metaTitle } : {}),
       ...(input.metaDescription !== undefined ? { metaDescription: input.metaDescription } : {}),
@@ -117,7 +139,8 @@ export class PagesRepository {
       updatedAt: now,
     };
 
-    await this.pagesCollection.updateOne({ id }, updatedDoc);
+    const { _id, ...setDoc } = updatedDoc as Record<string, unknown>;
+    await this.pagesCollection.updateOne({ id }, { $set: setDoc });
 
     // Save version snapshot
     const versionDoc: PageVersionDoc = {
@@ -151,6 +174,16 @@ export class PagesRepository {
 
   async findBySlug(slug: string): Promise<PageDoc | null> {
     return this.pagesCollection.findOne({ slug });
+  }
+
+  async findHomePage(): Promise<PageDoc | null> {
+    const home = await this.pagesCollection.findOne({ pageType: "home" });
+    if (home) return home;
+    return this.pagesCollection.findOne({ slug: "home" });
+  }
+
+  async findByType(pageType: "standard" | "home"): Promise<PageDoc | null> {
+    return this.pagesCollection.findOne({ pageType });
   }
 
   async deleteById(id: string): Promise<void> {

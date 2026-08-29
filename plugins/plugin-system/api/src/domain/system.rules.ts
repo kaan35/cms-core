@@ -11,10 +11,29 @@ export const SYSTEM_PERMISSIONS = {
 export const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 export const FEATURE_FLAG_KEY_REGEX = /^[a-zA-Z0-9_.-]{2,64}$/;
 
+export type SiteTheme = "dark" | "light" | "system";
+
 export function validateHexColor(color: string): boolean {
   return HEX_COLOR_REGEX.test(color.trim());
 }
 
 export function validateFeatureFlagKey(key: string): boolean {
   return FEATURE_FLAG_KEY_REGEX.test(key.trim());
+}
+
+export function validateTheme(theme: string): boolean {
+  return ["dark", "light", "system"].includes(theme.trim().toLowerCase());
+}
+
+export interface NavigationMenuItem {
+  id: string;
+  label: string;
+  url: string;
+  type?: "page" | "custom" | "blog" | undefined;
+  pageId?: string | undefined;
+  customLabel?: boolean | undefined;
+  external?: boolean | undefined;
+  style?: "link" | "button" | undefined;
+  badge?: string | undefined;
+  icon?: string | undefined;
 }

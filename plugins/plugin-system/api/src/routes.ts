@@ -26,13 +26,8 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
   );
 
   // Settings
-  app.get(
-    "/settings",
-    {
-      preHandler: [authenticate, checkPermission(SYSTEM_PERMISSIONS.SETTINGS_READ)],
-    },
-    controller.getSettings.bind(controller),
-  );
+  // GET is public (unauthenticated SSR branding & theme evaluation)
+  app.get("/settings", controller.getSettings.bind(controller));
 
   app.put(
     "/settings",

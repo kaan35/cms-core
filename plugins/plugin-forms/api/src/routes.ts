@@ -32,21 +32,16 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
     controller.listSubmissions.bind(controller),
   );
 
-  // 3. Form CRUD (Protected — forms:read / forms:write)
+  // 3. Form Definition (Public — required for website client embeds)
+  app.get("/forms/:id", controller.getForm.bind(controller));
+
+  // 4. Form Admin CRUD (Protected — forms:read / forms:write)
   app.get(
     "/forms",
     {
       preHandler: [authenticate, checkPermission(FORMS_PERMISSIONS.READ)],
     },
     controller.listForms.bind(controller),
-  );
-
-  app.get(
-    "/forms/:id",
-    {
-      preHandler: [authenticate, checkPermission(FORMS_PERMISSIONS.READ)],
-    },
-    controller.getForm.bind(controller),
   );
 
   app.post(

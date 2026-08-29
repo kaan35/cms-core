@@ -126,5 +126,32 @@ describe("Page Routes & Workflows", () => {
     assert.equal(searchRes.statusCode, 200);
     const searchJson = searchRes.json() as { data: unknown[] };
     assert.equal(searchJson.data.length, 1);
+
+    // 9. Dedicated GET /pages/home route
+    const homeCreateRes = await app.inject({
+      method: "POST",
+      url: "/pages",
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "pages:write",
+      },
+      payload: {
+        title: "Home Showcase",
+        slug: "home",
+        pageType: "home",
+        status: "published",
+        blocks: [{ type: "text", content: "Hero content" }],
+      },
+    });
+    assert.equal(homeCreateRes.statusCode, 201);
+
+    const getHomeRes = await app.inject({
+      method: "GET",
+      url: "/pages/home",
+    });
+    assert.equal(getHomeRes.statusCode, 200);
+    const homeJson = getHomeRes.json() as { title: string; pageType: string };
+    assert.equal(homeJson.title, "Home Showcase");
+    assert.equal(homeJson.pageType, "home");
   });
 });

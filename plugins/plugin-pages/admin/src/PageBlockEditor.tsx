@@ -30,10 +30,13 @@ import {
   Trash2,
 } from "lucide-react";
 import * as React from "react";
+import { BentoGridBlockForm } from "./blocks/BentoGridBlockForm";
 import { BlogPostsBlockForm } from "./blocks/BlogPostsBlockForm";
+import { CodeShowcaseBlockForm } from "./blocks/CodeShowcaseBlockForm";
 import { FormBlockForm } from "./blocks/FormBlockForm";
 import { GalleryBlockForm } from "./blocks/GalleryBlockForm";
 import { HeroBlockForm } from "./blocks/HeroBlockForm";
+import { InteractiveDemoBlockForm } from "./blocks/InteractiveDemoBlockForm";
 import { TextBlockForm } from "./blocks/TextBlockForm";
 
 export type PageBlockType =
@@ -275,6 +278,27 @@ export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockE
             onChange={(updated) => handleUpdateBlock(index, updated as unknown as PageBlock)}
           />
         );
+      case "bento_grid":
+        return (
+          <BentoGridBlockForm
+            data={block as unknown as Parameters<typeof BentoGridBlockForm>[0]["data"]}
+            onChange={(updated) => handleUpdateBlock(index, updated as unknown as PageBlock)}
+          />
+        );
+      case "code_showcase":
+        return (
+          <CodeShowcaseBlockForm
+            data={block as unknown as Parameters<typeof CodeShowcaseBlockForm>[0]["data"]}
+            onChange={(updated) => handleUpdateBlock(index, updated as unknown as PageBlock)}
+          />
+        );
+      case "interactive_demo":
+        return (
+          <InteractiveDemoBlockForm
+            data={block as unknown as Parameters<typeof InteractiveDemoBlockForm>[0]["data"]}
+            onChange={(updated) => handleUpdateBlock(index, updated as unknown as PageBlock)}
+          />
+        );
       default:
         return (
           <div className="space-y-2">
@@ -307,8 +331,7 @@ export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockE
           </p>
         </div>
 
-        <Button type="button" onClick={() => setPickerOpen(true)} className="gap-2 shadow-xs">
-          <Plus className="size-4" />
+        <Button type="button" onClick={() => setPickerOpen(true)} iconStart={<Plus />}>
           Add Block
         </Button>
       </div>
@@ -323,8 +346,12 @@ export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockE
             Add your first block (Hero, Image Gallery, Rich Text, Form, or Blog Feed) to start
             building the page layout.
           </p>
-          <Button type="button" onClick={() => setPickerOpen(true)} className="mt-4 gap-2">
-            <Plus className="size-4" />
+          <Button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            iconStart={<Plus />}
+            className="mt-4"
+          >
             Open Block Gallery
           </Button>
         </div>
@@ -362,58 +389,45 @@ export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockE
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon-sm"
                       disabled={index === 0}
                       onClick={() => handleMoveBlock(index, "up")}
-                      className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                      iconStart={<ArrowUp />}
                       title="Move Up"
-                    >
-                      <ArrowUp className="size-3.5" />
-                    </Button>
+                    />
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon-sm"
                       disabled={index === blocks.length - 1}
                       onClick={() => handleMoveBlock(index, "down")}
-                      className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                      iconStart={<ArrowDown />}
                       title="Move Down"
-                    >
-                      <ArrowDown className="size-3.5" />
-                    </Button>
+                    />
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon-sm"
                       onClick={() => handleDuplicateBlock(index)}
-                      className="size-7 p-0 text-muted-foreground hover:text-foreground"
+                      iconStart={<Copy />}
                       title="Duplicate Block"
-                    >
-                      <Copy className="size-3.5" />
-                    </Button>
+                    />
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
+                      variant="destructive"
+                      size="icon-sm"
                       onClick={() => handleRemoveBlock(index)}
-                      className="size-7 p-0 text-destructive hover:bg-destructive/10"
+                      iconStart={<Trash2 />}
                       title="Remove Block"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    />
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon-sm"
                       onClick={() => toggleCollapse(index)}
-                      className="size-7 p-0 text-muted-foreground hover:text-foreground"
-                    >
-                      {isCollapsed ? (
-                        <ChevronDown className="size-3.5" />
-                      ) : (
-                        <ChevronUp className="size-3.5" />
-                      )}
-                    </Button>
+                      iconStart={isCollapsed ? <ChevronDown /> : <ChevronUp />}
+                      title={isCollapsed ? "Expand" : "Collapse"}
+                    />
                   </div>
                 </div>
 
@@ -425,7 +439,7 @@ export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockE
         </div>
       )}
 
-      {/* Block Gallery Modal (Inspired by DESIGN_GUIDE.md §3.A & shadcn/ui create) */}
+      {/* Block Gallery Modal */}
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="sm:max-w-3xl max-w-3xl max-h-[85vh] flex flex-col p-6">
           <DialogHeader className="shrink-0 pb-2">

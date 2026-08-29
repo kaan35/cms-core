@@ -140,13 +140,7 @@ export function PluginManager() {
             Enable or disable modular CMS capabilities dynamically
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => mutate()}
-          iconStart={<RefreshCw />}
-          className="text-xs h-8"
-        >
+        <Button variant="outline" onClick={() => mutate()} iconStart={<RefreshCw />}>
           Refresh
         </Button>
       </div>

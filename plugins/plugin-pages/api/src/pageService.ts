@@ -72,6 +72,14 @@ export class PageService {
   }
 
   async getPageBySlug(slug: string, canViewDraft = false): Promise<PageDoc | null> {
+    if (slug === "home" || slug === "index") {
+      const homePage = await this.pagesRepo.findHomePage();
+      if (homePage) {
+        if (homePage.status === "draft" && !canViewDraft) return null;
+        return homePage;
+      }
+    }
+
     const page = await this.pagesRepo.findBySlug(slug);
     if (!page) {
       return null;
@@ -82,8 +90,15 @@ export class PageService {
     return page;
   }
 
+  async getHomePage(canViewDraft = false): Promise<PageDoc | null> {
+    const page = await this.pagesRepo.findHomePage();
+    if (!page) return null;
+    if (page.status === "draft" && !canViewDraft) return null;
+    return page;
+  }
+
   async listPages(
-    query?: { page?: unknown; limit?: unknown; status?: unknown },
+    query?: { page?: unknown; limit?: unknown; status?: unknown; pageType?: unknown },
     canViewDraft = false,
   ): Promise<PaginatedResult<PageDoc>> {
     const filter: Record<string, unknown> = {};
@@ -92,6 +107,10 @@ export class PageService {
       filter["status"] = "published";
     } else if (query?.status && (query.status === "draft" || query.status === "published")) {
       filter["status"] = query.status;
+    }
+
+    if (query?.pageType && (query.pageType === "standard" || query.pageType === "home")) {
+      filter["pageType"] = query.pageType;
     }
 
     return this.pagesRepo.list(filter, query);

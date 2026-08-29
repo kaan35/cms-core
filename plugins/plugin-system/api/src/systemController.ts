@@ -49,6 +49,10 @@ export class SystemController {
       brandFont: typeof body["brandFont"] === "string" ? body["brandFont"] : undefined,
       primaryColor: typeof body["primaryColor"] === "string" ? body["primaryColor"] : undefined,
       fontFamily: typeof body["fontFamily"] === "string" ? body["fontFamily"] : undefined,
+      defaultTheme: typeof body["defaultTheme"] === "string" ? body["defaultTheme"] : undefined,
+      footerText: typeof body["footerText"] === "string" ? body["footerText"] : undefined,
+      headerMenu: Array.isArray(body["headerMenu"]) ? body["headerMenu"] : undefined,
+      footerMenu: Array.isArray(body["footerMenu"]) ? body["footerMenu"] : undefined,
       allowRegistration:
         typeof body["allowRegistration"] === "boolean" ? body["allowRegistration"] : undefined,
       sessionTimeoutMinutes:

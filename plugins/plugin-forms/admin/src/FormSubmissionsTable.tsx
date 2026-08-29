@@ -131,24 +131,16 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => mutate()}
-            className="h-8 text-xs gap-1.5"
-          >
-            <RefreshCw className="size-3.5" />
+          <Button variant="outline" onClick={() => mutate()} iconStart={<RefreshCw />}>
             Refresh
           </Button>
 
           <Button
             variant="outline"
-            size="sm"
             onClick={handleExportCsv}
             disabled={submissions.length === 0}
-            className="h-8 text-xs font-semibold gap-1.5 shadow-2xs"
+            iconStart={<Download />}
           >
-            <Download className="size-3.5" />
             Export CSV
           </Button>
         </div>

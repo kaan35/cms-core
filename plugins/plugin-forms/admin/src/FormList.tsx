@@ -115,21 +115,15 @@ export function FormList() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
-            size="icon-sm"
+            size="icon"
             onClick={() => mutate()}
             title="Refresh forms list"
-            className="h-8 w-8 shrink-0 border-border/80"
-          >
-            <RefreshCw className="size-3.5" />
-          </Button>
+            iconStart={<RefreshCw />}
+          />
 
           <Link href="/dashboard/forms/new" className="flex-1 sm:flex-none">
-            <Button
-              size="sm"
-              className="h-8 w-full sm:w-auto gap-1.5 text-xs font-semibold shadow-xs"
-            >
-              <Plus className="size-3.5" />
-              <span>Create Form</span>
+            <Button iconStart={<Plus />} className="w-full sm:w-auto">
+              Create Form
             </Button>
           </Link>
         </div>
@@ -221,29 +215,25 @@ export function FormList() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <Link href={`/dashboard/forms/${form.id}/submissions`}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs gap-1 font-medium shadow-2xs"
-                        >
-                          <Inbox className="size-3" />
+                        <Button variant="outline" iconStart={<Inbox />}>
                           Submissions
                         </Button>
                       </Link>
                       <Link href={`/dashboard/forms/${form.id}`}>
-                        <Button variant="ghost" size="icon-xs" title="Edit Form">
-                          <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
-                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Edit Form"
+                          iconStart={<Pencil />}
+                        />
                       </Link>
                       <Button
                         variant="ghost"
-                        size="icon-xs"
+                        size="icon"
                         onClick={() => setDeleteModal({ target: form, isDeleting: false })}
                         title="Delete Form"
-                        className="hover:text-destructive"
-                      >
-                        <Trash2 className="size-3.5 text-muted-foreground" />
-                      </Button>
+                        iconStart={<Trash2 className="text-destructive" />}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -272,17 +262,15 @@ export function FormList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 pt-3">
-            <AlertDialogCancel className="h-8 text-xs gap-1.5" disabled={deleteModal.isDeleting}>
+            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
               <X className="size-3.5" />
               Cancel
             </AlertDialogCancel>
             <Button
               variant="destructive"
-              size="sm"
-              className="h-8 text-xs font-semibold gap-1.5"
               onClick={handleDeleteConfirm}
               loading={deleteModal.isDeleting}
-              iconStart={<Trash2 className="size-3.5" />}
+              iconStart={<Trash2 />}
             >
               {deleteModal.isDeleting ? "Deleting..." : "Delete Form"}
             </Button>

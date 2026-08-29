@@ -61,36 +61,22 @@ export function MediaPicker({
 
       {value ? (
         <div className="group relative overflow-hidden rounded-xl border border-border/80 bg-card p-2">
-          <div
-            className={cn(
-              "relative w-full overflow-hidden rounded-lg bg-muted/40 flex items-center justify-center",
-              aspectClass,
-            )}
-          >
+          <div className="relative w-full overflow-hidden rounded-lg bg-muted/40 flex items-center justify-center">
             <img
               src={value}
               alt="Selected media"
-              className="size-full object-cover transition-transform group-hover:scale-105"
+              className="w-full h-auto max-h-56 object-cover rounded-md"
             />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
               <Button
                 type="button"
-                size="sm"
                 variant="secondary"
                 onClick={() => setOpen(true)}
-                className="h-8 gap-1.5 text-xs shadow-md"
+                iconStart={<Replace />}
               >
-                <Replace className="size-3.5" />
                 Change
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                onClick={handleClear}
-                className="h-8 gap-1.5 text-xs shadow-md"
-              >
-                <X className="size-3.5" />
+              <Button type="button" variant="destructive" onClick={handleClear} iconStart={<X />}>
                 Remove
               </Button>
             </div>

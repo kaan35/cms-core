@@ -16,6 +16,7 @@ export {
   PAGES_PERMISSIONS,
   PageBlockSchema,
   PageStatusSchema,
+  PageTypeSchema,
   TextBlockSchema,
   UpdatePageSchema,
   validateCreatePage,
@@ -33,11 +34,13 @@ export type {
   PageBlock,
   PageDoc,
   PageStatus,
+  PageType,
   PageVersionDoc,
   TextBlock,
   UpdatePageInput,
 } from "./domain/page.rules.js";
 export { initPagesMigration } from "./migrations/202601040000_init_pages.js";
+export { seedHomePageMigration } from "./migrations/202608200001_seed_home_page.js";
 export { PageService } from "./pageService.js";
 export { PagesRepository } from "./repositories/pagesRepository.js";
 
