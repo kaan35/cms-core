@@ -19,12 +19,15 @@ await cache.connect();
 
 const app = await createServer(db, cache, env);
 
+const apiPort = config.getInt("API_PORT", 3001);
+const host = config.getOrDefault("HOST", "0.0.0.0");
+
 await app.listen({
-  port: config.getInt("PORT", 3001),
-  host: config.getOrDefault("HOST", "0.0.0.0"),
+  port: apiPort,
+  host: host,
 });
 
 logger.info("Server listening", {
-  port: config.getInt("PORT", 3001),
-  host: config.getOrDefault("HOST", "0.0.0.0"),
+  port: apiPort,
+  host: host,
 });

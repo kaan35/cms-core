@@ -87,6 +87,9 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
     }
 
     return Object.entries(filter).every(([key, value]) => {
+      if (key === "$or" && Array.isArray(value)) {
+        return value.some((subFilter) => this.matchDoc(doc, subFilter as Record<string, unknown>));
+      }
       if (key === "$text" && typeof value === "object" && value !== null) {
         const searchStr = String((value as { $search: string }).$search).toLowerCase();
         return Object.values(doc).some(
@@ -100,6 +103,17 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
         Array.isArray((value as { $in: unknown[] }).$in)
       ) {
         return (value as { $in: unknown[] }).$in.includes(doc[key]);
+      }
+      if (
+        value &&
+        typeof value === "object" &&
+        "$regex" in value &&
+        typeof (value as { $regex: unknown }).$regex === "string"
+      ) {
+        const pattern = (value as { $regex: string }).$regex;
+        const options = (value as { $options?: string }).$options || "";
+        const reg = new RegExp(pattern, options);
+        return typeof doc[key] === "string" && reg.test(doc[key] as string);
       }
       return doc[key] === value;
     });

@@ -88,8 +88,12 @@ export async function searchPaginated<T extends Record<string, unknown>>(
   const filter: Record<string, unknown> = { ...extraFilter };
 
   if (trimmed) {
-    // Uses $text query for MongoDB or flexible search
-    filter["$text"] = { $search: trimmed };
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    filter["$or"] = [
+      { title: { $regex: escaped, $options: "i" } },
+      { slug: { $regex: escaped, $options: "i" } },
+      { summary: { $regex: escaped, $options: "i" } },
+    ];
   }
 
   const [data, total] = await Promise.all([

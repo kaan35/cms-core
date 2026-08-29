@@ -21,15 +21,29 @@ function makeMockCollection<T extends Record<string, unknown>>(
       filter: Record<string, unknown> = {},
       options?: { skip?: number; limit?: number },
     ): Promise<T[]> {
-      let res = docs.filter((d) => {
-        if (filter["$text"] && typeof filter["$text"] === "object") {
-          const search = String((filter["$text"] as { $search: string }).$search).toLowerCase();
-          return Object.values(d).some(
-            (v) => typeof v === "string" && v.toLowerCase().includes(search),
-          );
-        }
-        return Object.entries(filter).every(([k, v]) => d[k] === v);
-      });
+      const matches = (d: T, f: Record<string, unknown>): boolean => {
+        return Object.entries(f).every(([k, v]) => {
+          if (k === "$or" && Array.isArray(v)) {
+            return v.some((sub) => matches(d, sub as Record<string, unknown>));
+          }
+          if (k === "$text" && typeof v === "object" && v !== null) {
+            const search = String((v as { $search: string }).$search).toLowerCase();
+            return Object.values(d).some(
+              (val) => typeof val === "string" && val.toLowerCase().includes(search),
+            );
+          }
+          if (v && typeof v === "object" && "$regex" in v) {
+            const reg = new RegExp(
+              (v as { $regex: string }).$regex,
+              (v as { $options?: string }).$options || "",
+            );
+            return typeof d[k] === "string" && reg.test(d[k] as string);
+          }
+          return d[k] === v;
+        });
+      };
+
+      let res = docs.filter((d) => matches(d, filter));
       if (options?.skip) res = res.slice(options.skip);
       if (options?.limit) res = res.slice(0, options.limit);
       return res.map((d) => structuredClone(d));
@@ -37,13 +51,29 @@ function makeMockCollection<T extends Record<string, unknown>>(
     async updateOne(): Promise<void> {},
     async deleteOne(): Promise<void> {},
     async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {
-      if (filter["$text"] && typeof filter["$text"] === "object") {
-        const search = String((filter["$text"] as { $search: string }).$search).toLowerCase();
-        return docs.filter((d) =>
-          Object.values(d).some((v) => typeof v === "string" && v.toLowerCase().includes(search)),
-        ).length;
-      }
-      return docs.length;
+      const matches = (d: T, f: Record<string, unknown>): boolean => {
+        return Object.entries(f).every(([k, v]) => {
+          if (k === "$or" && Array.isArray(v)) {
+            return v.some((sub) => matches(d, sub as Record<string, unknown>));
+          }
+          if (k === "$text" && typeof v === "object" && v !== null) {
+            const search = String((v as { $search: string }).$search).toLowerCase();
+            return Object.values(d).some(
+              (val) => typeof val === "string" && val.toLowerCase().includes(search),
+            );
+          }
+          if (v && typeof v === "object" && "$regex" in v) {
+            const reg = new RegExp(
+              (v as { $regex: string }).$regex,
+              (v as { $options?: string }).$options || "",
+            );
+            return typeof d[k] === "string" && reg.test(d[k] as string);
+          }
+          return d[k] === v;
+        });
+      };
+
+      return docs.filter((d) => matches(d, filter)).length;
     },
     async createIndex(): Promise<void> {},
   };

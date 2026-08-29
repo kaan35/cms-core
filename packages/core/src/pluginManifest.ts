@@ -67,6 +67,14 @@ export const PLUGIN_MANIFEST: PluginManifestEntry[] = [
           await initPagesMigration.up(db);
         },
       },
+      {
+        id: "202608200001_seed_home_page",
+        description: "Create index for pageType and seed default home page",
+        up: async (db) => {
+          const { seedHomePageMigration } = await import("@cms/plugin-pages-api" as string);
+          await seedHomePageMigration.up(db);
+        },
+      },
     ],
     register: async (scope, services) => {
       const { registerPagesPlugin } = await import("@cms/plugin-pages-api" as string);

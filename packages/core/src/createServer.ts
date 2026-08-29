@@ -2,6 +2,8 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import Fastify from "fastify";
 import { AppError } from "./errors/AppError.js";
@@ -34,8 +36,33 @@ export async function createServer(
     logger: false,
   });
 
-  await app.register(helmet);
+  await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cookie);
+
+  await app.register(swagger, {
+    openapi: {
+      info: {
+        title: "CMS Core Headless API",
+        description:
+          "Official REST API documentation and schema for CMS plugins, content pages, blog, and forms.",
+        version: "0.1.0",
+      },
+      servers: [
+        {
+          url: "http://localhost:3001",
+          description: "Local Development Server",
+        },
+      ],
+    },
+  });
+
+  await app.register(swaggerUi, {
+    routePrefix: "/docs",
+    uiConfig: {
+      docExpansion: "list",
+      deepLinking: true,
+    },
+  });
 
   const rateLimitMax = config.getInt("RATE_LIMIT_GLOBAL_MAX", 100);
   const rateLimitTimeWindow = config.getOrDefault("RATE_LIMIT_GLOBAL_TIME_WINDOW", "1 minute");
