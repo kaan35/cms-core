@@ -3,6 +3,7 @@
 import {
   BookOpen,
   ClipboardList,
+  Compass,
   FileText,
   Flame,
   Image as ImageIcon,
@@ -41,6 +42,12 @@ export const defaultNavSections: NavSection[] = [
     items: [
       { name: "Pages", href: "/dashboard/pages", icon: FileText, pluginId: "plugin-pages" },
       { name: "Blog Posts", href: "/dashboard/blog", icon: BookOpen, pluginId: "plugin-blog" },
+      {
+        name: "Navigation",
+        href: "/dashboard/navigation",
+        icon: Compass,
+        pluginId: "plugin-system",
+      },
       {
         name: "Media Library",
         href: "/dashboard/media",

@@ -135,23 +135,15 @@ export function SessionsList() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => mutate()}
-            className="gap-1.5 text-xs h-8"
-          >
-            <RefreshCw className="size-3.5" />
-            <span>Refresh</span>
+          <Button variant="outline" onClick={() => mutate()} iconStart={<RefreshCw />}>
+            Refresh
           </Button>
           <Button
             variant="destructive"
-            size="sm"
             onClick={() => setRevokeAllModalOpen(true)}
-            className="gap-1.5 text-xs h-8"
+            iconStart={<ShieldAlert />}
           >
-            <ShieldAlert className="size-3.5" />
-            <span>Revoke All Other Devices</span>
+            Revoke All Other Devices
           </Button>
         </div>
       </div>

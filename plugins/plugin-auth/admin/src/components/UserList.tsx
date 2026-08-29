@@ -98,22 +98,11 @@ export function UserList() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => mutate()}
-            className="gap-1.5 text-xs h-8"
-          >
-            <RefreshCw className="size-3.5" />
-            <span>Refresh</span>
+          <Button variant="outline" onClick={() => mutate()} iconStart={<RefreshCw />}>
+            Refresh
           </Button>
-          <Button
-            size="sm"
-            onClick={() => router.push("/dashboard/users/new")}
-            className="gap-1.5 text-xs h-8"
-          >
-            <UserPlus className="size-3.5" />
-            <span>New User</span>
+          <Button onClick={() => router.push("/dashboard/users/new")} iconStart={<UserPlus />}>
+            New User
           </Button>
         </div>
       </div>
@@ -229,17 +218,15 @@ export function UserList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 pt-3">
-            <AlertDialogCancel className="h-8 text-xs gap-1.5" disabled={deleteModal.isDeleting}>
+            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
               <X className="size-3.5" />
               Cancel
             </AlertDialogCancel>
             <Button
               variant="destructive"
-              size="sm"
-              className="h-8 text-xs font-semibold gap-1.5"
               onClick={handleConfirmDelete}
               loading={deleteModal.isDeleting}
-              iconStart={<Trash2 className="size-3.5" />}
+              iconStart={<Trash2 />}
             >
               {deleteModal.isDeleting ? "Deleting..." : "Delete User"}
             </Button>

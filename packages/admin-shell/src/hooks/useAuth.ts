@@ -25,9 +25,10 @@ export function useAuth() {
       }
     },
     {
-      revalidateOnFocus: true,
+      revalidateOnMount: false,
+      revalidateOnFocus: false,
       shouldRetryOnError: false,
-      dedupingInterval: 5000,
+      dedupingInterval: 60000,
     },
   );
 

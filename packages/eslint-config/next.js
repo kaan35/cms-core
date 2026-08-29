@@ -56,6 +56,18 @@ export function nextConfig(tsconfigRootDir) {
             caughtErrorsIgnorePattern: "^_",
           },
         ],
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: ["../*", "../../*", "../../../*"],
+                message:
+                  "Relative parent imports are restricted. Please use the '@/*' path alias instead.",
+              },
+            ],
+          },
+        ],
       },
     },
   ]);

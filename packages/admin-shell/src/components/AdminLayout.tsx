@@ -4,15 +4,27 @@ import { ChevronRight, Home, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth, type AuthUser } from "../hooks/useAuth";
+import { AuthProvider } from "./AuthProvider";
 import { Sidebar } from "./Sidebar";
 import { Skeleton } from "./ui/skeleton";
 
 export interface AdminLayoutProps {
+  initialUser?: AuthUser | null;
   children: React.ReactNode;
 }
 
-export function AdminLayout({ children }: AdminLayoutProps) {
+export function AdminLayout({ initialUser, children }: AdminLayoutProps) {
+  const content = <AdminLayoutInner>{children}</AdminLayoutInner>;
+
+  if (initialUser) {
+    return <AuthProvider initialUser={initialUser}>{content}</AuthProvider>;
+  }
+
+  return content;
+}
+
+function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -29,23 +41,28 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     else if (segment === "roles") label = "Role Templates";
     else if (segment === "account") label = "My Account";
     else if (segment === "sessions") label = "Active Sessions";
-    else if (segment === "forms") label = "Forms & Submissions";
+    else if (segment === "forms") label = "Forms";
+    else if (segment === "submissions") label = "Submissions";
     else if (segment === "blog") label = "Blog Posts";
     else if (segment === "pages") label = "Pages";
+    else if (segment === "navigation") label = "Navigation Menu";
     else if (segment === "settings") label = "Settings";
     else if (segment === "plugins") label = "Plugins";
+    else if (segment === "media") label = "Media Library";
+    else if (segment === "audit-log") label = "Audit Log";
     else if (segment === "new") {
       if (prevSegment === "users") label = "New User";
       else if (prevSegment === "roles") label = "New Role";
       else if (prevSegment === "blog") label = "New Post";
       else if (prevSegment === "pages") label = "New Page";
+      else if (prevSegment === "forms") label = "New Form";
       else label = "Create New";
-    } else if (segment.length >= 10 || /^[0-9a-fA-F-]+$/.test(segment)) {
+    } else if (/^[0-9a-fA-F-]{20,}$/.test(segment) || /^[0-9]+$/.test(segment)) {
       if (prevSegment === "users") label = "User Details";
       else if (prevSegment === "roles") label = "Role Details";
       else if (prevSegment === "blog") label = "Edit Post";
       else if (prevSegment === "pages") label = "Edit Page";
-      else if (prevSegment === "forms") label = "Form Details";
+      else if (prevSegment === "forms") label = "Form Builder";
       else label = "Details";
     }
 

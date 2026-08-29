@@ -7,6 +7,7 @@ export * from "./components/ui/checkbox";
 export * from "./components/ui/dialog";
 export * from "./components/ui/dropdown-menu";
 export * from "./components/ui/input";
+export * from "./components/ui/kbd";
 export * from "./components/ui/label";
 export * from "./components/ui/popover";
 export * from "./components/ui/select";
@@ -21,6 +22,7 @@ export * from "./components/ui/tooltip";
 
 // Layout & Core Shell Components
 export * from "./components/AdminLayout";
+export * from "./components/AuthProvider";
 export * from "./components/PageHeader";
 export * from "./components/ProtectedRoute";
 export * from "./components/Sidebar";
@@ -33,6 +35,7 @@ export * from "./pages/DashboardHomePage";
 // Hooks & Libs
 export * from "./hooks/useApi";
 export * from "./hooks/useAuth";
+export * from "./hooks/useShortcut";
 export * from "./lib/api-client";
 export * from "./lib/csrf";
 export * from "./lib/format";

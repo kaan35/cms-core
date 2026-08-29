@@ -14,6 +14,7 @@ import {
   Skeleton,
   toast,
   useApi,
+  useSaveShortcut,
 } from "@cms/admin-shell";
 import { ArrowLeft, Lock, Mail, Save, Shield, User } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -179,8 +180,8 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
     }));
   };
 
-  const handleSave = async (e: React.SubmitEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
     if (!inputData.email.trim()) {
       toast.error("Email address is required");
@@ -234,11 +235,13 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
     }
   };
 
+  useSaveShortcut(() => handleSave());
+
   const isLoading = (!isNew && isUserLoading) || isRolesLoading;
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-4xl">
+      <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-44 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -247,7 +250,7 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
   }
 
   return (
-    <form onSubmit={handleSave} className="space-y-6 max-w-4xl pb-16">
+    <form onSubmit={handleSave} className="space-y-6 pb-16">
       {/* Top Header Bar with Standardized Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -267,19 +270,16 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
             iconStart={<ArrowLeft />}
             onClick={() => router.push("/dashboard/users")}
-            className="text-xs h-8"
           >
             Cancel
           </Button>
           <Button
             type="submit"
-            size="sm"
             loading={formState.isSubmitting}
             iconStart={<Save />}
-            className="text-xs h-8"
+            shortcut="save"
           >
             {isNew ? "Create User" : "Save Changes"}
           </Button>

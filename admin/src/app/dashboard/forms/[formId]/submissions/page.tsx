@@ -1,13 +1,10 @@
-"use client";
-
 import { SubmissionsPage } from "@cms/plugin-forms-admin";
-import { use } from "react";
 
-export default function FormSubmissionsPageRoute({
+export default async function FormSubmissionsPageRoute({
   params,
 }: {
   params: Promise<{ formId: string }>;
 }) {
-  const { formId } = use(params);
+  const { formId } = await params;
   return <SubmissionsPage formId={formId} />;
 }

@@ -177,12 +177,10 @@ export function AccountPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={handleCopyId}
-                    className="shrink-0 text-xs gap-1"
+                    iconStart={<Copy />}
                   >
-                    <Copy className="size-3.5" />
-                    <span>{copiedId ? "Copied" : "Copy"}</span>
+                    {copiedId ? "Copied" : "Copy"}
                   </Button>
                 </div>
               </div>
@@ -353,7 +351,6 @@ export function AccountPage() {
                   disabled={formState.isSubmitting}
                   loading={formState.isSubmitting}
                   iconStart={<Save />}
-                  className="text-xs h-8"
                 >
                   Update Password
                 </Button>
