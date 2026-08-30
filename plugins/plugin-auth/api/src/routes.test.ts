@@ -247,7 +247,7 @@ describe("plugin-auth routes & workflows", () => {
     await app.close();
   });
 
-  it("public registration strictly assigns roleIds: [] and ignores body roleIds (Rule 29)", async () => {
+  it("public registration strictly assigns roleIds: [] and ignores body roleIds", async () => {
     const { app } = await setupTestApp();
 
     const res = await app.inject({

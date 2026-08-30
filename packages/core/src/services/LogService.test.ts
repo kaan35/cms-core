@@ -66,7 +66,7 @@ describe("LogService", () => {
     assert.equal(entry["level"], "info");
   });
 
-  it("redacts sensitive fields (Rule 36)", () => {
+  it("redacts sensitive fields", () => {
     const { logger, entries } = makeCapturingLogger();
     logger.info("user action", {
       email: "user@example.com",

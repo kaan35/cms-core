@@ -1,5 +1,5 @@
 import type { HookManager, ILogger, PaginatedResult } from "@cms/core";
-import { NotFoundError } from "@cms/core";
+import { EVENTS, NotFoundError } from "@cms/core";
 import {
   generateStorageKey,
   sanitizeFilename,
@@ -61,7 +61,7 @@ export class MediaService {
     });
 
     // 6. Emit hook event
-    await this.hooks.emit("media.uploaded", {
+    await this.hooks.emit(EVENTS.MEDIA.FILE_UPLOADED, {
       mediaId: mediaDoc.id,
       filename: mediaDoc.filename,
       key: mediaDoc.key,
@@ -89,7 +89,7 @@ export class MediaService {
     await this.storageAdapter.delete(doc.key);
     await this.mediaRepo.deleteById(id);
 
-    await this.hooks.emit("media.deleted", {
+    await this.hooks.emit(EVENTS.MEDIA.FILE_DELETED, {
       mediaId: id,
       key: doc.key,
       ...(actorId !== undefined ? { actorId } : {}),

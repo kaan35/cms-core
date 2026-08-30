@@ -1,16 +1,16 @@
-import { validateWithSchema } from "@cms/core";
+import { EVENTS, PERMISSIONS, validateWithSchema } from "@cms/core";
 import { z } from "zod";
 
 // 1. Permissions & Events
 export const BLOG_PERMISSIONS = {
-  READ_DRAFT: "blog:read:draft",
-  WRITE: "blog:write",
+  READ_DRAFT: PERMISSIONS.BLOG.READ_DRAFT,
+  WRITE: PERMISSIONS.BLOG.WRITE,
 } as const;
 
 export const BLOG_EVENTS = {
-  CREATED: "blog.created",
-  UPDATED: "blog.updated",
-  DELETED: "blog.deleted",
+  CREATED: EVENTS.BLOG.CREATED,
+  UPDATED: EVENTS.BLOG.UPDATED,
+  DELETED: EVENTS.BLOG.DELETED,
 } as const;
 
 // 2. Status & Schemas

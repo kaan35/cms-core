@@ -1,9 +1,9 @@
-import { validateWithSchema } from "@cms/core";
+import { PERMISSIONS, validateWithSchema } from "@cms/core";
 import { z } from "zod";
 
 export const PAGES_PERMISSIONS = {
-  READ_DRAFT: "pages:read:draft",
-  WRITE: "pages:write",
+  READ_DRAFT: PERMISSIONS.PAGES.READ_DRAFT,
+  WRITE: PERMISSIONS.PAGES.WRITE,
 } as const;
 
 // 1. Block Schemas
@@ -137,7 +137,7 @@ export const UpdatePageSchema = z.object({
   metaDescription: z.string().optional(),
 });
 
-// Inferred TypeScript types (Rule 30)
+// Inferred TypeScript types
 export type HeroBlock = z.infer<typeof HeroBlockSchema>;
 export type GalleryBlock = z.infer<typeof GalleryBlockSchema>;
 export type BentoGridBlock = z.infer<typeof BentoGridBlockSchema>;

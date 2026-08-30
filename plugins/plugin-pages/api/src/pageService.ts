@@ -1,5 +1,5 @@
 import type { HookManager, ILogger, PaginatedResult } from "@cms/core";
-import { NotFoundError } from "@cms/core";
+import { EVENTS, NotFoundError } from "@cms/core";
 import type { PageDoc, PageVersionDoc } from "./domain/page.rules.js";
 import { validateCreatePage, validateUpdatePage } from "./domain/page.rules.js";
 import type { PagesRepository } from "./repositories/pagesRepository.js";
@@ -19,7 +19,7 @@ export class PageService {
     const validated = validateCreatePage(input);
     const page = await this.pagesRepo.create(validated, actorId);
 
-    await this.hooks.emit("page.created", {
+    await this.hooks.emit(EVENTS.PAGE.CREATED, {
       pageId: page.id,
       slug: page.slug,
       status: page.status,
@@ -34,7 +34,7 @@ export class PageService {
     const validated = validateUpdatePage(input);
     const page = await this.pagesRepo.update(id, validated, actorId);
 
-    await this.hooks.emit("page.updated", {
+    await this.hooks.emit(EVENTS.PAGE.UPDATED, {
       pageId: page.id,
       slug: page.slug,
       status: page.status,
@@ -54,7 +54,7 @@ export class PageService {
 
     await this.pagesRepo.deleteById(id);
 
-    await this.hooks.emit("page.deleted", {
+    await this.hooks.emit(EVENTS.PAGE.DELETED, {
       pageId: id,
       slug: existing.slug,
       actorId,

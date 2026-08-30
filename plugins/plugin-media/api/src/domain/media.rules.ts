@@ -1,6 +1,7 @@
-import { ValidationError } from "@cms/core";
+import { PERMISSIONS, ValidationError, validateWithSchema } from "@cms/core";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { z } from "zod";
 
 export const ALLOWED_MEDIA_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
@@ -9,8 +10,8 @@ export type AllowedMediaMimeType = (typeof ALLOWED_MEDIA_MIME_TYPES)[number];
 export const MAX_MEDIA_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export const MEDIA_PERMISSIONS = {
-  READ: "media:read",
-  WRITE: "media:write",
+  READ: PERMISSIONS.MEDIA.READ,
+  WRITE: PERMISSIONS.MEDIA.WRITE,
 } as const;
 
 export function validateMediaMimeType(mimeTypeRaw: string): AllowedMediaMimeType {
@@ -53,4 +54,16 @@ export function generateStorageKey(filename: string): string {
   const safeName = sanitizeFilename(filename);
   const uuid = randomUUID();
   return `${uuid}-${safeName}`;
+}
+
+// Zod Ingress Schemas
+export const UpdateMediaSchema = z.object({
+  alt: z.string().trim().optional(),
+  caption: z.string().trim().optional(),
+});
+
+export type UpdateMediaInput = z.infer<typeof UpdateMediaSchema>;
+
+export function validateUpdateMedia(input: unknown): UpdateMediaInput {
+  return validateWithSchema(UpdateMediaSchema, input, "Invalid media update payload");
 }

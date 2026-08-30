@@ -1,6 +1,8 @@
+import { PERMISSIONS } from "@cms/core";
 import type { FastifyInstance } from "fastify";
-import type { AuthController } from "./authController.js";
-import { AUTH_PERMISSIONS } from "./domain/permission.rules.js";
+import type { AuthController } from "./controllers/AuthController.js";
+import type { RoleController } from "./controllers/RoleController.js";
+import type { UserController } from "./controllers/UserController.js";
 
 export interface AuthRouteOptions {
   registerRateLimitMax?: number;
@@ -11,196 +13,173 @@ export interface AuthRouteOptions {
 
 export function registerAuthRoutes(
   app: FastifyInstance,
-  controller: AuthController,
+  controllers:
+    | {
+        auth: AuthController;
+        user: UserController;
+        role: RoleController;
+      }
+    | AuthController,
   options: AuthRouteOptions = {},
 ): void {
   const { authenticate, checkPermission, verifyCsrf } = app;
+
+  const authCtrl = "auth" in controllers ? controllers.auth : controllers;
+  const userCtrl =
+    "user" in controllers ? controllers.user : (controllers as unknown as UserController);
+  const roleCtrl =
+    "role" in controllers ? controllers.role : (controllers as unknown as RoleController);
 
   const registerMax = options.registerRateLimitMax ?? 10;
   const registerWindow = options.registerRateLimitWindow ?? "1 minute";
   const loginMax = options.loginRateLimitMax ?? 5;
   const loginWindow = options.loginRateLimitWindow ?? "1 minute";
 
-  // Setup wizard routes (First-admin bootstrap)
-  app.get("/auth/setup", controller.getSetupStatus.bind(controller));
-
+  // 1. Setup Wizard (First-admin bootstrap)
+  app.get("/auth/setup", authCtrl.getSetupStatus.bind(authCtrl));
   app.post(
     "/auth/setup",
     {
       config: {
-        rateLimit: {
-          max: registerMax,
-          timeWindow: registerWindow,
-        },
+        rateLimit: { max: registerMax, timeWindow: registerWindow },
       },
     },
-    controller.setup.bind(controller),
+    authCtrl.setup.bind(authCtrl),
   );
 
-  // Public routes with dedicated rate limits
+  // 2. Public Auth Routes with Rate Limiting
   app.post(
     "/auth/register",
     {
       config: {
-        rateLimit: {
-          max: registerMax,
-          timeWindow: registerWindow,
-        },
+        rateLimit: { max: registerMax, timeWindow: registerWindow },
       },
     },
-    controller.register.bind(controller),
+    authCtrl.register.bind(authCtrl),
   );
 
   app.post(
     "/auth/login",
     {
       config: {
-        rateLimit: {
-          max: loginMax,
-          timeWindow: loginWindow,
-        },
+        rateLimit: { max: loginMax, timeWindow: loginWindow },
       },
     },
-    controller.login.bind(controller),
+    authCtrl.login.bind(authCtrl),
   );
 
-  // Authenticated routes with CSRF verification on state changes
+  // 3. Authenticated Auth & Session Routes
   app.post(
     "/auth/logout",
     { preHandler: [authenticate, verifyCsrf] },
-    controller.logout.bind(controller),
+    authCtrl.logout.bind(authCtrl),
   );
 
-  app.get("/auth/me", { preHandler: [authenticate] }, controller.me.bind(controller));
+  app.get("/auth/me", { preHandler: [authenticate] }, authCtrl.me.bind(authCtrl));
 
-  app.get(
-    "/auth/sessions",
-    { preHandler: [authenticate] },
-    controller.listSessions.bind(controller),
-  );
+  app.get("/auth/sessions", { preHandler: [authenticate] }, authCtrl.listSessions.bind(authCtrl));
 
   app.delete(
     "/auth/sessions/:id",
     { preHandler: [authenticate, verifyCsrf] },
-    controller.deleteSession.bind(controller),
+    authCtrl.deleteSession.bind(authCtrl),
   );
 
-  // Settings
+  // 4. Auth Settings
   app.get(
     "/auth/settings",
     { preHandler: [authenticate] },
-    controller.getSettings.bind(controller),
+    authCtrl.getRegistrationSetting.bind(authCtrl),
   );
 
   app.put(
     "/auth/settings",
     {
-      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.AUTH_SETTINGS_WRITE)],
+      preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.AUTH_SETTINGS_WRITE)],
     },
-    controller.updateSettings.bind(controller),
+    authCtrl.updateRegistrationSetting.bind(authCtrl),
   );
 
-  // User session management (admin)
+  // 5. User Session Revocation (Admin)
   app.delete(
     "/users/:id/sessions",
     {
-      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.USERS_WRITE)],
+      preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.USERS_WRITE)],
     },
-    controller.revokeUserSessions.bind(controller),
+    authCtrl.revokeAllUserSessions.bind(authCtrl),
   );
 
-  // Revoke all sessions system-wide
   app.post(
     "/auth/sessions/revoke-all",
     {
       preHandler: [
         authenticate,
         verifyCsrf,
-        checkPermission(AUTH_PERMISSIONS.AUTH_REVOKE_ALL_SESSIONS),
+        checkPermission(PERMISSIONS.AUTH.AUTH_REVOKE_ALL_SESSIONS),
       ],
     },
-    controller.revokeAllSessions.bind(controller),
+    authCtrl.revokeAllSessions.bind(authCtrl),
   );
 
-  // Users management
+  // 6. User Management
   app.get(
     "/users",
-    {
-      preHandler: [authenticate, checkPermission(AUTH_PERMISSIONS.USERS_READ)],
-    },
-    controller.listUsers.bind(controller),
+    { preHandler: [authenticate, checkPermission(PERMISSIONS.AUTH.USERS_READ)] },
+    userCtrl.listUsers.bind(userCtrl),
   );
 
   app.get(
     "/users/:id",
-    {
-      preHandler: [authenticate, checkPermission(AUTH_PERMISSIONS.USERS_READ)],
-    },
-    controller.getUser.bind(controller),
+    { preHandler: [authenticate, checkPermission(PERMISSIONS.AUTH.USERS_READ)] },
+    userCtrl.getUserById.bind(userCtrl),
   );
 
   app.post(
     "/users",
-    {
-      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.USERS_WRITE)],
-    },
-    controller.createUser.bind(controller),
+    { preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.USERS_WRITE)] },
+    userCtrl.createUser.bind(userCtrl),
   );
 
   app.put(
     "/users/:id",
-    {
-      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.USERS_WRITE)],
-    },
-    controller.updateUser.bind(controller),
+    { preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.USERS_WRITE)] },
+    userCtrl.updateUser.bind(userCtrl),
   );
 
   app.delete(
     "/users/:id",
-    {
-      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.USERS_WRITE)],
-    },
-    controller.deleteUser.bind(controller),
+    { preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.USERS_WRITE)] },
+    userCtrl.deleteUser.bind(userCtrl),
   );
 
-  // Roles management
+  // 7. Role Management
   app.get(
     "/roles",
-    {
-      preHandler: [authenticate, checkPermission(AUTH_PERMISSIONS.ROLES_READ)],
-    },
-    controller.listRoles.bind(controller),
+    { preHandler: [authenticate, checkPermission(PERMISSIONS.AUTH.ROLES_READ)] },
+    roleCtrl.listRoles.bind(roleCtrl),
   );
 
   app.get(
     "/roles/:id",
-    {
-      preHandler: [authenticate, checkPermission(AUTH_PERMISSIONS.ROLES_READ)],
-    },
-    controller.getRole.bind(controller),
+    { preHandler: [authenticate, checkPermission(PERMISSIONS.AUTH.ROLES_READ)] },
+    roleCtrl.getRoleById.bind(roleCtrl),
   );
 
   app.post(
     "/roles",
-    {
-      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.ROLES_WRITE)],
-    },
-    controller.createRole.bind(controller),
+    { preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.ROLES_WRITE)] },
+    roleCtrl.createRole.bind(roleCtrl),
   );
 
   app.put(
     "/roles/:id",
-    {
-      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.ROLES_WRITE)],
-    },
-    controller.updateRole.bind(controller),
+    { preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.ROLES_WRITE)] },
+    roleCtrl.updateRole.bind(roleCtrl),
   );
 
   app.delete(
     "/roles/:id",
-    {
-      preHandler: [authenticate, verifyCsrf, checkPermission(AUTH_PERMISSIONS.ROLES_WRITE)],
-    },
-    controller.deleteRole.bind(controller),
+    { preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.ROLES_WRITE)] },
+    roleCtrl.deleteRole.bind(roleCtrl),
   );
 }

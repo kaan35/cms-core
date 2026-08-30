@@ -1,14 +1,14 @@
-import { validateWithSchema, ValidationError } from "@cms/core";
+import { EVENTS, PERMISSIONS, ValidationError, validateWithSchema } from "@cms/core";
 import { z } from "zod";
 
 // 1. Permissions & Events
 export const FORMS_PERMISSIONS = {
-  READ: "forms:read",
-  WRITE: "forms:write",
+  READ: PERMISSIONS.FORMS.READ,
+  WRITE: PERMISSIONS.FORMS.WRITE,
 } as const;
 
 export const FORMS_EVENTS = {
-  SUBMITTED: "form.submitted",
+  SUBMITTED: EVENTS.FORMS.SUBMITTED,
 } as const;
 
 // 2. Field & Form Schemas

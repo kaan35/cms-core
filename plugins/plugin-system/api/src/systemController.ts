@@ -1,6 +1,16 @@
-import { parsePaginationQuery, ValidationError } from "@cms/core";
+import { parsePaginationQuery } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import type { SystemService } from "./systemService.js";
+import {
+  validateCreateFeatureFlag,
+  validateTogglePlugin,
+  validateUpdateFeatureFlag,
+  validateUpdateSettings,
+} from "./domain/system.rules.js";
+import type { SystemService } from "./services/SystemService.js";
+
+function getActorId(request: FastifyRequest): string | undefined {
+  return (request as unknown as { user?: { id?: string } }).user?.id;
+}
 
 export class SystemController {
   private readonly systemService: SystemService;
@@ -16,16 +26,12 @@ export class SystemController {
 
   async togglePlugin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const params = request.params as { name: string };
-    const body = request.body as { enabled?: boolean } | undefined;
-
-    if (typeof body?.enabled !== "boolean") {
-      throw new ValidationError("Body property 'enabled' must be a boolean");
-    }
+    const { enabled } = validateTogglePlugin(request.body);
 
     const updated = await this.systemService.togglePlugin(
       params.name,
-      body.enabled,
-      request.user?.id,
+      enabled,
+      getActorId(request),
     );
     return reply.send({ plugin: updated });
   }
@@ -36,32 +42,8 @@ export class SystemController {
   }
 
   async updateSettings(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const body = request.body as Record<string, unknown> | undefined;
-    if (!body || typeof body !== "object") {
-      throw new ValidationError("Request body is required");
-    }
-
-    const patch = {
-      siteTitle: typeof body["siteTitle"] === "string" ? body["siteTitle"] : undefined,
-      siteDescription:
-        typeof body["siteDescription"] === "string" ? body["siteDescription"] : undefined,
-      brandColor: typeof body["brandColor"] === "string" ? body["brandColor"] : undefined,
-      brandFont: typeof body["brandFont"] === "string" ? body["brandFont"] : undefined,
-      primaryColor: typeof body["primaryColor"] === "string" ? body["primaryColor"] : undefined,
-      fontFamily: typeof body["fontFamily"] === "string" ? body["fontFamily"] : undefined,
-      defaultTheme: typeof body["defaultTheme"] === "string" ? body["defaultTheme"] : undefined,
-      footerText: typeof body["footerText"] === "string" ? body["footerText"] : undefined,
-      headerMenu: Array.isArray(body["headerMenu"]) ? body["headerMenu"] : undefined,
-      footerMenu: Array.isArray(body["footerMenu"]) ? body["footerMenu"] : undefined,
-      allowRegistration:
-        typeof body["allowRegistration"] === "boolean" ? body["allowRegistration"] : undefined,
-      sessionTimeoutMinutes:
-        typeof body["sessionTimeoutMinutes"] === "number"
-          ? body["sessionTimeoutMinutes"]
-          : undefined,
-    };
-    const updated = await this.systemService.updateSettings(patch, request.user?.id);
-
+    const validated = validateUpdateSettings(request.body);
+    const updated = await this.systemService.updateSettings(validated, getActorId(request));
     return reply.send({ settings: updated });
   }
 
@@ -71,42 +53,25 @@ export class SystemController {
   }
 
   async createFeatureFlag(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const body = request.body as Record<string, unknown> | undefined;
-    const key = typeof body?.["key"] === "string" ? body["key"] : "";
-    const label = typeof body?.["label"] === "string" ? body["label"] : "";
-    const value = typeof body?.["value"] === "boolean" ? body["value"] : false;
-
-    const flag = await this.systemService.createFeatureFlag(
-      {
-        key,
-        label,
-        value,
-        ...(typeof body?.["description"] === "string" ? { description: body["description"] } : {}),
-      },
-      request.user?.id,
-    );
-
+    const validated = validateCreateFeatureFlag(request.body);
+    const flag = await this.systemService.createFeatureFlag(validated, getActorId(request));
     return reply.status(201).send({ flag });
   }
 
   async updateFeatureFlag(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const params = request.params as { key: string };
-    const body = request.body as Record<string, unknown> | undefined;
-
-    const patch: { label?: string; description?: string; value?: boolean } = {
-      ...(typeof body?.["label"] === "string" ? { label: body["label"] } : {}),
-      ...(typeof body?.["description"] === "string" ? { description: body["description"] } : {}),
-      ...(typeof body?.["value"] === "boolean" ? { value: body["value"] } : {}),
-    };
-
-    const updated = await this.systemService.updateFeatureFlag(params.key, patch, request.user?.id);
-
+    const validated = validateUpdateFeatureFlag(request.body);
+    const updated = await this.systemService.updateFeatureFlag(
+      params.key,
+      validated,
+      getActorId(request),
+    );
     return reply.send({ flag: updated });
   }
 
   async deleteFeatureFlag(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const params = request.params as { key: string };
-    await this.systemService.deleteFeatureFlag(params.key, request.user?.id);
+    await this.systemService.deleteFeatureFlag(params.key, getActorId(request));
     return reply.send({ ok: true });
   }
 
@@ -117,7 +82,7 @@ export class SystemController {
   }
 
   async getStats(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const stats = await this.systemService.getStats();
+    const stats = await this.systemService.getHealthStatus();
     return reply.send(stats);
   }
 }

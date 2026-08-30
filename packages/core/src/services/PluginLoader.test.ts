@@ -1,9 +1,9 @@
 import Fastify from "fastify";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { PluginLoader } from "./PluginLoader.js";
 import type { ICollection, IDatabase } from "../types/IDatabase.js";
 import type { CoreServices, PluginManifestEntry } from "../types/plugin.js";
+import { PluginLoader } from "./PluginLoader.js";
 
 const stubLogger = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 const stubServices = {} as CoreServices;
@@ -58,7 +58,7 @@ describe("PluginLoader", () => {
     await app.close();
   });
 
-  it("disabled plugin: route returns 503 (Rule 28 — proven by real HTTP call)", async () => {
+  it("disabled plugin: route returns 503", async () => {
     const app = Fastify({ logger: false });
     const loader = new PluginLoader(makeDb(false), stubLogger, app, stubServices);
 
@@ -76,6 +76,56 @@ describe("PluginLoader", () => {
 
     const res = await app.inject({ method: "GET", url: "/secret" });
     assert.equal(res.statusCode, 503);
+    await app.close();
+  });
+
+  it("dynamically toggled plugin switches from 200 to 503 via reloadStates", async () => {
+    const app = Fastify({ logger: false });
+    let isEnabled = true;
+    const db: IDatabase = {
+      connect: async () => {},
+      disconnect: async () => {},
+      isAlive: async () => true,
+      collection: <T extends Record<string, unknown>>(): ICollection<T> =>
+        ({
+          findOne: async () => ({
+            name: "toggle-plugin",
+            enabled: isEnabled,
+            createdAt: new Date(),
+          }),
+          find: async () => [{ name: "toggle-plugin", enabled: isEnabled, createdAt: new Date() }],
+          insertOne: async () => {},
+          updateOne: async () => {},
+          deleteOne: async () => {},
+          countDocuments: async () => 1,
+          createIndex: async () => {},
+        }) as unknown as ICollection<T>,
+    };
+
+    const loader = new PluginLoader(db, stubLogger, app, stubServices);
+    const manifest: PluginManifestEntry[] = [
+      {
+        name: "toggle-plugin",
+        priority: 10,
+        register: async (scope) => {
+          scope.get("/live-endpoint", () => ({ status: "alive" }));
+        },
+      },
+    ];
+
+    await loader.loadAll(manifest, []);
+
+    // 1. Initially enabled -> 200
+    const res1 = await app.inject({ method: "GET", url: "/live-endpoint" });
+    assert.equal(res1.statusCode, 200);
+
+    // 2. Disable plugin in DB and reload states
+    isEnabled = false;
+    await loader.reloadStates();
+
+    // 3. Immediately returns 503 without restarting server
+    const res2 = await app.inject({ method: "GET", url: "/live-endpoint" });
+    assert.equal(res2.statusCode, 503);
     await app.close();
   });
 

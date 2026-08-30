@@ -3,10 +3,18 @@ import { SYSTEM_PERMISSIONS } from "./domain/system.rules.js";
 import type { SystemController } from "./systemController.js";
 
 export function registerSystemRoutes(app: FastifyInstance, controller: SystemController): void {
-  const authenticate = (req: FastifyRequest, reply: FastifyReply) => app.authenticate(req, reply);
-  const verifyCsrf = (req: FastifyRequest, reply: FastifyReply) => app.verifyCsrf(req, reply);
+  const customApp = app as unknown as {
+    authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    verifyCsrf: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    checkPermission: (
+      permission: string,
+    ) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  };
+  const authenticate = (req: FastifyRequest, reply: FastifyReply) =>
+    customApp.authenticate(req, reply);
+  const verifyCsrf = (req: FastifyRequest, reply: FastifyReply) => customApp.verifyCsrf(req, reply);
   const checkPermission = (permission: string) => (req: FastifyRequest, reply: FastifyReply) =>
-    app.checkPermission(permission)(req, reply);
+    customApp.checkPermission(permission)(req, reply);
 
   // Plugins
   app.get(

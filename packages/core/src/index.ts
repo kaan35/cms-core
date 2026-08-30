@@ -36,7 +36,9 @@ export { validateWithSchema } from "./utils/validation.js";
 // Registries
 export { DECORATOR_KEYS } from "./decoratorKeys.js";
 export { EVENTS } from "./events.js";
+export type { EventKey } from "./events.js";
 export { PERMISSIONS } from "./permissions.js";
+export type { PermissionKey } from "./permissions.js";
 
 // Services
 export { ConfigService } from "./services/ConfigService.js";

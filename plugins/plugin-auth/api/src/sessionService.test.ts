@@ -117,4 +117,27 @@ describe("SessionService", () => {
       (err: Error) => err instanceof UnauthorizedError,
     );
   });
+
+  it("sliding expiry: extends session expiresAt when remaining lifetime < slideThreshold", async () => {
+    const db = makeStubDb();
+    const repo = new SessionsRepository(db);
+    // 24 hours TTL, 15 minutes slide threshold
+    const service = new SessionService(repo, secret, stubLogger, 24, 15);
+
+    const res = await service.createSession("user-1", ["users:read"]);
+    const initialSession = await repo.findById(res.sessionId);
+    assert.ok(initialSession);
+
+    // Artificially age the session so remaining time is only 5 minutes (< 15 min threshold)
+    const nearExpiry = new Date(Date.now() + 5 * 60 * 1000);
+    await repo.updateExpiresAt(res.sessionId, nearExpiry);
+
+    // Validate and slide
+    await service.validateAndSlideSession(res.token);
+
+    const slidSession = await repo.findById(res.sessionId);
+    assert.ok(slidSession);
+    // Verified that expiresAt has been pushed forward ~24 hours into the future
+    assert.ok(slidSession.expiresAt.getTime() > nearExpiry.getTime() + 20 * 3600 * 1000);
+  });
 });

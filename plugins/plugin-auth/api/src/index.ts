@@ -1,19 +1,59 @@
 import type { CoreServices } from "@cms/core";
 import type { FastifyInstance } from "fastify";
-import { AuthController } from "./authController.js";
-import { AuthService } from "./authService.js";
+import { AuthController } from "./controllers/AuthController.js";
+import { RoleController } from "./controllers/RoleController.js";
+import { UserController } from "./controllers/UserController.js";
 import { createAuthenticateMiddleware } from "./middleware/authenticate.js";
 import { createCheckPermissionMiddleware } from "./middleware/checkPermission.js";
 import { createVerifyCsrfMiddleware } from "./middleware/verifyCsrf.js";
 import { RolesRepository } from "./repositories/rolesRepository.js";
 import { SessionsRepository } from "./repositories/sessionsRepository.js";
 import { UsersRepository } from "./repositories/usersRepository.js";
+import { AuthService } from "./services/AuthService.js";
+import { RoleService } from "./services/RoleService.js";
+import { UserService } from "./services/UserService.js";
 import { SessionService } from "./sessionService.js";
 
-export { AuthController } from "./authController.js";
-export { AuthService } from "./authService.js";
-export type { AuthResult } from "./authService.js";
+// Services & Controllers
+export { AuthController } from "./controllers/AuthController.js";
+export { RoleController } from "./controllers/RoleController.js";
+export { UserController } from "./controllers/UserController.js";
+export { AuthService } from "./services/AuthService.js";
+export type { AuthResult } from "./services/AuthService.js";
+export { RoleService } from "./services/RoleService.js";
+export { UserService } from "./services/UserService.js";
 
+// Domain & Rules
+export {
+  CreateRoleSchema,
+  CreateUserSchema,
+  EmailSchema,
+  LoginSchema,
+  PasswordSchema,
+  RegisterSchema,
+  SetupSchema,
+  UpdateAuthSettingsSchema,
+  UpdateRoleSchema,
+  UpdateUserSchema,
+  validateCreateRole,
+  validateCreateUser,
+  validateLogin,
+  validateRegister,
+  validateSetup,
+  validateUpdateAuthSettings,
+  validateUpdateRole,
+  validateUpdateUser,
+} from "./domain/auth.rules.js";
+export type {
+  CreateRoleInput,
+  CreateUserInput,
+  LoginInput,
+  RegisterInput,
+  SetupInput,
+  UpdateAuthSettingsInput,
+  UpdateRoleInput,
+  UpdateUserInput,
+} from "./domain/auth.rules.js";
 export {
   getDefaultPasswordMinLength,
   getDefaultSaltRounds,
@@ -22,6 +62,8 @@ export {
   verifyPassword,
 } from "./domain/password.rules.js";
 export { ADMIN_ROLE_NAME, AUTH_PERMISSIONS, hasPermission } from "./domain/permission.rules.js";
+
+// Repositories & Migrations
 export { initAuthMigration } from "./migrations/202601010000_init_auth.js";
 export { RolesRepository } from "./repositories/rolesRepository.js";
 export type { RoleDoc } from "./repositories/rolesRepository.js";
@@ -111,14 +153,25 @@ export async function registerAuthPlugin(
     passwordMinLength,
     setupEnabled,
   );
+  const userService = new UserService(
+    usersRepo,
+    rolesRepo,
+    sessionsRepo,
+    hooks,
+    logger,
+    saltRounds,
+  );
+  const roleService = new RoleService(rolesRepo, usersRepo, hooks, logger);
 
-  const controller = new AuthController(
+  const authController = new AuthController(
     authService,
     isProduction,
     cookieDomain,
     cookieSameSite,
     cookieSecure,
   );
+  const userController = new UserController(userService);
+  const roleController = new RoleController(roleService);
 
   const registerRateLimitMax = config.getInt("RATE_LIMIT_REGISTER_MAX", 10);
   const registerRateLimitWindow = config.getOrDefault(
@@ -129,10 +182,18 @@ export async function registerAuthPlugin(
   const loginRateLimitWindow = config.getOrDefault("RATE_LIMIT_LOGIN_TIME_WINDOW", "1 minute");
 
   const { registerAuthRoutes } = await import("./routes.js");
-  registerAuthRoutes(app, controller, {
-    registerRateLimitMax,
-    registerRateLimitWindow,
-    loginRateLimitMax,
-    loginRateLimitWindow,
-  });
+  registerAuthRoutes(
+    app,
+    {
+      auth: authController,
+      user: userController,
+      role: roleController,
+    },
+    {
+      registerRateLimitMax,
+      registerRateLimitWindow,
+      loginRateLimitMax,
+      loginRateLimitWindow,
+    },
+  );
 }
