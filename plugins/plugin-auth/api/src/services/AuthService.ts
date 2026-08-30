@@ -1,12 +1,12 @@
 import type { HookManager, ILogger, SettingsService } from "@cms/core";
 import {
   ConflictError,
+  EVENTS,
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
   ValidationError,
 } from "@cms/core";
-import { EVENTS } from "@cms/core";
 import {
   type LoginInput,
   type RegisterInput,
@@ -302,22 +302,20 @@ export class AuthService {
     await this.sessionService.revokeSession(sessionId);
   }
 
-  async revokeAllUserSessions(userId: string, actorId?: string): Promise<number> {
+  async revokeAllUserSessions(userId: string, actorId?: string): Promise<void> {
     const targetUser = await this.usersRepo.findById(userId);
     if (!targetUser) {
       throw new NotFoundError("User not found");
     }
-    const count = await this.sessionsRepo.deleteByUserId(userId);
-    await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, { userId, count, actorId });
-    this.logger.info("Admin revoked all sessions for user", { userId, count, actorId });
-    return count;
+    await this.sessionsRepo.deleteByUserId(userId);
+    await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, { userId, actorId });
+    this.logger.info("Admin revoked all sessions for user", { userId, actorId });
   }
 
-  async revokeAllSessions(actorId?: string): Promise<number> {
-    const count = await this.sessionsRepo.deleteAll();
-    await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, { all: true, count, actorId });
-    this.logger.warn("PANIC: Revoked all active sessions across entire system", { count, actorId });
-    return count;
+  async revokeAllSessions(actorId?: string): Promise<void> {
+    await this.sessionsRepo.deleteAll();
+    await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, { all: true, actorId });
+    this.logger.warn("PANIC: Revoked all active sessions across entire system", { actorId });
   }
 
   async getRegistrationSetting(): Promise<boolean> {

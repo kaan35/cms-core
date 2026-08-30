@@ -54,7 +54,7 @@ services:
     container_name: ${PROJECT_NAME:-cms}-api
     build:
       context: .
-      dockerfile: api/Dockerfile.dev
+      dockerfile: ${API_DOCKERFILE:-api/Dockerfile.dev}
     restart: unless-stopped
     ports:
       - "${API_PORT:-3001}:${API_PORT:-3001}"
@@ -75,7 +75,7 @@ services:
     container_name: ${PROJECT_NAME:-cms}-admin
     build:
       context: .
-      dockerfile: admin/Dockerfile.dev
+      dockerfile: ${ADMIN_DOCKERFILE:-admin/Dockerfile.dev}
     restart: unless-stopped
     ports:
       - "${ADMIN_PORT:-3002}:3002"
@@ -91,7 +91,7 @@ services:
     container_name: ${PROJECT_NAME:-cms}-client
     build:
       context: .
-      dockerfile: client-template/Dockerfile.dev
+      dockerfile: ${CLIENT_DOCKERFILE:-client-template/Dockerfile.dev}
     restart: unless-stopped
     ports:
       - "${CLIENT_PORT:-3003}:3003"

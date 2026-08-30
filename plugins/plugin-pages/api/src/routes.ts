@@ -17,15 +17,63 @@ export function registerPageRoutes(app: FastifyInstance, controller: PageControl
   };
 
   // 1. Public / Optional-auth routes
-  app.get("/pages/home", { preHandler: [optionalAuth] }, controller.getHome.bind(controller));
-  app.get("/pages/search", { preHandler: [optionalAuth] }, controller.search.bind(controller));
-  app.get("/pages", { preHandler: [optionalAuth] }, controller.list.bind(controller));
-  app.get("/pages/:slug", { preHandler: [optionalAuth] }, controller.getBySlug.bind(controller));
+  app.get(
+    "/pages/home",
+    {
+      schema: {
+        tags: ["Pages"],
+        summary: "Get the root home page (public)",
+      },
+      preHandler: [optionalAuth],
+    },
+    controller.getHome.bind(controller),
+  );
 
-  // 2. Authenticated Admin routes
+  app.get(
+    "/pages/search",
+    {
+      schema: {
+        tags: ["Pages"],
+        summary: "Search published pages (public)",
+      },
+      preHandler: [optionalAuth],
+    },
+    controller.search.bind(controller),
+  );
+
+  app.get(
+    "/pages",
+    {
+      schema: {
+        tags: ["Pages"],
+        summary: "List pages with pagination and filters",
+      },
+      preHandler: [optionalAuth],
+    },
+    controller.list.bind(controller),
+  );
+
+  app.get(
+    "/pages/:slug",
+    {
+      schema: {
+        tags: ["Pages"],
+        summary: "Get page by URL slug (public)",
+      },
+      preHandler: [optionalAuth],
+    },
+    controller.getBySlug.bind(controller),
+  );
+
+  // 2. Authenticated Admin routes (with 🔒 security definitions)
   app.post(
     "/pages",
     {
+      schema: {
+        tags: ["Pages"],
+        summary: "Create a new page (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [authenticate, verifyCsrf, checkPermission(PAGES_PERMISSIONS.WRITE)],
     },
     controller.create.bind(controller),
@@ -34,6 +82,11 @@ export function registerPageRoutes(app: FastifyInstance, controller: PageControl
   app.put(
     "/pages/:id",
     {
+      schema: {
+        tags: ["Pages"],
+        summary: "Update an existing page (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [authenticate, verifyCsrf, checkPermission(PAGES_PERMISSIONS.WRITE)],
     },
     controller.update.bind(controller),
@@ -42,6 +95,11 @@ export function registerPageRoutes(app: FastifyInstance, controller: PageControl
   app.delete(
     "/pages/:id",
     {
+      schema: {
+        tags: ["Pages"],
+        summary: "Delete a page and capture redirect (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [authenticate, verifyCsrf, checkPermission(PAGES_PERMISSIONS.WRITE)],
     },
     controller.deleteById.bind(controller),
@@ -50,6 +108,11 @@ export function registerPageRoutes(app: FastifyInstance, controller: PageControl
   app.get(
     "/pages/:id/versions",
     {
+      schema: {
+        tags: ["Pages"],
+        summary: "Get version snapshot history for a page (Admin)",
+        security: [{ cookieAuth: [] }],
+      },
       preHandler: [authenticate, checkPermission(PAGES_PERMISSIONS.WRITE)],
     },
     controller.getVersions.bind(controller),

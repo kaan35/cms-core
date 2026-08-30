@@ -122,7 +122,7 @@ export class AuthController {
   }
 
   async logout(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const sessionId = request.session?.id;
+    const sessionId = request.user?.sessionId;
     await this.authService.logout(sessionId);
     this.clearAuthCookies(reply);
     return reply.send({ ok: true });
@@ -157,7 +157,7 @@ export class AuthController {
     if (!userId) {
       return reply.status(401).send({ message: "Unauthorized" });
     }
-    const currentSessionId = request.session?.id;
+    const currentSessionId = request.user?.sessionId;
     const sessions = await this.authService.listSessions(userId, currentSessionId);
     return reply.send({ sessions });
   }

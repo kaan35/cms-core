@@ -20,6 +20,11 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
   app.get(
     "/plugins",
     {
+      schema: {
+        tags: ["System"],
+        summary: "List all plugins and their runtime status (Admin)",
+        security: [{ cookieAuth: [] }],
+      },
       preHandler: [authenticate, checkPermission(SYSTEM_PERMISSIONS.PLUGINS_READ)],
     },
     controller.listPlugins.bind(controller),
@@ -28,6 +33,11 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
   app.put(
     "/plugins/:name",
     {
+      schema: {
+        tags: ["System"],
+        summary: "Toggle plugin enabled/disabled state (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [authenticate, verifyCsrf, checkPermission(SYSTEM_PERMISSIONS.PLUGINS_WRITE)],
     },
     controller.togglePlugin.bind(controller),
@@ -35,11 +45,25 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
 
   // Settings
   // GET is public (unauthenticated SSR branding & theme evaluation)
-  app.get("/settings", controller.getSettings.bind(controller));
+  app.get(
+    "/settings",
+    {
+      schema: {
+        tags: ["System"],
+        summary: "Get public site settings, menus, and branding (public)",
+      },
+    },
+    controller.getSettings.bind(controller),
+  );
 
   app.put(
     "/settings",
     {
+      schema: {
+        tags: ["System"],
+        summary: "Update site settings and navigation menus (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [authenticate, verifyCsrf, checkPermission(SYSTEM_PERMISSIONS.SETTINGS_WRITE)],
     },
     controller.updateSettings.bind(controller),
@@ -47,11 +71,25 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
 
   // Feature Flags
   // GET is public (unauthenticated SSR & client evaluation)
-  app.get("/feature-flags", controller.listFeatureFlags.bind(controller));
+  app.get(
+    "/feature-flags",
+    {
+      schema: {
+        tags: ["System"],
+        summary: "Get public feature flags evaluation (public)",
+      },
+    },
+    controller.listFeatureFlags.bind(controller),
+  );
 
   app.post(
     "/feature-flags",
     {
+      schema: {
+        tags: ["System"],
+        summary: "Create a new feature flag (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [
         authenticate,
         verifyCsrf,
@@ -64,6 +102,11 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
   app.put(
     "/feature-flags/:key",
     {
+      schema: {
+        tags: ["System"],
+        summary: "Update feature flag value (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [
         authenticate,
         verifyCsrf,
@@ -76,6 +119,11 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
   app.delete(
     "/feature-flags/:key",
     {
+      schema: {
+        tags: ["System"],
+        summary: "Delete a feature flag (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [
         authenticate,
         verifyCsrf,
@@ -89,6 +137,11 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
   app.get(
     "/audit-log",
     {
+      schema: {
+        tags: ["System"],
+        summary: "List platform audit logs (Admin)",
+        security: [{ cookieAuth: [] }],
+      },
       preHandler: [authenticate, checkPermission(SYSTEM_PERMISSIONS.AUDIT_LOG_READ)],
     },
     controller.listAuditLogs.bind(controller),
@@ -98,6 +151,11 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
   app.get(
     "/system/stats",
     {
+      schema: {
+        tags: ["System"],
+        summary: "Get system runtime statistics (Admin)",
+        security: [{ cookieAuth: [] }],
+      },
       preHandler: [authenticate],
     },
     controller.getStats.bind(controller),

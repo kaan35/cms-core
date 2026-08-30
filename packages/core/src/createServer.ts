@@ -44,7 +44,7 @@ export async function createServer(
       info: {
         title: "CMS Core Headless API",
         description:
-          "Official REST API documentation and schema for CMS plugins, content pages, blog, and forms.",
+          "Official REST API documentation and schema for CMS plugins, content pages, blog, forms, media, and system management.",
         version: "0.1.0",
       },
       servers: [
@@ -53,6 +53,30 @@ export async function createServer(
           description: "Local Development Server",
         },
       ],
+      tags: [
+        { name: "System", description: "Healthcheck, settings, audit logs, and feature flags" },
+        { name: "Auth", description: "Authentication, user profiles, sessions, and RBAC" },
+        { name: "Pages", description: "Dynamic block-based CMS pages and version history" },
+        { name: "Blog", description: "Editorial blog articles and publication workflows" },
+        { name: "Forms", description: "Form schemas, submissions, and challenge anti-spam" },
+        { name: "Media", description: "S3/MinIO assets, uploads, and media library management" },
+      ],
+      components: {
+        securitySchemes: {
+          cookieAuth: {
+            type: "apiKey",
+            in: "cookie",
+            name: "token",
+            description: "Session JWT authentication cookie",
+          },
+          csrfToken: {
+            type: "apiKey",
+            in: "header",
+            name: "x-csrf-token",
+            description: "Double Submit Cookie CSRF token header for mutation requests",
+          },
+        },
+      },
     },
   });
 
@@ -91,18 +115,39 @@ export async function createServer(
     credentials: true,
   });
 
-  app.get("/health", async (_request, reply) => {
-    const [dbAlive, cacheAlive] = await Promise.all([
-      db.isAlive().catch(() => false),
-      cache.isAlive().catch(() => false),
-    ]);
-    const status = dbAlive && cacheAlive ? "ok" : "degraded";
-    return reply.status(200).send({
-      status,
-      db: dbAlive ? "ok" : "down",
-      cache: cacheAlive ? "ok" : "down",
-    });
-  });
+  app.get(
+    "/health",
+    {
+      schema: {
+        tags: ["System"],
+        summary: "System and infrastructure health check",
+        description: "Returns health status of database and cache dependencies",
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              status: { type: "string", enum: ["ok", "degraded"] },
+              db: { type: "string", enum: ["ok", "down"] },
+              cache: { type: "string", enum: ["ok", "down"] },
+            },
+            required: ["status", "db", "cache"],
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const [dbAlive, cacheAlive] = await Promise.all([
+        db.isAlive().catch(() => false),
+        cache.isAlive().catch(() => false),
+      ]);
+      const status = dbAlive && cacheAlive ? "ok" : "degraded";
+      return reply.status(200).send({
+        status,
+        db: dbAlive ? "ok" : "down",
+        cache: cacheAlive ? "ok" : "down",
+      });
+    },
+  );
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof AppError) {

@@ -53,12 +53,40 @@ export class UsersRepository {
     return doc;
   }
 
-  async update(id: string, update: Partial<Omit<UserDoc, "id" | "createdAt">>): Promise<void> {
-    await this.collection.updateOne({ id }, { $set: { ...update, updatedAt: new Date() } });
+  async update(
+    id: string,
+    update: Partial<Omit<UserDoc, "id" | "createdAt">>,
+  ): Promise<UserDoc | null> {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+    const updated: UserDoc = {
+      ...existing,
+      ...update,
+      updatedAt: new Date(),
+    };
+    await this.collection.updateOne({ id }, { $set: updated });
+    return updated;
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.collection.deleteOne({ id });
   }
 
   async deleteById(id: string): Promise<void> {
     await this.collection.deleteOne({ id });
+  }
+
+  async findByRoleId(roleId: string): Promise<UserDoc[]> {
+    return this.collection.find({ roleIds: roleId });
+  }
+
+  async findPaginated(page = 1, limit = 50): Promise<{ items: UserDoc[]; total: number }> {
+    const skip = Math.max(0, (page - 1) * limit);
+    const [items, total] = await Promise.all([
+      this.collection.find({}, { skip, limit, sort: { createdAt: -1 } }),
+      this.collection.countDocuments(),
+    ]);
+    return { items, total };
   }
 
   async list(skip = 0, limit = 50): Promise<UserDoc[]> {

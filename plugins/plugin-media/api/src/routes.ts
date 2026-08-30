@@ -20,6 +20,11 @@ export function registerMediaRoutes(app: FastifyInstance, controller: MediaContr
   app.post(
     "/media",
     {
+      schema: {
+        tags: ["Media"],
+        summary: "Upload image/file asset to S3/MinIO storage (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [authenticate, verifyCsrf, checkPermission(MEDIA_PERMISSIONS.WRITE)],
     },
     (request, reply) => controller.upload(request, reply),
@@ -28,6 +33,11 @@ export function registerMediaRoutes(app: FastifyInstance, controller: MediaContr
   app.get(
     "/media",
     {
+      schema: {
+        tags: ["Media"],
+        summary: "List media assets with filtering and pagination (Admin)",
+        security: [{ cookieAuth: [] }],
+      },
       preHandler: [authenticate, checkPermission(MEDIA_PERMISSIONS.READ)],
     },
     (request, reply) => controller.list(request as Parameters<typeof controller.list>[0], reply),
@@ -36,6 +46,11 @@ export function registerMediaRoutes(app: FastifyInstance, controller: MediaContr
   app.delete(
     "/media/:id",
     {
+      schema: {
+        tags: ["Media"],
+        summary: "Delete media asset from database and S3/MinIO storage (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
       preHandler: [authenticate, verifyCsrf, checkPermission(MEDIA_PERMISSIONS.WRITE)],
     },
     (request, reply) =>

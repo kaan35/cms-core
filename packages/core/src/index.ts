@@ -1,4 +1,5 @@
 // Types
+export type {} from "./types/fastify.js";
 export type { AuthUser } from "./types/auth.js";
 export type { ICache } from "./types/ICache.js";
 export type {

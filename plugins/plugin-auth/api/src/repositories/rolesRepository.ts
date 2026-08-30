@@ -76,11 +76,19 @@ export class RolesRepository {
     return updated;
   }
 
+  async delete(id: string): Promise<boolean> {
+    return this.deleteById(id);
+  }
+
   async deleteById(id: string): Promise<boolean> {
     const existing = await this.findById(id);
     if (!existing || existing.isSystem) return false;
     await this.collection.deleteOne({ id });
     return true;
+  }
+
+  async findAll(): Promise<RoleDoc[]> {
+    return this.list();
   }
 
   async list(): Promise<RoleDoc[]> {
