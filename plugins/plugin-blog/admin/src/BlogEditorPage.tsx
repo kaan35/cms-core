@@ -93,7 +93,7 @@ export function BlogEditorPage({ id }: { id: string }) {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold tracking-tight text-foreground">
-                {isNew ? "New Article" : post?.title || "Edit Article"}
+                {isNew ? "Create Article" : "Edit Article"}
               </h1>
               {!isNew && post?.version && (
                 <span className="text-[11px] font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded-md border border-border">

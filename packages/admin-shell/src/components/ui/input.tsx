@@ -13,7 +13,7 @@ function Input({ className, type, iconStart, iconEnd, ...props }: InputProps) {
         type={type}
         data-slot="input"
         className={cn(
-          "flex h-8.5 w-full min-w-0 rounded-lg border border-border/90 bg-muted/40 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 transition-all outline-none hover:border-border hover:bg-muted/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-8.5 w-full min-w-0 rounded-lg border border-border/90 bg-muted/40 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 transition-colors outline-none hover:border-border hover:bg-muted/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
           className,
         )}
         {...props}
@@ -32,7 +32,7 @@ function Input({ className, type, iconStart, iconEnd, ...props }: InputProps) {
         type={type}
         data-slot="input"
         className={cn(
-          "flex h-8.5 w-full min-w-0 rounded-lg border border-border/90 bg-muted/40 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 transition-all outline-none hover:border-border hover:bg-muted/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-8.5 w-full min-w-0 rounded-lg border border-border/90 bg-muted/40 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 transition-colors outline-none hover:border-border hover:bg-muted/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
           iconStart && "pl-9",
           iconEnd && "pr-9",
           className,

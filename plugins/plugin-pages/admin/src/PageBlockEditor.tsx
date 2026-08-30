@@ -1,34 +1,7 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  cn,
-} from "@cms/admin-shell";
-import {
-  ArrowDown,
-  ArrowUp,
-  BookOpen,
-  ChevronDown,
-  ChevronUp,
-  ClipboardList,
-  Code2,
-  Copy,
-  FileText,
-  Images,
-  LayoutGrid,
-  LayoutTemplate,
-  Plus,
-  Search,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { Badge, Button, cn } from "@cms/admin-shell";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Copy, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 import { BentoGridBlockForm } from "./blocks/BentoGridBlockForm";
 import { BlogPostsBlockForm } from "./blocks/BlogPostsBlockForm";
@@ -38,21 +11,11 @@ import { GalleryBlockForm } from "./blocks/GalleryBlockForm";
 import { HeroBlockForm } from "./blocks/HeroBlockForm";
 import { InteractiveDemoBlockForm } from "./blocks/InteractiveDemoBlockForm";
 import { TextBlockForm } from "./blocks/TextBlockForm";
+import { BlockPickerModal } from "./components/BlockPickerModal";
+import { BLOCK_CATALOG, type BlockDefinition, type PageBlock } from "./components/blockCatalog";
 
-export type PageBlockType =
-  | "hero"
-  | "gallery"
-  | "text"
-  | "form"
-  | "blog_posts"
-  | "bento_grid"
-  | "code_showcase"
-  | "interactive_demo";
-
-export interface PageBlock {
-  type: PageBlockType;
-  [key: string]: unknown;
-}
+export { BLOCK_CATALOG } from "./components/blockCatalog";
+export type { BlockDefinition, PageBlock, PageBlockType } from "./components/blockCatalog";
 
 export interface PageBlockEditorProps {
   blocks: PageBlock[];
@@ -60,146 +23,9 @@ export interface PageBlockEditorProps {
   className?: string;
 }
 
-interface BlockDefinition {
-  type: PageBlockType;
-  title: string;
-  category: "Marketing" | "Media" | "Content" | "Forms" | "Feed";
-  description: string;
-  icon: React.ComponentType<{ className?: string }>;
-  defaultData: () => PageBlock;
-}
-
-const BLOCK_CATALOG: BlockDefinition[] = [
-  {
-    type: "hero",
-    title: "Hero Section",
-    category: "Marketing",
-    description: "High-impact opening banner with headline, subtitle, media background, and CTAs.",
-    icon: LayoutTemplate,
-    defaultData: () => ({
-      type: "hero",
-      title: "Elevate Your Digital Experience",
-      subtitle: "Powerful solutions built for modern businesses.",
-      primaryCta: { label: "Get Started", url: "/contact" },
-      secondaryCta: { label: "Learn More", url: "/about" },
-    }),
-  },
-  {
-    type: "gallery",
-    title: "Image Gallery",
-    category: "Media",
-    description: "Responsive image grid or masonry flow linked to your media library assets.",
-    icon: Images,
-    defaultData: () => ({
-      type: "gallery",
-      title: "Our Portfolio",
-      layout: "grid",
-      images: [],
-    }),
-  },
-  {
-    type: "text",
-    title: "Rich Text & Articles",
-    category: "Content",
-    description: "Structured markdown, headers, lists, links, and formatted paragraph blocks.",
-    icon: FileText,
-    defaultData: () => ({
-      type: "text",
-      content:
-        "## Section Title\n\nEnter your narrative text here with **bold** or *italic* styling.",
-    }),
-  },
-  {
-    type: "form",
-    title: "Interactive Form",
-    category: "Forms",
-    description: "Embed dynamic forms with validation, challenge captcha, and submission tracking.",
-    icon: ClipboardList,
-    defaultData: () => ({
-      type: "form",
-      formId: "",
-    }),
-  },
-  {
-    type: "blog_posts",
-    title: "Blog Posts Feed",
-    category: "Feed",
-    description: "Dynamic feed displaying recent published articles and insights.",
-    icon: BookOpen,
-    defaultData: () => ({
-      type: "blog_posts",
-      limit: 6,
-      layout: "grid",
-    }),
-  },
-  {
-    type: "bento_grid",
-    title: "Bento Feature Grid",
-    category: "Marketing",
-    description: "Modern asymmetric cards highlighting core product features and badges.",
-    icon: LayoutGrid,
-    defaultData: () => ({
-      type: "bento_grid",
-      cards: [
-        {
-          title: "Blazing Fast",
-          description: "Built on modern edge infrastructure.",
-          badge: "Speed",
-        },
-        {
-          title: "Secure & Resilient",
-          description: "Enterprise-grade RBAC and auth.",
-          badge: "Security",
-        },
-      ],
-    }),
-  },
-  {
-    type: "code_showcase",
-    title: "Code Showcase",
-    category: "Content",
-    description: "Syntax-highlighted code viewer with multiple language tabs.",
-    icon: Code2,
-    defaultData: () => ({
-      type: "code_showcase",
-      tabs: [
-        { label: "Bash", language: "bash", code: "curl -X GET https://api.example.com/pages" },
-      ],
-    }),
-  },
-  {
-    type: "interactive_demo",
-    title: "Interactive Demo",
-    category: "Content",
-    description: "Live embedded interactive preview widget or verification demo.",
-    icon: Sparkles,
-    defaultData: () => ({
-      type: "interactive_demo",
-      widgetType: "turnstile",
-      title: "Security Verification",
-      description: "Interactive challenge demo widget.",
-    }),
-  },
-];
-
 export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockEditorProps) {
   const [pickerOpen, setPickerOpen] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [selectedCategory, setSelectedCategory] = React.useState<string>("All");
   const [collapsedBlocks, setCollapsedBlocks] = React.useState<Record<number, boolean>>({});
-
-  const categories = ["All", "Marketing", "Media", "Content", "Forms", "Feed"];
-
-  const filteredCatalog = React.useMemo(() => {
-    return BLOCK_CATALOG.filter((item) => {
-      const matchCat = selectedCategory === "All" || item.category === selectedCategory;
-      const matchQuery =
-        item.title.toLowerCase().includes(search.toLowerCase()) ||
-        item.description.toLowerCase().includes(search.toLowerCase()) ||
-        item.type.toLowerCase().includes(search.toLowerCase());
-      return matchCat && matchQuery;
-    });
-  }, [search, selectedCategory]);
 
   const handleAddBlock = (def: BlockDefinition) => {
     const newBlock = def.defaultData();
@@ -301,21 +127,8 @@ export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockE
         );
       default:
         return (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Custom JSON payload for {block.type}:</p>
-            <textarea
-              rows={4}
-              className="w-full rounded-lg border border-border/80 bg-muted/20 p-2 font-mono text-xs"
-              value={JSON.stringify(block, null, 2)}
-              onChange={(e) => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  handleUpdateBlock(index, parsed);
-                } catch {
-                  // Wait for valid JSON
-                }
-              }}
-            />
+          <div className="text-xs text-muted-foreground p-3">
+            Unknown block type: {(block as { type: string }).type}
           </div>
         );
     }
@@ -325,9 +138,11 @@ export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockE
     <div className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-sm text-foreground">Page Blocks ({blocks.length})</h3>
-          <p className="text-xs text-muted-foreground">
-            Compose and arrange structured layout sections for this page.
+          <h2 className="text-sm font-semibold text-foreground">
+            Content Blocks ({blocks.length})
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Assemble dynamic layouts by stacking, reordering, and customizing visual blocks.
           </p>
         </div>
 
@@ -337,101 +152,121 @@ export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockE
       </div>
 
       {blocks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-card/40 p-12 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
-            <LayoutTemplate className="size-6" />
+        <div className="rounded-2xl border border-dashed border-border/80 bg-card/40 p-12 text-center space-y-3">
+          <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
+            <Plus className="size-5" />
           </div>
-          <h4 className="font-semibold text-base text-foreground">No Blocks Added Yet</h4>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-            Add your first block (Hero, Image Gallery, Rich Text, Form, or Blog Feed) to start
-            building the page layout.
-          </p>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">No content blocks yet</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Click &quot;Add Block&quot; to begin building your page layout.
+            </p>
+          </div>
           <Button
             type="button"
+            variant="outline"
             onClick={() => setPickerOpen(true)}
             iconStart={<Plus />}
-            className="mt-4"
           >
-            Open Block Gallery
+            Add First Block
           </Button>
         </div>
       ) : (
         <div className="space-y-4">
           {blocks.map((block, index) => {
             const def = BLOCK_CATALOG.find((b) => b.type === block.type);
-            const Icon = def?.icon || LayoutTemplate;
-            const isCollapsed = collapsedBlocks[index];
+            const Icon = def ? def.icon : Plus;
+            const isCollapsed = Boolean(collapsedBlocks[index]);
 
             return (
               <div
                 key={index}
-                className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-2xs transition-all"
+                className="rounded-2xl border border-border/80 bg-card shadow-2xs overflow-hidden transition-all"
               >
-                {/* Block Header Toolbar */}
-                <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-4 py-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="size-3.5" />
+                {/* Block Header */}
+                <div className="flex items-center justify-between p-3.5 bg-muted/20 border-b border-border/60 gap-3">
+                  <div
+                    onClick={() => toggleCollapse(index)}
+                    className="flex items-center gap-2.5 min-w-0 cursor-pointer select-none flex-1"
+                  >
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0">
+                      <Icon className="size-4" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-xs text-foreground">
-                          {def?.title || block.type}
-                        </span>
-                        <Badge variant="outline" className="text-[10px] py-0 uppercase">
-                          {block.type}
-                        </Badge>
-                      </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium text-sm text-foreground truncate">
+                        {def ? def.title : block.type}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono font-medium"
+                      >
+                        #{index + 1}
+                      </Badge>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  {/* Actions Toolbar */}
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      disabled={index === 0}
                       onClick={() => handleMoveBlock(index, "up")}
-                      iconStart={<ArrowUp />}
+                      disabled={index === 0}
                       title="Move Up"
-                    />
+                      className="text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <ArrowUp className="size-4" />
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      disabled={index === blocks.length - 1}
                       onClick={() => handleMoveBlock(index, "down")}
-                      iconStart={<ArrowDown />}
+                      disabled={index === blocks.length - 1}
                       title="Move Down"
-                    />
+                      className="text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <ArrowDown className="size-4" />
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => handleDuplicateBlock(index)}
-                      iconStart={<Copy />}
                       title="Duplicate Block"
-                    />
+                      className="text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <Copy className="size-4" />
+                    </Button>
                     <Button
                       type="button"
-                      variant="destructive"
+                      variant="ghost"
                       size="icon-sm"
                       onClick={() => handleRemoveBlock(index)}
-                      iconStart={<Trash2 />}
-                      title="Remove Block"
-                    />
+                      title="Delete Block"
+                      className="text-muted-foreground hover:text-destructive cursor-pointer"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => toggleCollapse(index)}
-                      iconStart={isCollapsed ? <ChevronDown /> : <ChevronUp />}
                       title={isCollapsed ? "Expand" : "Collapse"}
-                    />
+                      className="text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      {isCollapsed ? (
+                        <ChevronDown className="size-4" />
+                      ) : (
+                        <ChevronUp className="size-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
 
-                {/* Block Body Content */}
+                {/* Block Content Form (Collapsed state) */}
                 {!isCollapsed && <div className="p-5">{renderBlockForm(block, index)}</div>}
               </div>
             );
@@ -439,86 +274,12 @@ export function PageBlockEditor({ blocks = [], onChange, className }: PageBlockE
         </div>
       )}
 
-      {/* Block Gallery Modal */}
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="sm:max-w-3xl max-w-3xl max-h-[85vh] flex flex-col p-6">
-          <DialogHeader className="shrink-0 pb-2">
-            <DialogTitle>Block Gallery & Component Picker</DialogTitle>
-            <DialogDescription className="text-xs">
-              Select a pre-designed layout component to add to your page canvas.
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Search & Categories Bar */}
-          <div className="space-y-3 py-2 shrink-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Search blocks (Hero, Gallery, Form, Feed...)"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-card"
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={cn(
-                    "rounded-lg px-3 py-1 text-xs font-medium transition-all",
-                    selectedCategory === cat
-                      ? "bg-primary text-primary-foreground shadow-2xs"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Block Cards Grid */}
-          <div className="flex-1 overflow-y-auto pr-1">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {filteredCatalog.map((def) => {
-                const Icon = def.icon;
-                return (
-                  <button
-                    key={def.type}
-                    type="button"
-                    onClick={() => handleAddBlock(def)}
-                    className="group relative flex flex-col items-start rounded-xl border border-border/80 bg-card p-4 text-left transition-all hover:border-primary/50 hover:shadow-md cursor-pointer"
-                  >
-                    <div className="flex w-full items-center justify-between mb-2">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
-                        <Icon className="size-4" />
-                      </div>
-                      <Badge variant="outline" className="text-[10px]">
-                        {def.category}
-                      </Badge>
-                    </div>
-
-                    <h4 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                      {def.title}
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {def.description}
-                    </p>
-
-                    <div className="mt-3 flex items-center gap-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Plus className="size-3.5" />
-                      Insert Block
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Block Picker Modal */}
+      <BlockPickerModal
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelectBlock={handleAddBlock}
+      />
     </div>
   );
 }

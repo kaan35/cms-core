@@ -86,7 +86,7 @@ export function FormEditorPage({ id }: FormEditorPageProps) {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold tracking-tight text-foreground">
-                {isNew ? "New Form Definition" : form?.title || "Edit Form"}
+                {isNew ? "Create Form" : "Edit Form"}
               </h1>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
