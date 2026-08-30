@@ -1,0 +1,104 @@
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { Toaster } from "@/components/ui/sonner";
+import { api, type SettingsDoc } from "@cms/client-sdk";
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settingsRes = await api
+    .get<{ settings?: SettingsDoc } | SettingsDoc>("/settings")
+    .catch(() => null);
+  const settings =
+    settingsRes && "settings" in settingsRes && settingsRes.settings
+      ? settingsRes.settings
+      : (settingsRes as SettingsDoc | null);
+  const siteTitle = settings?.siteTitle || "CMS Platform";
+  const siteDescription =
+    settings?.siteDescription ||
+    "Modern headless CMS platform powered by Next.js and React Server Components.";
+
+  return {
+    title: {
+      default: siteTitle,
+      template: `%s | ${siteTitle}`,
+    },
+    description: siteDescription,
+    metadataBase: new URL(process.env.SITE_URL || "http://localhost:3003"),
+  };
+}
+
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  // Feature flags & settings read during SSR
+  const [flags, settingsRes] = await Promise.all([
+    api.get<Record<string, boolean>>("/feature-flags").catch(() => ({})),
+    api.get<{ settings?: SettingsDoc } | SettingsDoc>("/settings").catch(() => null),
+  ]);
+
+  const settings =
+    settingsRes && "settings" in settingsRes && settingsRes.settings
+      ? settingsRes.settings
+      : (settingsRes as SettingsDoc | null);
+
+  const enableScrollAnimations = (flags as Record<string, boolean>).scrollAnimations !== false;
+  const defaultTheme = (settings?.defaultTheme as "dark" | "light" | "system") || "light";
+
+  return (
+    <html lang="en" suppressHydrationWarning className={defaultTheme === "dark" ? "dark" : ""}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const stored = localStorage.getItem('theme');
+                const theme = stored || '${defaultTheme}';
+                let isDark = theme === 'dark';
+                if (theme === 'system') {
+                  isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                }
+                if (isDark) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground ${
+          enableScrollAnimations ? "scroll-smooth" : ""
+        }`}
+      >
+        <ThemeProvider defaultTheme={defaultTheme}>
+          <Header />
+          <main className={`flex-1 ${enableScrollAnimations ? "scroll-animate" : ""}`}>
+            {children}
+          </main>
+          <Footer />
+          <Toaster position="top-right" richColors />
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}

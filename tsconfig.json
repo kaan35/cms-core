@@ -16,6 +16,7 @@
     { "path": "plugins/plugin-blog/api" },
     { "path": "plugins/plugin-blog/admin" },
     { "path": "plugins/plugin-forms/api" },
-    { "path": "plugins/plugin-forms/admin" }
+    { "path": "plugins/plugin-forms/admin" },
+    { "path": "client-template" }
   ]
 }

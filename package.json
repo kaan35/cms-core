@@ -10,7 +10,8 @@
     "packages/*",
     "api",
     "plugins/*/*",
-    "admin"
+    "admin",
+    "client-template"
   ],
   "scripts": {
     "build": "tsc --build",

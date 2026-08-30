@@ -1,0 +1,30 @@
+{
+  "name": "@cms/client-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cms/plugin-auth-api": "*",
+    "@cms/plugin-blog-api": "*",
+    "@cms/plugin-forms-api": "*",
+    "@cms/plugin-media-api": "*",
+    "@cms/plugin-pages-api": "*",
+    "@cms/plugin-system-api": "*",
+    "swr": "^2"
+  },
+  "devDependencies": {
+    "@types/node": "^26",
+    "typescript": "^6"
+  }
+}

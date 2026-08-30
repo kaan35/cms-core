@@ -1,0 +1,38 @@
+{
+  "name": "client-template",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@cms/client-sdk": "*",
+    "clsx": "^2",
+    "lucide-react": "^1",
+    "next": "^16",
+    "react": "^19",
+    "react-dom": "^19",
+    "sonner": "^2",
+    "swr": "^2",
+    "tailwind-merge": "^3"
+  },
+  "devDependencies": {
+    "@cms/eslint-config": "*",
+    "@cms/plugin-blog-api": "*",
+    "@cms/plugin-forms-api": "*",
+    "@cms/plugin-pages-api": "*",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^26",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "^1",
+    "eslint": "^10",
+    "tailwindcss": "^4",
+    "typescript": "^6"
+  }
+}

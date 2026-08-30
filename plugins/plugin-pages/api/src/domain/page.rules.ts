@@ -92,8 +92,13 @@ export const FormBlockSchema = z.object({
 
 export const BlogPostsBlockSchema = z.object({
   type: z.literal("blog_posts"),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  badge: z.string().optional(),
+  viewAllLabel: z.string().optional(),
+  viewAllUrl: z.string().optional(),
+  readMoreLabel: z.string().optional(),
   limit: z.number().int().positive().default(6),
-  category: z.string().optional(),
   layout: z.enum(["grid", "list"]).default("grid"),
 });
 
