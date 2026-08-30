@@ -1,0 +1,22 @@
+# ==============================================================================
+# CMS Packages Registry Configuration Template
+# ==============================================================================
+# Copy this file to .npmrc (which is strictly gitignored) for local publishing.
+# In CI/CD (GitHub Actions), inject NODE_AUTH_TOKEN into process environment.
+#
+# Option A: GitHub Packages Registry (Default Scoped)
+# ------------------------------------------------------------------------------
+# @cms:registry=https://npm.pkg.github.com/
+# //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+#
+# Option B: Public / Private npmjs Registry
+# ------------------------------------------------------------------------------
+# registry=https://registry.npmjs.org/
+# //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+#
+# General Publishing & Resolution Settings
+# ------------------------------------------------------------------------------
+package-lock=true
+save-exact=false
+audit=true
+fund=false

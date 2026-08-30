@@ -19,7 +19,14 @@
     "test": "node --import tsx/esm --test 'packages/**/*.test.ts' 'api/**/*.test.ts' 'plugins/**/*.test.ts'",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
-    "ci": "npm run typecheck && npm run lint && npm test"
+    "ci": "npm run typecheck && npm run lint && npm test",
+    "version:patch": "npm version patch --workspaces",
+    "version:minor": "npm version minor --workspaces",
+    "version:major": "npm version major --workspaces",
+    "publish:dry-run": "npm publish --workspaces --dry-run",
+    "publish:patch": "npm run ci && npm version patch --workspaces && npm publish --workspaces --if-present",
+    "publish:minor": "npm run ci && npm version minor --workspaces && npm publish --workspaces --if-present",
+    "publish:major": "npm run ci && npm version major --workspaces && npm publish --workspaces --if-present"
   },
   "devDependencies": {
     "@cms/tsconfig": "*",

@@ -1,7 +1,9 @@
 {
   "name": "@cms/eslint-config",
   "version": "0.1.0",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "exports": {
     "./node": {
