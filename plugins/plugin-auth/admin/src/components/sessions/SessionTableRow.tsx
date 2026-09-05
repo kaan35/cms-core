@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, TableCell, TableRow } from "@cms/admin-shell";
+import { Badge, Button, formatDate, TableCell, TableRow } from "@cms/admin-shell";
 import { Trash2 } from "lucide-react";
 import { formatDeviceName, getDeviceIcon, isSessionActive, type SessionItem } from "./sessionUtils";
 
@@ -51,10 +51,8 @@ export function SessionTableRow({ session, isRevoking, onRequestRevoke }: Sessio
         )}
       </TableCell>
       <TableCell className="text-muted-foreground text-[11px]">
-        <div>Created: {new Date(session.createdAt).toLocaleDateString()}</div>
-        <div className="text-[10px] opacity-70">
-          Expires: {new Date(session.expiresAt).toLocaleDateString()}
-        </div>
+        <div>Created: {formatDate(session.createdAt)}</div>
+        <div className="text-[10px] opacity-70">Expires: {formatDate(session.expiresAt)}</div>
       </TableCell>
       <TableCell className="text-right">
         {!isCurrent ? (

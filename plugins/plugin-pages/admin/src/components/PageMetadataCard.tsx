@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Badge,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Textarea,
-} from "@cms/admin-shell";
+import { Badge, InputField, InputSelectField, InputTextareaField } from "@cms/admin-shell";
 import * as React from "react";
 import type { PageEditorState } from "./usePageEditor";
 
@@ -47,10 +37,9 @@ export function PageMetadataCard({
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
-        <div className="sm:col-span-6 space-y-1.5">
-          <Label htmlFor="page-title">Page Title *</Label>
-          <Input
-            id="page-title"
+        <div className="sm:col-span-6">
+          <InputField
+            label="Page Title"
             placeholder="e.g. About Us, Products, Pricing"
             value={inputData.title}
             onChange={(e) => onTitleChange(e.target.value)}
@@ -58,10 +47,9 @@ export function PageMetadataCard({
           />
         </div>
 
-        <div className="sm:col-span-6 space-y-1.5">
-          <Label htmlFor="page-slug">URL Slug</Label>
-          <Input
-            id="page-slug"
+        <div className="sm:col-span-6">
+          <InputField
+            label="URL Slug"
             placeholder="about-us"
             className="font-mono text-xs"
             value={inputData.slug}
@@ -71,71 +59,53 @@ export function PageMetadataCard({
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="page-status">Publication Status</Label>
-          <Select
-            value={inputData.status}
-            onValueChange={(val) =>
-              onDataChange((prev) => ({
-                ...prev,
-                status: val as "draft" | "published",
-              }))
-            }
-          >
-            <SelectTrigger id="page-status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">Draft (Private)</SelectItem>
-              <SelectItem value="published">Published (Live to Public)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <InputSelectField
+          label="Publication Status"
+          value={inputData.status}
+          onValueChange={(val) =>
+            onDataChange((prev) => ({
+              ...prev,
+              status: val as "draft" | "published",
+            }))
+          }
+          options={[
+            { value: "draft", label: "Draft (Private)" },
+            { value: "published", label: "Published (Live to Public)" },
+          ]}
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="page-type">Page Type</Label>
-          <Select
-            value={inputData.pageType}
-            onValueChange={(val) =>
-              onDataChange((prev) => ({
-                ...prev,
-                pageType: val as "standard" | "home",
-              }))
-            }
-          >
-            <SelectTrigger id="page-type">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="standard">Standard Route</SelectItem>
-              <SelectItem value="home">Root Home Page (/)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <InputSelectField
+          label="Page Type"
+          value={inputData.pageType}
+          onValueChange={(val) =>
+            onDataChange((prev) => ({
+              ...prev,
+              pageType: val as "standard" | "home",
+            }))
+          }
+          options={[
+            { value: "standard", label: "Standard Route" },
+            { value: "home", label: "Root Home Page (/)" },
+          ]}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2 border-t border-border/60">
-        <div className="space-y-1.5">
-          <Label htmlFor="seo-title">SEO Meta Title (Optional)</Label>
-          <Input
-            id="seo-title"
-            placeholder="Custom title for browser tab & search engines"
-            value={inputData.metaTitle}
-            onChange={(e) => onDataChange((prev) => ({ ...prev, metaTitle: e.target.value }))}
-          />
-        </div>
+        <InputField
+          label="SEO Meta Title (Optional)"
+          placeholder="Custom title for browser tab & search engines"
+          value={inputData.metaTitle}
+          onChange={(e) => onDataChange((prev) => ({ ...prev, metaTitle: e.target.value }))}
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="seo-desc">SEO Meta Description (Optional)</Label>
-          <Textarea
-            id="seo-desc"
-            rows={2}
-            placeholder="Brief summary for search engine snippet..."
-            value={inputData.metaDescription}
-            onChange={(e) => onDataChange((prev) => ({ ...prev, metaDescription: e.target.value }))}
-            className="min-h-[64px]"
-          />
-        </div>
+        <InputTextareaField
+          label="SEO Meta Description (Optional)"
+          rows={2}
+          placeholder="Brief summary for search engine snippet..."
+          value={inputData.metaDescription}
+          onChange={(e) => onDataChange((prev) => ({ ...prev, metaDescription: e.target.value }))}
+          className="min-h-[64px]"
+        />
       </div>
     </div>
   );

@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@cms/admin-shell";
+import { InputSelectField } from "@cms/admin-shell";
 import { MediaPicker } from "@cms/plugin-media-admin";
 
 interface BlogPostSidebarProps {
@@ -16,6 +9,27 @@ interface BlogPostSidebarProps {
   coverMediaId?: string | undefined;
   onCoverMediaChange: (coverMediaId?: string | undefined) => void;
 }
+
+const STATUS_OPTIONS = [
+  {
+    value: "draft",
+    label: (
+      <span className="flex items-center gap-2">
+        <span className="size-2 rounded-full bg-muted-foreground" />
+        Draft
+      </span>
+    ),
+  },
+  {
+    value: "published",
+    label: (
+      <span className="flex items-center gap-2">
+        <span className="size-2 rounded-full bg-emerald-500" />
+        Published
+      </span>
+    ),
+  },
+];
 
 export function BlogPostSidebar({
   status,
@@ -31,31 +45,12 @@ export function BlogPostSidebar({
           Publishing Options
         </h3>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="post-status">Status</Label>
-          <Select
-            value={status}
-            onValueChange={(val) => onStatusChange(val as "draft" | "published")}
-          >
-            <SelectTrigger id="post-status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">
-                <span className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-muted-foreground" />
-                  Draft
-                </span>
-              </SelectItem>
-              <SelectItem value="published">
-                <span className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-emerald-500" />
-                  Published
-                </span>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <InputSelectField
+          label="Status"
+          value={status}
+          onValueChange={(val) => onStatusChange(val as "draft" | "published")}
+          options={STATUS_OPTIONS}
+        />
       </div>
 
       {/* Cover Media Card */}

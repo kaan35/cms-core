@@ -1,6 +1,6 @@
 "use client";
 
-import { Label, Textarea } from "@cms/admin-shell";
+import { InputTextareaField } from "@cms/admin-shell";
 
 export interface TextBlockData {
   type: "text";
@@ -15,22 +15,16 @@ export interface TextBlockFormProps {
 export function TextBlockForm({ data, onChange }: TextBlockFormProps) {
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="text-content">Content (Markdown / HTML supported) *</Label>
-          <span className="text-[11px] text-muted-foreground">
-            {(data.content || "").length} characters
-          </span>
-        </div>
-        <Textarea
-          id="text-content"
-          placeholder="Write rich paragraph content, headers (#, ##), lists, or embed HTML..."
-          rows={8}
-          className="font-mono text-xs leading-relaxed"
-          value={data.content || ""}
-          onChange={(e) => onChange({ ...data, content: e.target.value })}
-        />
-      </div>
+      <InputTextareaField
+        className="font-mono text-xs leading-relaxed"
+        hint={`${(data.content || "").length} characters`}
+        label="Content (Markdown / HTML supported)"
+        onChange={(e) => onChange({ ...data, content: e.target.value })}
+        placeholder="Write rich paragraph content, headers (#, ##), lists, or embed HTML..."
+        required
+        rows={8}
+        value={data.content || ""}
+      />
     </div>
   );
 }

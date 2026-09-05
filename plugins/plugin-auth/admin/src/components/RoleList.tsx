@@ -1,16 +1,10 @@
 "use client";
 
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   apiClient,
   Badge,
   Button,
+  DialogDeleteConfirm,
   Skeleton,
   Table,
   TableBody,
@@ -21,8 +15,9 @@ import {
   toast,
   useApi,
 } from "@cms/admin-shell";
-import { Lock, Pencil, RefreshCw, Shield, ShieldPlus, Trash2, X } from "lucide-react";
+import { Lock, Pencil, RefreshCw, Shield, ShieldPlus, Trash2 } from "lucide-react";
 import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
@@ -189,40 +184,16 @@ export function RoleList() {
         )}
       </div>
 
-      {/* Custom Shadcn Delete Alert Dialog */}
-      <AlertDialog
+      <DialogDeleteConfirm
         open={Boolean(deleteModal.target)}
-        onOpenChange={(open) => !open && setDeleteModal({ target: null, isDeleting: false })}
-      >
-        <AlertDialogContent className="max-w-md p-5 rounded-2xl bg-card border-border/80 shadow-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-semibold text-foreground">
-              Delete Role Template
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              Are you sure you want to delete role template{" "}
-              <strong className="text-foreground font-semibold">
-                "{deleteModal.target?.name}"
-              </strong>
-              ? Users currently assigned to this template will have their permissions decoupled.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 pt-3">
-            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
-              <X className="size-3.5" />
-              Cancel
-            </AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              loading={deleteModal.isDeleting}
-              iconStart={<Trash2 />}
-            >
-              {deleteModal.isDeleting ? "Deleting..." : "Delete Role"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onClose={() => setDeleteModal({ target: null, isDeleting: false })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Role Template"
+        itemTitle={deleteModal.target?.name}
+        description="Users currently assigned to this template will have their permissions decoupled."
+        confirmLabel="Delete Role"
+        isDeleting={deleteModal.isDeleting}
+      />
     </div>
   );
 }

@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  Badge,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@cms/admin-shell";
+import { Badge, Input, InputField, InputSelectField, Label } from "@cms/admin-shell";
 import type { NavigationMenuItem } from "@cms/plugin-system-api";
 import { ArrowDown, ArrowUp, RefreshCw, Trash2 } from "lucide-react";
 import { AVAILABLE_ICONS } from "./icons";
@@ -147,74 +138,61 @@ export function MenuItemCard({
         </div>
 
         {/* URL / Page selector */}
-        <div className="md:col-span-5 space-y-1">
-          <Label className="text-[11px] text-muted-foreground">Target URL / Route *</Label>
-          {item.type === "page" && publishedPages.length > 0 ? (
-            <div className="flex items-center gap-2">
-              <Select
-                value={item.pageId || ""}
-                onValueChange={(pId) => {
-                  const found = publishedPages.find((p) => p.id === pId);
-                  if (found) {
-                    onUpdateItem(item.id, {
-                      pageId: found.id,
-                      url: `/${found.slug.replace(/^\//, "")}`,
-                      ...(!item.customLabel ? { label: found.title } : {}),
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs flex-1">
-                  <SelectValue placeholder="Select linked page" />
-                </SelectTrigger>
-                <SelectContent>
-                  {publishedPages.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.title} (/{p.slug})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <Input
-              placeholder="e.g. /about, /blog, https://..."
-              value={item.url}
-              onChange={(e) => onUpdateItem(item.id, { url: e.target.value })}
-              className="h-8 text-xs font-mono"
-            />
-          )}
-        </div>
+        {item.type === "page" && publishedPages.length > 0 ? (
+          <InputSelectField
+            label="Target URL / Route"
+            required
+            containerClassName="md:col-span-5 space-y-1"
+            className="h-8 text-xs"
+            placeholder="Select linked page"
+            value={item.pageId || ""}
+            onValueChange={(pId) => {
+              const found = publishedPages.find((p) => p.id === pId);
+              if (found) {
+                onUpdateItem(item.id, {
+                  pageId: found.id,
+                  url: `/${found.slug.replace(/^\//, "")}`,
+                  ...(!item.customLabel ? { label: found.title } : {}),
+                });
+              }
+            }}
+            options={publishedPages.map((p) => ({
+              value: p.id,
+              label: `${p.title} (/${p.slug})`,
+            }))}
+          />
+        ) : (
+          <InputField
+            label="Target URL / Route"
+            required
+            containerClassName="md:col-span-5 space-y-1"
+            placeholder="e.g. /about, /blog, https://..."
+            value={item.url}
+            onChange={(e) => onUpdateItem(item.id, { url: e.target.value })}
+            className="h-8 text-xs font-mono"
+          />
+        )}
 
         {/* Icon Selector */}
-        <div className="md:col-span-3 space-y-1">
-          <Label className="text-[11px] text-muted-foreground">Icon</Label>
-          <Select
-            value={item.icon || "none"}
-            onValueChange={(val) =>
-              onUpdateItem(item.id, {
-                icon: !val || val === "none" ? undefined : val,
-              })
-            }
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {AVAILABLE_ICONS.map((ico) => {
-                const IcoComponent = ico.icon;
-                return (
-                  <SelectItem key={ico.id} value={ico.id}>
-                    <div className="flex items-center gap-2">
-                      {IcoComponent && <IcoComponent className="size-3.5 text-primary" />}
-                      <span>{ico.label}</span>
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
+        <InputSelectField
+          label="Icon"
+          containerClassName="md:col-span-3 space-y-1"
+          className="h-8 text-xs"
+          value={item.icon || "none"}
+          onValueChange={(val) =>
+            onUpdateItem(item.id, {
+              icon: !val || val === "none" ? undefined : val,
+            })
+          }
+          options={AVAILABLE_ICONS.map((ico) => {
+            const IcoComponent = ico.icon;
+            return {
+              value: ico.id,
+              label: ico.label,
+              icon: IcoComponent ? <IcoComponent className="size-3.5 text-primary" /> : undefined,
+            };
+          })}
+        />
       </div>
 
       {/* Secondary Row: Appearance Styling (Button/Badge/External) */}

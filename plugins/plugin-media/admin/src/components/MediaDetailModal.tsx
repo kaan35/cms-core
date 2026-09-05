@@ -1,24 +1,20 @@
 "use client";
 
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
   Dialog,
   DialogContent,
+  DialogDeleteConfirm,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   formatBytes,
+  formatDateTime,
   Input,
 } from "@cms/admin-shell";
-import { Check, Copy, ExternalLink, FileText, Trash2, X } from "lucide-react";
+import { Check, Copy, ExternalLink, FileText, Trash2 } from "lucide-react";
+
 import type { MediaItem } from "./useMediaLibrary";
 
 interface MediaDetailModalProps {
@@ -56,7 +52,7 @@ export function MediaDetailModal({
               <DialogHeader>
                 <DialogTitle className="truncate">{previewItem.filename}</DialogTitle>
                 <DialogDescription className="text-xs">
-                  Uploaded on {new Date(previewItem.createdAt).toLocaleString()}
+                  Uploaded on {formatDateTime(previewItem.createdAt)}
                 </DialogDescription>
               </DialogHeader>
 
@@ -136,35 +132,16 @@ export function MediaDetailModal({
       </Dialog>
 
       {/* Delete Confirmation Alert */}
-      <AlertDialog
+      <DialogDeleteConfirm
         open={Boolean(deleteModal.target)}
-        onOpenChange={(open) => !open && onCloseDeleteModal()}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Media Asset?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove &quot;{deleteModal.target?.filename}&quot; from storage
-              and the database. Any pages or blog posts referencing this file will show broken
-              links.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
-              <X className="size-3.5" />
-              Cancel
-            </AlertDialogCancel>
-            <Button
-              variant="destructive"
-              loading={deleteModal.isDeleting}
-              iconStart={<Trash2 />}
-              onClick={onConfirmDelete}
-            >
-              {deleteModal.isDeleting ? "Deleting..." : "Delete Permanently"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onClose={onCloseDeleteModal}
+        onConfirm={onConfirmDelete}
+        title="Delete Media Asset?"
+        itemTitle={deleteModal.target?.filename}
+        description={`This will permanently remove "${deleteModal.target?.filename}" from storage and the database. Any pages or blog posts referencing this file will show broken links.`}
+        confirmLabel="Delete Permanently"
+        isDeleting={deleteModal.isDeleting}
+      />
     </>
   );
 }

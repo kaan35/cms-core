@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@cms/admin-shell";
+import { FormField, Input, InputSelectField } from "@cms/admin-shell";
 import { Palette } from "lucide-react";
 import type { SettingsFormData } from "./settingsTypes";
 
@@ -33,25 +25,18 @@ export function ThemeSettingsTab({ inputData, onChange, onSubmit }: ThemeSetting
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="space-y-1.5">
-            <Label>Default Client Theme</Label>
-            <Select
-              value={inputData.defaultTheme}
-              onValueChange={(val) => onChange({ defaultTheme: val || "dark" })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="dark">Dark Theme (Default)</SelectItem>
-                <SelectItem value="light">Light Theme</SelectItem>
-                <SelectItem value="system">System Synchronized</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <InputSelectField
+            label="Default Client Theme"
+            value={inputData.defaultTheme}
+            onValueChange={(val) => onChange({ defaultTheme: val || "dark" })}
+            options={[
+              { value: "dark", label: "Dark Theme (Default)" },
+              { value: "light", label: "Light Theme" },
+              { value: "system", label: "System Synchronized" },
+            ]}
+          />
 
-          <div className="space-y-1.5">
-            <Label>Primary Brand Accent Color</Label>
+          <FormField label="Primary Brand Accent Color">
             <div className="flex items-center gap-2.5">
               <input
                 type="color"
@@ -65,25 +50,19 @@ export function ThemeSettingsTab({ inputData, onChange, onSubmit }: ThemeSetting
                 className="font-mono text-xs"
               />
             </div>
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label>Default Font Family</Label>
-            <Select
-              value={inputData.fontFamily}
-              onValueChange={(val) => onChange({ fontFamily: val || "Inter" })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Inter">Inter (Sans-Serif)</SelectItem>
-                <SelectItem value="Geist">Geist (Modern Sans)</SelectItem>
-                <SelectItem value="Roboto">Roboto</SelectItem>
-                <SelectItem value="Fira Code">Fira Code (Monospace)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <InputSelectField
+            label="Default Font Family"
+            value={inputData.fontFamily}
+            onValueChange={(val) => onChange({ fontFamily: val || "Inter" })}
+            options={[
+              { value: "Inter", label: "Inter (Sans-Serif)" },
+              { value: "Geist", label: "Geist (Modern Sans)" },
+              { value: "Roboto", label: "Roboto" },
+              { value: "Fira Code", label: "Fira Code (Monospace)" },
+            ]}
+          />
         </div>
       </div>
     </form>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Label, Textarea } from "@cms/admin-shell";
+import { InputField, InputTextareaField } from "@cms/admin-shell";
 import { Layers } from "lucide-react";
 import type { FormBuilderState } from "./useFormBuilder";
 
@@ -25,39 +25,30 @@ export function FormConfigCard({
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="form-title">Form Title *</Label>
-          <Input
-            id="form-title"
-            placeholder="e.g. Contact Sales & Inquiries"
-            value={data.title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            required
-          />
-        </div>
+        <InputField
+          label="Form Title"
+          placeholder="e.g. Contact Sales & Inquiries"
+          value={data.title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          required
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="form-slug">URL Slug</Label>
-          <Input
-            id="form-slug"
-            placeholder="contact-sales"
-            className="font-mono text-xs"
-            value={data.slug}
-            onChange={(e) => onSlugChange(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="form-desc">Form Description (Optional)</Label>
-        <Textarea
-          id="form-desc"
-          rows={2}
-          placeholder="Brief helper text displayed above the form fields..."
-          value={data.description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
+        <InputField
+          label="URL Slug"
+          placeholder="contact-sales"
+          className="font-mono text-xs"
+          value={data.slug}
+          onChange={(e) => onSlugChange(e.target.value)}
         />
       </div>
+
+      <InputTextareaField
+        label="Form Description (Optional)"
+        rows={2}
+        placeholder="Brief helper text displayed above the form fields..."
+        value={data.description}
+        onChange={(e) => onDescriptionChange(e.target.value)}
+      />
     </div>
   );
 }

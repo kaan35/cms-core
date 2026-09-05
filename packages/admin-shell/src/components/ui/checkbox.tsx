@@ -4,11 +4,11 @@ import { Check } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export interface CheckboxProps {
-  id?: string;
-  checked?: boolean;
-  onCheckedChange?: (checked: boolean) => void;
-  className?: string;
-  disabled?: boolean;
+  id?: string | undefined;
+  checked?: boolean | undefined;
+  onCheckedChange?: ((checked: boolean) => void) | undefined;
+  className?: string | undefined;
+  disabled?: boolean | undefined;
 }
 
 export function Checkbox({

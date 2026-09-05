@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, TableCell, TableRow } from "@cms/admin-shell";
+import { Badge, Button, formatDate, TableCell, TableRow } from "@cms/admin-shell";
 import { FileText, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { BlogPostListItem } from "./blogTypes";
@@ -67,7 +67,7 @@ export function BlogPostTableRow({ post, onDeleteClick }: BlogPostTableRowProps)
       </TableCell>
 
       <TableCell className="text-[11px] text-muted-foreground">
-        {post.updatedAt ? new Date(post.updatedAt).toLocaleDateString() : "—"}
+        {formatDate(post.updatedAt)}
       </TableCell>
 
       <TableCell className="text-right">

@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, Input } from "@cms/admin-shell";
-import { Plus, RefreshCw, Search } from "lucide-react";
+import { Button, InputSearchField } from "@cms/admin-shell";
+import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 interface PageListToolbarProps {
@@ -22,15 +22,13 @@ export function PageListToolbar({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col sm:flex-row flex-1 sm:items-center gap-3">
-        <div className="relative flex-1 w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by title or slug..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 bg-card w-full"
-          />
-        </div>
+        <InputSearchField
+          placeholder="Search by title or slug..."
+          value={search}
+          onSearchChange={onSearchChange}
+          containerClassName="w-full sm:max-w-sm"
+          className="bg-card w-full"
+        />
 
         <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
           <button

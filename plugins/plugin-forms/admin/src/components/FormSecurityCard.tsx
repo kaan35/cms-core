@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Textarea,
-} from "@cms/admin-shell";
+import { InputField, InputSelectField, InputTextareaField } from "@cms/admin-shell";
 import { ShieldAlert } from "lucide-react";
 import * as React from "react";
 import type { FormBuilderState } from "./useFormBuilder";
@@ -27,28 +18,20 @@ export function FormSecurityCard({ data, onDataChange }: FormSecurityCardProps) 
           Form Actions & Messages
         </h3>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="submit-text">Submit Button Label</Label>
-          <Input
-            id="submit-text"
-            placeholder="Submit"
-            value={data.submitButtonText}
-            onChange={(e) =>
-              onDataChange((prev) => ({ ...prev, submitButtonText: e.target.value }))
-            }
-          />
-        </div>
+        <InputField
+          label="Submit Button Label"
+          placeholder="Submit"
+          value={data.submitButtonText}
+          onChange={(e) => onDataChange((prev) => ({ ...prev, submitButtonText: e.target.value }))}
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="success-msg">Success Message</Label>
-          <Textarea
-            id="success-msg"
-            rows={2}
-            placeholder="Thank you for your submission."
-            value={data.successMessage}
-            onChange={(e) => onDataChange((prev) => ({ ...prev, successMessage: e.target.value }))}
-          />
-        </div>
+        <InputTextareaField
+          label="Success Message"
+          rows={2}
+          placeholder="Thank you for your submission."
+          value={data.successMessage}
+          onChange={(e) => onDataChange((prev) => ({ ...prev, successMessage: e.target.value }))}
+        />
       </div>
 
       {/* Captcha & Bot Protection Card */}
@@ -60,48 +43,36 @@ export function FormSecurityCard({ data, onDataChange }: FormSecurityCardProps) 
           </h3>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="captcha-provider">Captcha Provider</Label>
-          <Select
-            value={data.captchaProvider}
+        <InputSelectField
+          label="Captcha Provider"
+          value={data.captchaProvider}
+          onValueChange={(val) =>
+            onDataChange((prev) => ({
+              ...prev,
+              captchaProvider: val as "none" | "challenge",
+            }))
+          }
+          options={[
+            { value: "challenge", label: "Interactive Challenge" },
+            { value: "none", label: "Disabled (No Captcha)" },
+          ]}
+        />
+
+        {data.captchaProvider === "challenge" && (
+          <InputSelectField
+            label="Challenge Method"
+            value={data.challengeType}
             onValueChange={(val) =>
               onDataChange((prev) => ({
                 ...prev,
-                captchaProvider: val as "none" | "challenge",
+                challengeType: val as "alphanumeric" | "math",
               }))
             }
-          >
-            <SelectTrigger id="captcha-provider">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="challenge">Interactive Challenge</SelectItem>
-              <SelectItem value="none">Disabled (No Captcha)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {data.captchaProvider === "challenge" && (
-          <div className="space-y-1.5">
-            <Label htmlFor="challenge-type">Challenge Method</Label>
-            <Select
-              value={data.challengeType}
-              onValueChange={(val) =>
-                onDataChange((prev) => ({
-                  ...prev,
-                  challengeType: val as "alphanumeric" | "math",
-                }))
-              }
-            >
-              <SelectTrigger id="challenge-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="alphanumeric">Alphanumeric Code (SVG)</SelectItem>
-                <SelectItem value="math">Arithmetic Calculation</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            options={[
+              { value: "alphanumeric", label: "Alphanumeric Code (SVG)" },
+              { value: "math", label: "Arithmetic Calculation" },
+            ]}
+          />
         )}
       </div>
     </div>

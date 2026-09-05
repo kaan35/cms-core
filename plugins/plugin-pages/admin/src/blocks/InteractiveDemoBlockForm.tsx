@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Textarea,
-} from "@cms/admin-shell";
+import { InputField, InputSelectField, InputTextareaField } from "@cms/admin-shell";
 import { Shield, Sparkles } from "lucide-react";
 
 export interface InteractiveDemoBlockData {
@@ -28,58 +19,44 @@ export function InteractiveDemoBlockForm({ data, onChange }: InteractiveDemoBloc
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="demo-title">Widget Headline</Label>
-          <Input
-            id="demo-title"
-            placeholder="e.g. Security Verification"
-            value={data.title || ""}
-            onChange={(e) => onChange({ ...data, title: e.target.value || undefined })}
-          />
-        </div>
+        <InputField
+          label="Widget Headline"
+          placeholder="e.g. Security Verification"
+          value={data.title || ""}
+          onChange={(e) => onChange({ ...data, title: e.target.value || undefined })}
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="demo-type">Interactive Demo Type</Label>
-          <Select
-            value={data.widgetType || "turnstile"}
-            onValueChange={(val) =>
-              onChange({
-                ...data,
-                widgetType: val as "turnstile" | "counter" | "pricing_calculator",
-              })
-            }
-          >
-            <SelectTrigger id="demo-type">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="turnstile">
-                <div className="flex items-center gap-2">
-                  <Shield className="size-3.5 text-primary" />
-                  <span>Security Human Verification (Math Challenge)</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="counter">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="size-3.5 text-primary" />
-                  <span>Interactive Metric Counter</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="demo-desc">Description / Subtitle</Label>
-        <Textarea
-          id="demo-desc"
-          rows={2}
-          placeholder="e.g. Interactive challenge demo widget showcasing client-side validation."
-          value={data.description || ""}
-          onChange={(e) => onChange({ ...data, description: e.target.value || undefined })}
+        <InputSelectField
+          label="Interactive Demo Type"
+          value={data.widgetType || "turnstile"}
+          onValueChange={(val) =>
+            onChange({
+              ...data,
+              widgetType: val as "turnstile" | "counter" | "pricing_calculator",
+            })
+          }
+          options={[
+            {
+              value: "turnstile",
+              label: "Security Human Verification (Math Challenge)",
+              icon: <Shield className="size-3.5" />,
+            },
+            {
+              value: "counter",
+              label: "Interactive Metric Counter",
+              icon: <Sparkles className="size-3.5" />,
+            },
+          ]}
         />
       </div>
+
+      <InputTextareaField
+        label="Description / Subtitle"
+        rows={2}
+        placeholder="e.g. Interactive challenge demo widget showcasing client-side validation."
+        value={data.description || ""}
+        onChange={(e) => onChange({ ...data, description: e.target.value || undefined })}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import {
   Badge,
   Button,
+  formatDateTime,
   Skeleton,
   Table,
   TableBody,
@@ -183,7 +184,7 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
                 {submissions.map((sub) => (
                   <TableRow key={sub.id} className="text-xs hover:bg-muted/30 transition-colors">
                     <TableCell className="font-mono text-[11px] text-muted-foreground whitespace-nowrap">
-                      {new Date(sub.createdAt).toLocaleString()}
+                      {formatDateTime(sub.createdAt)}
                     </TableCell>
                     {dataColumns.map((col) => {
                       const val = sub.data?.[col];

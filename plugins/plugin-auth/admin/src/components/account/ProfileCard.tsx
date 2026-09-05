@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Input, Label, toast, type AuthUser } from "@cms/admin-shell";
+import { Badge, Button, FormField, InputField, toast, type AuthUser } from "@cms/admin-shell";
 import { CheckCircle2, Copy, Mail, User } from "lucide-react";
 import * as React from "react";
 
@@ -53,8 +53,7 @@ export function ProfileCard({ user, roleName }: ProfileCardProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">User ID</Label>
+        <FormField label="User ID">
           <div className="flex items-center gap-2">
             <code className="flex-1 p-2 rounded-lg bg-muted/40 border border-border/60 text-xs font-mono text-foreground truncate">
               {user?.id || "f252a031-0563-49db-9ebc-e32a15d6df64"}
@@ -63,18 +62,16 @@ export function ProfileCard({ user, roleName }: ProfileCardProps) {
               {copiedId ? "Copied" : "Copy"}
             </Button>
           </div>
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Email Address</Label>
-          <Input
-            type="email"
-            value={email}
-            disabled
-            iconStart={<Mail />}
-            className="text-xs bg-muted/30 opacity-80 cursor-not-allowed"
-          />
-        </div>
+        <InputField
+          label="Email Address"
+          type="email"
+          value={email}
+          disabled
+          iconStart={<Mail />}
+          className="text-xs bg-muted/30 opacity-80 cursor-not-allowed"
+        />
       </div>
     </div>
   );

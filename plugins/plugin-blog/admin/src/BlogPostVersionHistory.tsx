@@ -7,6 +7,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  formatDate,
+  formatDateTime,
   Skeleton,
   toast,
   useApi,
@@ -115,7 +117,7 @@ export function BlogPostVersionHistory({
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-foreground">Version #{ver.version}</span>
                       <span className="text-[10px] text-muted-foreground">
-                        {new Date(ver.createdAt).toLocaleDateString()}
+                        {formatDate(ver.createdAt)}
                       </span>
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-1 truncate">
@@ -142,7 +144,7 @@ export function BlogPostVersionHistory({
                       Snapshot: v{selectedVersion.version}
                     </h3>
                     <p className="text-[11px] text-muted-foreground">
-                      Saved {new Date(selectedVersion.createdAt).toLocaleString()}
+                      Saved {formatDateTime(selectedVersion.createdAt)}
                     </p>
                   </div>
 

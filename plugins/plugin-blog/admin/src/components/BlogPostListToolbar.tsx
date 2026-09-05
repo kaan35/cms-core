@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, Input } from "@cms/admin-shell";
-import { Plus, RefreshCw, Search } from "lucide-react";
+import { Button, InputSearchField } from "@cms/admin-shell";
+import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 interface BlogPostListToolbarProps {
@@ -22,15 +22,13 @@ export function BlogPostListToolbar({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col sm:flex-row flex-1 sm:items-center gap-3">
-        <div className="relative flex-1 w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Search articles by title, slug, or summary..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 bg-card w-full"
-          />
-        </div>
+        <InputSearchField
+          placeholder="Search articles by title, slug, or summary..."
+          value={search}
+          onSearchChange={onSearchChange}
+          className="bg-card"
+          containerClassName="flex-1 w-full sm:max-w-sm"
+        />
 
         <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
           <button

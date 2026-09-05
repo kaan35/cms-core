@@ -1,6 +1,14 @@
 "use client";
 
-import { cn, Input, Label, slugify, Textarea, useSaveShortcut } from "@cms/admin-shell";
+import {
+  cn,
+  FormField,
+  Input,
+  InputField,
+  InputTextareaField,
+  slugify,
+  useSaveShortcut,
+} from "@cms/admin-shell";
 import * as React from "react";
 import type { BlogPostDoc } from "./BlogPostVersionHistory";
 import { BlogPostSeoCard } from "./components/BlogPostSeoCard";
@@ -95,67 +103,49 @@ export function BlogPostEditor({ initialData, onSave, className }: BlogPostEdito
         {/* Left Main Article Content (8 cols) */}
         <div className="space-y-6 lg:col-span-8">
           <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="post-title">Article Title *</Label>
-              <Input
-                id="post-title"
-                placeholder="e.g. Deep Dive into Distributed Cache Invalidation"
-                value={inputData.title}
-                onChange={(e) => handleTitleChange(e.target.value)}
-                required
-              />
-            </div>
+            <InputField
+              label="Article Title"
+              placeholder="e.g. Deep Dive into Distributed Cache Invalidation"
+              value={inputData.title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              required
+            />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="post-slug">URL Slug</Label>
+            <FormField label="URL Slug">
               <div className="flex items-center">
                 <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-input bg-muted px-3 text-xs font-mono text-muted-foreground">
                   /blog/
                 </span>
                 <Input
-                  id="post-slug"
                   className="rounded-l-none font-mono text-xs"
                   placeholder="deep-dive-into-distributed-cache"
                   value={inputData.slug}
                   onChange={(e) => handleSlugChange(e.target.value)}
                 />
               </div>
-            </div>
+            </FormField>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="post-summary">Summary / Excerpt *</Label>
-                <span className="text-[11px] text-muted-foreground">
-                  {inputData.summary.length} characters
-                </span>
-              </div>
-              <Textarea
-                id="post-summary"
-                rows={2}
-                placeholder="A compelling synopsis for card previews and social meta tags..."
-                value={inputData.summary}
-                onChange={(e) => setInputData((prev) => ({ ...prev, summary: e.target.value }))}
-                required
-              />
-            </div>
+            <InputTextareaField
+              label="Summary / Excerpt"
+              hint={`${inputData.summary.length} characters`}
+              rows={2}
+              placeholder="A compelling synopsis for card previews and social meta tags..."
+              value={inputData.summary}
+              onChange={(e) => setInputData((prev) => ({ ...prev, summary: e.target.value }))}
+              required
+            />
 
-            <div className="space-y-1.5 pt-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="post-content">Article Content (Markdown / Text) *</Label>
-                <span className="text-[11px] text-muted-foreground">
-                  {inputData.content.length} characters
-                </span>
-              </div>
-              <Textarea
-                id="post-content"
-                rows={16}
-                placeholder="Write your article body here in Markdown..."
-                className="font-mono text-xs leading-relaxed"
-                value={inputData.content}
-                onChange={(e) => setInputData((prev) => ({ ...prev, content: e.target.value }))}
-                required
-              />
-            </div>
+            <InputTextareaField
+              label="Article Content (Markdown / Text)"
+              hint={`${inputData.content.length} characters`}
+              rows={16}
+              placeholder="Write your article body here in Markdown..."
+              className="font-mono text-xs leading-relaxed"
+              containerClassName="pt-2"
+              value={inputData.content}
+              onChange={(e) => setInputData((prev) => ({ ...prev, content: e.target.value }))}
+              required
+            />
           </div>
 
           {/* SEO Metadata Box */}

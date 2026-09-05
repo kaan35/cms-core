@@ -7,9 +7,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  Input,
+  InputSearchField,
 } from "@cms/admin-shell";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import * as React from "react";
 import { BLOCK_CATALOG, type BlockDefinition } from "./blockCatalog";
 
@@ -48,15 +48,13 @@ export function BlockPickerModal({ open, onOpenChange, onSelectBlock }: BlockPic
 
         {/* Search & Category Filter */}
         <div className="space-y-3 py-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search blocks by name or description..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 text-xs"
-            />
-          </div>
+          <InputSearchField
+            placeholder="Search blocks by name or description..."
+            value={search}
+            onSearchChange={setSearch}
+            containerClassName="w-full max-w-none"
+            className="text-xs"
+          />
 
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
             {categories.map((cat) => (

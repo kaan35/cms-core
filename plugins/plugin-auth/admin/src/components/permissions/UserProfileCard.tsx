@@ -1,15 +1,8 @@
 "use client";
 
-import {
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@cms/admin-shell";
+import { InputField, InputSelectField } from "@cms/admin-shell";
 import { Lock, Mail, User } from "lucide-react";
+import * as React from "react";
 
 interface UserProfileCardProps {
   isNew: boolean;
@@ -36,6 +29,18 @@ export function UserProfileCard({
   onPasswordChange,
   onRoleChange,
 }: UserProfileCardProps) {
+  const roleOptions = React.useMemo(() => {
+    const base = [
+      { value: "admin", label: "Administrator" },
+      { value: "editor", label: "Editor" },
+      { value: "user", label: "User" },
+    ];
+    const custom = (rolesData || [])
+      .filter((r) => !["admin", "editor", "user"].includes(r.name))
+      .map((r) => ({ value: r.name, label: r.name }));
+    return [...base, ...custom];
+  }, [rolesData]);
+
   return (
     <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-4">
       <div className="pb-3 border-b border-border/60">
@@ -46,84 +51,47 @@ export function UserProfileCard({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-xs font-medium">
-            Email Address <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="user@example.com"
-            iconStart={<Mail />}
-            value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            required
-            className="text-xs"
-          />
-        </div>
+        <InputField
+          label="Email Address"
+          type="email"
+          placeholder="user@example.com"
+          iconStart={<Mail className="size-4" />}
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          required
+          className="text-xs"
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="name" className="text-xs font-medium">
-            Full Name
-          </Label>
-          <Input
-            id="name"
-            type="text"
-            placeholder="John Doe"
-            iconStart={<User />}
-            value={name}
-            onChange={(e) => onNameChange(e.target.value)}
-            className="text-xs"
-          />
-        </div>
+        <InputField
+          label="Full Name"
+          type="text"
+          placeholder="John Doe"
+          iconStart={<User className="size-4" />}
+          value={name}
+          onChange={(e) => onNameChange(e.target.value)}
+          className="text-xs"
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-        <div className="space-y-1.5">
-          <Label htmlFor="password" className="text-xs font-medium">
-            Password{" "}
-            {isNew ? (
-              <span className="text-destructive">*</span>
-            ) : (
-              <span className="text-muted-foreground font-normal">
-                (Leave blank to keep unchanged)
-              </span>
-            )}
-          </Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder={isNew ? "Enter secure password" : "••••••••"}
-            iconStart={<Lock />}
-            value={password}
-            onChange={(e) => onPasswordChange(e.target.value)}
-            required={isNew}
-            className="text-xs"
-          />
-        </div>
+        <InputField
+          label="Password"
+          type="password"
+          placeholder={isNew ? "Enter secure password" : "••••••••"}
+          iconStart={<Lock className="size-4" />}
+          value={password}
+          onChange={(e) => onPasswordChange(e.target.value)}
+          required={isNew}
+          hint={!isNew ? "(Leave blank to keep unchanged)" : undefined}
+          className="text-xs"
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="role" className="text-xs font-medium">
-            Role Template
-          </Label>
-          <Select value={role} onValueChange={(val) => val && onRoleChange(val)}>
-            <SelectTrigger id="role" className="w-full text-xs">
-              <SelectValue placeholder="Select a role template" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin">Administrator</SelectItem>
-              <SelectItem value="editor">Editor</SelectItem>
-              <SelectItem value="user">User</SelectItem>
-              {rolesData
-                ?.filter((r) => !["admin", "editor", "user"].includes(r.name))
-                .map((r) => (
-                  <SelectItem key={r.id} value={r.name}>
-                    {r.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <InputSelectField
+          label="Role Template"
+          value={role}
+          onValueChange={(val) => onRoleChange(val)}
+          options={roleOptions}
+        />
       </div>
     </div>
   );

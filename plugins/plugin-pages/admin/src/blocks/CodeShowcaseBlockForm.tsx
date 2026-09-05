@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Button,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Textarea,
-} from "@cms/admin-shell";
+import { Button, InputField, InputSelectField, InputTextareaField } from "@cms/admin-shell";
 import { ArrowDown, ArrowUp, Code2, Plus, Terminal, Trash2 } from "lucide-react";
 
 export interface CodeTabItem {
@@ -81,25 +71,19 @@ export function CodeShowcaseBlockForm({ data, onChange }: CodeShowcaseBlockFormP
     <div className="space-y-5">
       {/* Section Headline */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pb-2 border-b border-border/60">
-        <div className="space-y-1.5">
-          <Label htmlFor="code-title">Section Headline (Optional)</Label>
-          <Input
-            id="code-title"
-            placeholder="e.g. Developer Quickstart"
-            value={data.title || ""}
-            onChange={(e) => onChange({ ...data, title: e.target.value || undefined })}
-          />
-        </div>
+        <InputField
+          label="Section Headline (Optional)"
+          placeholder="e.g. Developer Quickstart"
+          value={data.title || ""}
+          onChange={(e) => onChange({ ...data, title: e.target.value || undefined })}
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="code-subtitle">Section Subtitle (Optional)</Label>
-          <Input
-            id="code-subtitle"
-            placeholder="e.g. Fetch CMS pages using our REST APIs."
-            value={data.subtitle || ""}
-            onChange={(e) => onChange({ ...data, subtitle: e.target.value || undefined })}
-          />
-        </div>
+        <InputField
+          label="Section Subtitle (Optional)"
+          placeholder="e.g. Fetch CMS pages using our REST APIs."
+          value={data.subtitle || ""}
+          onChange={(e) => onChange({ ...data, subtitle: e.target.value || undefined })}
+        />
       </div>
 
       {/* Tabs Header */}
@@ -167,46 +151,36 @@ export function CodeShowcaseBlockForm({ data, onChange }: CodeShowcaseBlockFormP
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Tab Label *</Label>
-                  <Input
-                    placeholder="e.g. cURL, Bash, TypeScript"
-                    value={tab.label}
-                    onChange={(e) => handleUpdateTab(index, { label: e.target.value })}
-                    className="h-8 text-xs font-semibold"
-                  />
-                </div>
+                <InputField
+                  label="Tab Label"
+                  placeholder="e.g. cURL, Bash, TypeScript"
+                  value={tab.label}
+                  onChange={(e) => handleUpdateTab(index, { label: e.target.value })}
+                  className="h-8 text-xs font-semibold"
+                  required
+                />
 
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Syntax / Language</Label>
-                  <Select
-                    value={tab.language || "bash"}
-                    onValueChange={(val) => handleUpdateTab(index, { language: val || "bash" })}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COMMON_LANGUAGES.map((lang) => (
-                        <SelectItem key={lang.id} value={lang.id}>
-                          {lang.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Source Code Snippet *</Label>
-                <Textarea
-                  rows={4}
-                  placeholder="Paste or write your code snippet..."
-                  value={tab.code}
-                  onChange={(e) => handleUpdateTab(index, { code: e.target.value })}
-                  className="font-mono text-xs bg-zinc-950/80 text-zinc-100 border-zinc-800"
+                <InputSelectField
+                  label="Syntax / Language"
+                  value={tab.language || "bash"}
+                  onValueChange={(val) => handleUpdateTab(index, { language: val || "bash" })}
+                  className="h-8 text-xs"
+                  options={COMMON_LANGUAGES.map((lang) => ({
+                    value: lang.id,
+                    label: lang.label,
+                  }))}
                 />
               </div>
+
+              <InputTextareaField
+                label="Source Code Snippet"
+                rows={4}
+                placeholder="Paste or write your code snippet..."
+                value={tab.code}
+                onChange={(e) => handleUpdateTab(index, { code: e.target.value })}
+                className="font-mono text-xs bg-zinc-950/80 text-zinc-100 border-zinc-800"
+                required
+              />
             </div>
           ))}
         </div>

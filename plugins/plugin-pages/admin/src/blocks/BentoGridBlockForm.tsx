@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  Button,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@cms/admin-shell";
-import { Columns, Plus, Sparkles, Zap } from "lucide-react";
+import { Button, InputField, InputSelectField } from "@cms/admin-shell";
+import { Plus, Sparkles, Zap } from "lucide-react";
 import { BentoCardItem } from "./BentoCardItem";
 
 export interface BentoCardData {
@@ -76,12 +67,9 @@ export function BentoGridBlockForm({ data, onChange }: BentoGridBlockFormProps) 
     <div className="space-y-5">
       {/* Section Header & Grid Settings */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 pb-3 border-b border-border/60">
-        <div className="space-y-1.5 sm:col-span-1">
-          <Label htmlFor="bento-title" className="text-xs font-semibold">
-            Section Headline (Optional)
-          </Label>
-          <Input
-            id="bento-title"
+        <div className="sm:col-span-1">
+          <InputField
+            label="Section Headline (Optional)"
             placeholder="e.g. Everything you need to scale"
             value={data.title || ""}
             onChange={(e) => onChange({ ...data, title: e.target.value || undefined })}
@@ -89,12 +77,9 @@ export function BentoGridBlockForm({ data, onChange }: BentoGridBlockFormProps) 
           />
         </div>
 
-        <div className="space-y-1.5 sm:col-span-1">
-          <Label htmlFor="bento-subtitle" className="text-xs font-semibold">
-            Section Subtitle (Optional)
-          </Label>
-          <Input
-            id="bento-subtitle"
+        <div className="sm:col-span-1">
+          <InputField
+            label="Section Subtitle (Optional)"
             placeholder="e.g. Modern developer experience out of the box."
             value={data.subtitle || ""}
             onChange={(e) => onChange({ ...data, subtitle: e.target.value || undefined })}
@@ -102,26 +87,20 @@ export function BentoGridBlockForm({ data, onChange }: BentoGridBlockFormProps) 
           />
         </div>
 
-        <div className="space-y-1.5 sm:col-span-1">
-          <Label htmlFor="bento-columns" className="text-xs font-semibold flex items-center gap-1">
-            <Columns className="size-3 text-muted-foreground" />
-            <span>Desktop Columns</span>
-          </Label>
-          <Select
+        <div className="sm:col-span-1">
+          <InputSelectField
+            label="Desktop Columns"
             value={data.columns || "3"}
             onValueChange={(val) => {
               if (val) onChange({ ...data, columns: val as "2" | "3" | "4" });
             }}
-          >
-            <SelectTrigger id="bento-columns" className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="2">2 Columns (Half / Half)</SelectItem>
-              <SelectItem value="3">3 Columns (Default 1/3)</SelectItem>
-              <SelectItem value="4">4 Columns (Compact 1/4)</SelectItem>
-            </SelectContent>
-          </Select>
+            className="h-8 text-xs"
+            options={[
+              { value: "2", label: "2 Columns (Half / Half)" },
+              { value: "3", label: "3 Columns (Default 1/3)" },
+              { value: "4", label: "4 Columns (Compact 1/4)" },
+            ]}
+          />
         </div>
       </div>
 

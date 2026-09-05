@@ -1,17 +1,11 @@
 "use client";
 
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   apiClient,
   Badge,
   Button,
-  Input,
+  DialogDeleteConfirm,
+  InputSearchField,
   Skeleton,
   Table,
   TableBody,
@@ -22,9 +16,10 @@ import {
   toast,
   useApi,
 } from "@cms/admin-shell";
-import { Pencil, RefreshCw, Search, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Pencil, RefreshCw, Trash2, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import * as React from "react";
 
 interface UserItem {
@@ -108,16 +103,13 @@ export function UserList() {
       </div>
 
       {/* Search Input */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="Filter users by email or name..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 h-8 text-xs"
-        />
-      </div>
+      <InputSearchField
+        placeholder="Filter users by email or name..."
+        value={search}
+        onSearchChange={setSearch}
+        containerClassName="max-w-sm"
+        className="h-8 text-xs"
+      />
 
       {/* Table */}
       <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs">
@@ -197,42 +189,20 @@ export function UserList() {
         )}
       </div>
 
-      {/* Custom Shadcn Delete Alert Dialog */}
-      <AlertDialog
+      <DialogDeleteConfirm
         open={Boolean(deleteModal.target)}
-        onOpenChange={(open) => !open && setDeleteModal({ target: null, isDeleting: false })}
-      >
-        <AlertDialogContent className="max-w-md p-5 rounded-2xl bg-card border-border/80 shadow-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-semibold text-foreground">
-              Delete User Account
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              Are you sure you want to delete user{" "}
-              <strong className="text-foreground font-semibold">
-                {deleteModal.target?.name
-                  ? `${deleteModal.target.name} (${deleteModal.target.email})`
-                  : deleteModal.target?.email}
-              </strong>
-              ? This action is permanent and will revoke all associated sessions and permissions.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 pt-3">
-            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
-              <X className="size-3.5" />
-              Cancel
-            </AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              loading={deleteModal.isDeleting}
-              iconStart={<Trash2 />}
-            >
-              {deleteModal.isDeleting ? "Deleting..." : "Delete User"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onClose={() => setDeleteModal({ target: null, isDeleting: false })}
+        onConfirm={handleConfirmDelete}
+        title="Delete User Account"
+        itemTitle={
+          deleteModal.target?.name
+            ? `${deleteModal.target.name} (${deleteModal.target.email})`
+            : deleteModal.target?.email
+        }
+        description="This action is permanent and will revoke all associated sessions and permissions."
+        confirmLabel="Delete User"
+        isDeleting={deleteModal.isDeleting}
+      />
     </div>
   );
 }

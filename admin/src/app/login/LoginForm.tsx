@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Flame, Lock, LogIn, Mail } from "lucide-react";
-import { apiClient, Button, Input, Label, setCsrfToken, toast, useAuth } from "@cms/admin-shell";
+import { apiClient, Button, InputField, setCsrfToken, toast, useAuth } from "@cms/admin-shell";
 
 export function LoginForm() {
   const { isAuthenticated, isLoading, mutate } = useAuth();
@@ -66,35 +66,25 @@ export function LoginForm() {
         {/* Card */}
         <div className="w-full rounded-2xl border border-border/80 bg-card p-6 shadow-xl">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-medium text-foreground">
-                Email <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@cms.com"
-                iconStart={<Mail />}
-                value={inputData.email}
-                onChange={(e) => setInputData((prev) => ({ ...prev, email: e.target.value }))}
-                required
-              />
-            </div>
+            <InputField
+              label="Email"
+              type="email"
+              placeholder="admin@cms.com"
+              iconStart={<Mail />}
+              value={inputData.email}
+              onChange={(e) => setInputData((prev) => ({ ...prev, email: e.target.value }))}
+              required
+            />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs font-medium text-foreground">
-                Password <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                iconStart={<Lock />}
-                value={inputData.password}
-                onChange={(e) => setInputData((prev) => ({ ...prev, password: e.target.value }))}
-                required
-              />
-            </div>
+            <InputField
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              iconStart={<Lock />}
+              value={inputData.password}
+              onChange={(e) => setInputData((prev) => ({ ...prev, password: e.target.value }))}
+              required
+            />
 
             <Button
               type="submit"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, cn, formatBytes, Skeleton } from "@cms/admin-shell";
+import { Badge, Button, cn, formatBytes, formatDate, Skeleton } from "@cms/admin-shell";
 import { Check, Image as ImageIcon, Trash2 } from "lucide-react";
 import { getFileIcon } from "./mediaIcons";
 import type { MediaItem } from "./useMediaLibrary";
@@ -158,9 +158,7 @@ export function MediaGrid({
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{formatBytes(item.size)}</td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {new Date(item.createdAt).toLocaleDateString()}
-                </td>
+                <td className="px-4 py-3 text-muted-foreground">{formatDate(item.createdAt)}</td>
                 <td className="px-4 py-3 text-right">
                   <Button
                     variant="ghost"

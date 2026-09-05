@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, TableCell, TableRow } from "@cms/admin-shell";
+import { Badge, Button, formatDate, TableCell, TableRow } from "@cms/admin-shell";
 import { FileEdit, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { PageListItem } from "../PageList";
@@ -46,9 +46,7 @@ export function PageTableRow({ page, onDeleteRequest }: PageTableRowProps) {
       <TableCell className="text-xs text-muted-foreground">
         {page.blocks?.length || 0} blocks
       </TableCell>
-      <TableCell className="text-xs text-muted-foreground">
-        {page.updatedAt ? new Date(page.updatedAt).toLocaleDateString() : "—"}
-      </TableCell>
+      <TableCell className="text-xs text-muted-foreground">{formatDate(page.updatedAt)}</TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
           <Link href={`/dashboard/pages/${page.id}`}>

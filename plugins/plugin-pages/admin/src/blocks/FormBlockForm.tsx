@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Skeleton,
-  useApi,
-} from "@cms/admin-shell";
+import { InputSelectField, Skeleton, useApi } from "@cms/admin-shell";
 import { ClipboardList } from "lucide-react";
 import * as React from "react";
 
@@ -43,38 +34,35 @@ export function FormBlockForm({ data, onChange }: FormBlockFormProps) {
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        <Label htmlFor="form-select">Select Embedded Form *</Label>
-        {isLoading ? (
+      {isLoading ? (
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-32" />
           <Skeleton className="h-9 w-full" />
-        ) : forms.length === 0 ? (
+        </div>
+      ) : forms.length === 0 ? (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-foreground">Select Embedded Form *</p>
           <div className="rounded-lg border border-border/80 bg-muted/20 p-3 text-xs text-muted-foreground flex items-center gap-2">
             <ClipboardList className="size-4 text-primary" />
             <span>No forms found in system. Please create a form in the Forms manager first.</span>
           </div>
-        ) : (
-          <Select
-            value={data.formId || ""}
-            onValueChange={(val) => {
-              if (val) onChange({ ...data, formId: val });
-            }}
-          >
-            <SelectTrigger id="form-select">
-              <SelectValue placeholder="Choose a form..." />
-            </SelectTrigger>
-            <SelectContent>
-              {forms.map((f) => (
-                <SelectItem key={f.id} value={f.id}>
-                  {f.title} ({f.slug})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        <p className="text-[11px] text-muted-foreground">
-          Renders the interactive form widget with client-side validation and captcha handling.
-        </p>
-      </div>
+        </div>
+      ) : (
+        <InputSelectField
+          label="Select Embedded Form"
+          required
+          hint="Renders the interactive form widget with client-side validation and captcha handling."
+          placeholder="Choose a form..."
+          value={data.formId || ""}
+          onValueChange={(val) => {
+            if (val) onChange({ ...data, formId: val });
+          }}
+          options={forms.map((f) => ({
+            value: f.id,
+            label: `${f.title} (${f.slug})`,
+          }))}
+        />
+      )}
     </div>
   );
 }

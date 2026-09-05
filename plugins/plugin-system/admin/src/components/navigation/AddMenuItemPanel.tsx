@@ -2,7 +2,7 @@
 
 import {
   Button,
-  Label,
+  FormField,
   Select,
   SelectContent,
   SelectItem,
@@ -34,9 +34,9 @@ export function AddMenuItemPanel({
   onAddCustomLink,
 }: AddMenuItemPanelProps) {
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-2xs space-y-3">
-      <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
-        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+    <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
+      <div className="flex items-center justify-between pb-3 border-b border-border/60">
+        <span className="text-xs font-semibold text-foreground flex items-center gap-2">
           <Plus className="size-3.5 text-primary" />
           Add Menu Items
         </span>
@@ -47,10 +47,7 @@ export function AddMenuItemPanel({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
         {/* Column 1: Add CMS Page */}
-        <div className="space-y-1.5">
-          <Label className="text-[11px] text-muted-foreground font-medium">
-            Add Published CMS Page (Auto-Synced)
-          </Label>
+        <FormField label="Add Published CMS Page (Auto-Synced)">
           <div className="flex items-center gap-2">
             <Select
               value={selectedPageId}
@@ -83,13 +80,10 @@ export function AddMenuItemPanel({
               Add Page
             </Button>
           </div>
-        </div>
+        </FormField>
 
         {/* Column 2: Add Preset System Route */}
-        <div className="space-y-1.5">
-          <Label className="text-[11px] text-muted-foreground font-medium">
-            Add Preset System Route
-          </Label>
+        <FormField label="Add Preset System Route">
           <div className="flex items-center gap-2">
             <Select
               value={selectedPresetRoute}
@@ -102,19 +96,19 @@ export function AddMenuItemPanel({
                 <SelectItem value="/blog">
                   <div className="flex items-center gap-2">
                     <BookOpen className="size-3.5 text-primary" />
-                    <span>Blog (/blog)</span>
+                    <span>/blog (Blog Feed)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="/contact">
+                  <div className="flex items-center gap-2">
+                    <Compass className="size-3.5 text-primary" />
+                    <span>/contact (Contact Page)</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="/">
                   <div className="flex items-center gap-2">
                     <Home className="size-3.5 text-primary" />
-                    <span>Home (/)</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="/dashboard">
-                  <div className="flex items-center gap-2">
-                    <Compass className="size-3.5 text-primary" />
-                    <span>Admin Portal (/dashboard)</span>
+                    <span>/ (Home Root)</span>
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -125,10 +119,10 @@ export function AddMenuItemPanel({
               disabled={!selectedPresetRoute}
               onClick={onAddSelectedPreset}
             >
-              Add Route
+              Add Preset
             </Button>
           </div>
-        </div>
+        </FormField>
       </div>
     </div>
   );

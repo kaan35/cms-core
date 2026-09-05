@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Label, Switch } from "@cms/admin-shell";
+import { InputField, InputSwitchField } from "@cms/admin-shell";
 import { Globe, Shield } from "lucide-react";
 import type { SettingsFormData } from "./settingsTypes";
 
@@ -26,39 +26,30 @@ export function GeneralSettingsTab({ inputData, onChange, onSubmit }: GeneralSet
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="space-y-1.5">
-            <Label htmlFor="siteTitle">Site Title</Label>
-            <Input
-              id="siteTitle"
-              placeholder="e.g. My Website"
-              value={inputData.siteTitle}
-              onChange={(e) => onChange({ siteTitle: e.target.value })}
-              className="max-w-md"
-            />
-          </div>
+          <InputField
+            label="Site Title"
+            placeholder="e.g. My Website"
+            value={inputData.siteTitle}
+            onChange={(e) => onChange({ siteTitle: e.target.value })}
+            className="max-w-md"
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="siteDescription">Site Description / Tagline</Label>
-            <Input
-              id="siteDescription"
-              placeholder="A short description of your website for SEO and search results"
-              value={inputData.siteDescription}
-              onChange={(e) => onChange({ siteDescription: e.target.value })}
-              className="max-w-md"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="footerText">Footer Copyright Text</Label>
-          <Input
-            id="footerText"
-            placeholder="e.g. © 2026 My Website. All rights reserved."
-            value={inputData.footerText}
-            onChange={(e) => onChange({ footerText: e.target.value })}
+          <InputField
+            label="Site Description / Tagline"
+            placeholder="A short description of your website for SEO and search results"
+            value={inputData.siteDescription}
+            onChange={(e) => onChange({ siteDescription: e.target.value })}
             className="max-w-md"
           />
         </div>
+
+        <InputField
+          label="Footer Copyright Text"
+          placeholder="e.g. © 2026 My Website. All rights reserved."
+          value={inputData.footerText}
+          onChange={(e) => onChange({ footerText: e.target.value })}
+          className="max-w-md"
+        />
       </div>
 
       {/* Authentication & Session Policy */}
@@ -76,36 +67,25 @@ export function GeneralSettingsTab({ inputData, onChange, onSubmit }: GeneralSet
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-card/40">
-            <div className="space-y-0.5">
-              <span className="text-xs font-semibold text-foreground block">
-                Public Self-Registration
-              </span>
-              <p className="text-[11px] text-muted-foreground">
-                Allow new visitors to register from the login screen
-              </p>
-            </div>
-            <Switch
-              checked={inputData.allowRegistration}
-              onCheckedChange={(val) => onChange({ allowRegistration: val })}
-            />
-          </div>
+          <InputSwitchField
+            label="Public Self-Registration"
+            description="Allow new visitors to register from the login screen"
+            checked={inputData.allowRegistration}
+            onCheckedChange={(val) => onChange({ allowRegistration: val })}
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="session-timeout">Session Lifetime (Minutes)</Label>
-            <Input
-              id="session-timeout"
-              type="number"
-              min={5}
-              max={10080}
-              value={inputData.sessionTimeoutMinutes}
-              onChange={(e) =>
-                onChange({
-                  sessionTimeoutMinutes: parseInt(e.target.value, 10) || 60,
-                })
-              }
-            />
-          </div>
+          <InputField
+            label="Session Lifetime (Minutes)"
+            type="number"
+            min={5}
+            max={10080}
+            value={inputData.sessionTimeoutMinutes}
+            onChange={(e) =>
+              onChange({
+                sessionTimeoutMinutes: parseInt(e.target.value, 10) || 60,
+              })
+            }
+          />
         </div>
       </div>
     </form>

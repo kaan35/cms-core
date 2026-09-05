@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  Button,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@cms/admin-shell";
+import { Button, InputField, InputSelectField, Label } from "@cms/admin-shell";
 import { MediaPicker } from "@cms/plugin-media-admin";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 
@@ -59,31 +50,22 @@ export function GalleryBlockForm({ data, onChange }: GalleryBlockFormProps) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="gallery-title">Gallery Title (Optional)</Label>
-          <Input
-            id="gallery-title"
-            placeholder="e.g. Featured Projects & Showcase"
-            value={data.title || ""}
-            onChange={(e) => onChange({ ...data, title: e.target.value })}
-          />
-        </div>
+        <InputField
+          label="Gallery Title (Optional)"
+          placeholder="e.g. Featured Projects & Showcase"
+          value={data.title || ""}
+          onChange={(e) => onChange({ ...data, title: e.target.value })}
+        />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="gallery-layout">Layout Style</Label>
-          <Select
-            value={data.layout || "grid"}
-            onValueChange={(val) => onChange({ ...data, layout: val as "grid" | "masonry" })}
-          >
-            <SelectTrigger id="gallery-layout">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="grid">Clean Uniform Grid</SelectItem>
-              <SelectItem value="masonry">Dynamic Masonry Flow</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <InputSelectField
+          label="Layout Style"
+          value={data.layout || "grid"}
+          onValueChange={(val) => onChange({ ...data, layout: val as "grid" | "masonry" })}
+          options={[
+            { value: "grid", label: "Clean Uniform Grid" },
+            { value: "masonry", label: "Dynamic Masonry Flow" },
+          ]}
+        />
       </div>
 
       <div className="space-y-3 pt-2 border-t border-border/60">
@@ -140,7 +122,7 @@ export function GalleryBlockForm({ data, onChange }: GalleryBlockFormProps) {
                 </div>
 
                 <div className="flex-1 space-y-2">
-                  <Input
+                  <InputField
                     placeholder="Caption or description (optional)"
                     value={img.caption || ""}
                     onChange={(e) => handleUpdateImage(index, { caption: e.target.value })}

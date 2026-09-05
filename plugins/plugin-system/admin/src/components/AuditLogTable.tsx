@@ -1,20 +1,21 @@
 "use client";
 
-import * as React from "react";
-import { History, RefreshCw } from "lucide-react";
 import {
-  Button,
-  Input,
   Badge,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
+  Button,
+  formatDateTime,
+  InputSearchField,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   useApi,
 } from "@cms/admin-shell";
+import { History, RefreshCw } from "lucide-react";
+import * as React from "react";
 
 interface AuditLog {
   id: string;
@@ -82,11 +83,12 @@ export function AuditLogTable() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Input
+          <InputSearchField
             placeholder="Search logs..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-48 h-7 text-xs"
+            onSearchChange={setSearch}
+            containerClassName="w-56"
+            className="h-8 text-xs"
           />
           <Button variant="outline" onClick={() => mutate()} iconStart={<RefreshCw />}>
             Refresh
@@ -130,7 +132,7 @@ export function AuditLogTable() {
                     {log.resource || "core"}
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground text-[11px]">
-                    {new Date(log.timestamp).toLocaleString()}
+                    {formatDateTime(log.timestamp)}
                   </TableCell>
                 </TableRow>
               ))}

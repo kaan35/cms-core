@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  formatDateTime,
   Skeleton,
 } from "@cms/admin-shell";
 import { Clock, History, RotateCcw } from "lucide-react";
@@ -73,7 +74,7 @@ export function PageVersionsDialog({
                   <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="size-3" />
-                      {new Date(ver.createdAt).toLocaleString()}
+                      {formatDateTime(ver.createdAt)}
                     </span>
                     <span>• {ver.data?.blocks?.length || 0} blocks</span>
                   </div>

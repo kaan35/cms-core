@@ -3,8 +3,7 @@
 import {
   apiClient,
   Button,
-  Input,
-  Label,
+  InputField,
   Skeleton,
   toast,
   useApi,
@@ -177,32 +176,22 @@ export function RoleEditor({ id }: { id: string }) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="roleName" className="text-xs font-medium">
-              Role Identifier <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="roleName"
-              value={inputData.name}
-              onChange={(e) => setInputData((prev) => ({ ...prev, name: e.target.value }))}
-              placeholder="e.g. content_moderator"
-              className="text-xs"
-              required
-            />
-          </div>
+          <InputField
+            label="Role Identifier"
+            value={inputData.name}
+            onChange={(e) => setInputData((prev) => ({ ...prev, name: e.target.value }))}
+            placeholder="e.g. content_moderator"
+            className="text-xs"
+            required
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="roleDesc" className="text-xs font-medium">
-              Description
-            </Label>
-            <Input
-              id="roleDesc"
-              value={inputData.description}
-              onChange={(e) => setInputData((prev) => ({ ...prev, description: e.target.value }))}
-              placeholder="Brief summary of permissions..."
-              className="text-xs"
-            />
-          </div>
+          <InputField
+            label="Description"
+            value={inputData.description}
+            onChange={(e) => setInputData((prev) => ({ ...prev, description: e.target.value }))}
+            placeholder="Brief summary of permissions..."
+            className="text-xs"
+          />
         </div>
       </div>
 

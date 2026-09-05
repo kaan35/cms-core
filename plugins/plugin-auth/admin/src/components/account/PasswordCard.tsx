@@ -1,6 +1,6 @@
 "use client";
 
-import { apiClient, Button, Input, Label, toast, type AuthUser } from "@cms/admin-shell";
+import { apiClient, Button, InputField, toast, type AuthUser } from "@cms/admin-shell";
 import { Key, Lock, Save } from "lucide-react";
 import * as React from "react";
 
@@ -67,39 +67,25 @@ export function PasswordCard({ user }: PasswordCardProps) {
 
       <form onSubmit={handleChangePassword} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="newPassword" className="text-xs">
-              New Password
-            </Label>
-            <Input
-              id="newPassword"
-              type="password"
-              placeholder="Minimum 6 characters"
-              iconStart={<Lock />}
-              value={inputData.newPassword}
-              onChange={(e) => setInputData((prev) => ({ ...prev, newPassword: e.target.value }))}
-              className="text-xs"
-              required
-            />
-          </div>
+          <InputField
+            label="New Password"
+            type="password"
+            placeholder="Minimum 6 characters"
+            iconStart={<Lock />}
+            value={inputData.newPassword}
+            onChange={(e) => setInputData((prev) => ({ ...prev, newPassword: e.target.value }))}
+            required
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="confirmPassword" className="text-xs">
-              Confirm New Password
-            </Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="Re-enter new password"
-              iconStart={<Lock />}
-              value={inputData.confirmPassword}
-              onChange={(e) =>
-                setInputData((prev) => ({ ...prev, confirmPassword: e.target.value }))
-              }
-              className="text-xs"
-              required
-            />
-          </div>
+          <InputField
+            label="Confirm New Password"
+            type="password"
+            placeholder="Re-enter new password"
+            iconStart={<Lock />}
+            value={inputData.confirmPassword}
+            onChange={(e) => setInputData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+            required
+          />
         </div>
 
         <div className="flex justify-end pt-2">

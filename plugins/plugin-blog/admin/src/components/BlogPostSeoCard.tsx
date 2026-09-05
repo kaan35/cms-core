@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Label, Textarea } from "@cms/admin-shell";
+import { InputField, InputTextareaField } from "@cms/admin-shell";
 import { Sparkles } from "lucide-react";
 
 interface BlogPostSeoCardProps {
@@ -23,26 +23,20 @@ export function BlogPostSeoCard({
         <h3 className="text-sm font-semibold text-foreground">Search Engine Optimization (SEO)</h3>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="post-meta-title">SEO Meta Title</Label>
-        <Input
-          id="post-meta-title"
-          placeholder="Defaults to article title if empty"
-          value={metaTitle || ""}
-          onChange={(e) => onMetaTitleChange(e.target.value)}
-        />
-      </div>
+      <InputField
+        label="SEO Meta Title"
+        placeholder="Defaults to article title if empty"
+        value={metaTitle || ""}
+        onChange={(e) => onMetaTitleChange(e.target.value)}
+      />
 
-      <div className="space-y-1.5">
-        <Label htmlFor="post-meta-desc">SEO Meta Description</Label>
-        <Textarea
-          id="post-meta-desc"
-          rows={2}
-          placeholder="Defaults to summary excerpt if empty"
-          value={metaDescription || ""}
-          onChange={(e) => onMetaDescriptionChange(e.target.value)}
-        />
-      </div>
+      <InputTextareaField
+        label="SEO Meta Description"
+        rows={2}
+        placeholder="Defaults to summary excerpt if empty"
+        value={metaDescription || ""}
+        onChange={(e) => onMetaDescriptionChange(e.target.value)}
+      />
     </div>
   );
 }

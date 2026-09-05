@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@cms/admin-shell";
-import { ShieldAlert, Trash2, X } from "lucide-react";
+import { DialogConfirm } from "@cms/admin-shell";
+import { ShieldAlert, Trash2 } from "lucide-react";
 
 interface RevokeSessionDialogsProps {
   sessionToRevoke: string | null;
@@ -33,70 +24,28 @@ export function RevokeSessionDialogs({
 }: RevokeSessionDialogsProps) {
   return (
     <>
-      {/* AlertDialog: Single Session Revoke */}
-      <AlertDialog
+      <DialogConfirm
         open={Boolean(sessionToRevoke)}
-        onOpenChange={(open) => {
-          if (!open) onCloseRevokeModal();
-        }}
-      >
-        <AlertDialogContent>
-          <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 border border-destructive/20 text-destructive mb-1">
-            <Trash2 className="size-5" />
-          </div>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Terminate Session</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to terminate this session? The device will be signed out
-              immediately.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs gap-1.5" onClick={onCloseRevokeModal}>
-              <X className="size-3.5" />
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={onConfirmRevoke} className="gap-1.5">
-              <Trash2 className="size-3.5" />
-              <span>Terminate Session</span>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onClose={onCloseRevokeModal}
+        onConfirm={onConfirmRevoke}
+        title="Terminate Session"
+        description="Are you sure you want to terminate this session? The device will be signed out immediately."
+        confirmLabel="Terminate Session"
+        confirmIcon={<Trash2 />}
+        confirmVariant="destructive"
+      />
 
-      {/* AlertDialog: Revoke All Other Sessions */}
-      <AlertDialog open={revokeAllModalOpen} onOpenChange={onOpenChangeRevokeAll}>
-        <AlertDialogContent>
-          <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 border border-destructive/20 text-destructive mb-1">
-            <ShieldAlert className="size-5" />
-          </div>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Sign Out All Other Devices</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to sign out all other devices? All other active logins except
-              your current session will be revoked.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              className="h-8 text-xs gap-1.5"
-              onClick={() => onOpenChangeRevokeAll(false)}
-            >
-              <X className="size-3.5" />
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={isRevokingAll}
-              onClick={onConfirmRevokeAll}
-              className="gap-1.5"
-            >
-              <ShieldAlert className="size-3.5" />
-              <span>{isRevokingAll ? "Revoking..." : "Sign Out All Other Devices"}</span>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DialogConfirm
+        open={revokeAllModalOpen}
+        onClose={() => onOpenChangeRevokeAll(false)}
+        onConfirm={onConfirmRevokeAll}
+        title="Sign Out All Other Devices"
+        description="Are you sure you want to sign out all other devices? All other active logins except your current session will be revoked."
+        confirmLabel={isRevokingAll ? "Revoking..." : "Sign Out All Other Devices"}
+        confirmIcon={<ShieldAlert />}
+        confirmVariant="destructive"
+        isLoading={isRevokingAll}
+      />
     </>
   );
 }

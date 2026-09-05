@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Flame, Lock, Mail, ShieldCheck, UserPlus } from "lucide-react";
-import { apiClient, Button, Input, Label, setCsrfToken, toast, useAuth } from "@cms/admin-shell";
+import { apiClient, Button, InputField, setCsrfToken, toast, useAuth } from "@cms/admin-shell";
 
 export function SetupForm() {
   const { isAuthenticated, isLoading, mutate } = useAuth();
@@ -87,52 +87,37 @@ export function SetupForm() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-medium text-foreground">
-                Admin Email <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@example.com"
-                iconStart={<Mail />}
-                value={inputData.email}
-                onChange={(e) => setInputData((prev) => ({ ...prev, email: e.target.value }))}
-                required
-              />
-            </div>
+            <InputField
+              label="Admin Email"
+              type="email"
+              placeholder="admin@example.com"
+              iconStart={<Mail />}
+              value={inputData.email}
+              onChange={(e) => setInputData((prev) => ({ ...prev, email: e.target.value }))}
+              required
+            />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs font-medium text-foreground">
-                Password <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Min 8 characters"
-                iconStart={<Lock />}
-                value={inputData.password}
-                onChange={(e) => setInputData((prev) => ({ ...prev, password: e.target.value }))}
-                required
-              />
-            </div>
+            <InputField
+              label="Password"
+              type="password"
+              placeholder="Min 8 characters"
+              iconStart={<Lock />}
+              value={inputData.password}
+              onChange={(e) => setInputData((prev) => ({ ...prev, password: e.target.value }))}
+              required
+            />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="confirmPassword" className="text-xs font-medium text-foreground">
-                Confirm Password <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Repeat password"
-                iconStart={<Lock />}
-                value={inputData.confirmPassword}
-                onChange={(e) =>
-                  setInputData((prev) => ({ ...prev, confirmPassword: e.target.value }))
-                }
-                required
-              />
-            </div>
+            <InputField
+              label="Confirm Password"
+              type="password"
+              placeholder="Repeat password"
+              iconStart={<Lock />}
+              value={inputData.confirmPassword}
+              onChange={(e) =>
+                setInputData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+              }
+              required
+            />
 
             <Button
               type="submit"
