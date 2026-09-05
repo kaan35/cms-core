@@ -10,7 +10,9 @@ export const PERMISSIONS = {
   SYSTEM: {
     PLUGINS_READ: "system:plugins:read",
     PLUGINS_WRITE: "system:plugins:write",
+    SETTINGS_READ: "system:settings:read",
     SETTINGS_WRITE: "system:settings:write",
+    FEATURE_FLAGS_READ: "system:feature-flags:read",
     FEATURE_FLAGS_WRITE: "system:feature-flags:write",
     AUDIT_LOG_READ: "system:audit-log:read",
   },

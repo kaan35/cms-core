@@ -1,6 +1,6 @@
 // Types
-export type {} from "./types/fastify.js";
 export type { AuthUser } from "./types/auth.js";
+export type {} from "./types/fastify.js";
 export type { ICache } from "./types/ICache.js";
 export type {
   CreateIndexOptions,
@@ -11,6 +11,14 @@ export type {
 } from "./types/IDatabase.js";
 export type { ILogger } from "./types/ILogger.js";
 export type { CoreServices, Migration, PluginManifestEntry } from "./types/plugin.js";
+export type {
+  HookHandler,
+  IConfigService,
+  IHookManager,
+  IRedirectsService,
+  ISettingsService,
+  RedirectDoc,
+} from "./types/services.js";
 
 // Errors
 export {

@@ -1,8 +1,8 @@
 import {
-  HookManager,
   NotFoundError,
   ValidationError,
   parsePaginationQuery,
+  type IHookManager,
   type ILogger,
   type PaginatedResult,
 } from "@cms/core";
@@ -34,13 +34,13 @@ export type CaptchaResponse =
 export class FormsService {
   private repo: FormsRepository;
   private captchaRegistry: CaptchaRegistry;
-  private hooks: HookManager;
+  private hooks: IHookManager;
   private logger: ILogger;
 
   constructor(
     repo: FormsRepository,
     captchaRegistry: CaptchaRegistry,
-    hooks: HookManager,
+    hooks: IHookManager,
     logger: ILogger,
   ) {
     this.repo = repo;

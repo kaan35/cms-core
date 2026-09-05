@@ -1,4 +1,4 @@
-import type { HookManager, IDatabase, ILogger, PluginLoader, SettingsService } from "@cms/core";
+import type { IDatabase, IHookManager, ILogger, ISettingsService, PluginLoader } from "@cms/core";
 import { EVENTS, NotFoundError, buildPaginatedResult } from "@cms/core";
 import type { AuditLogDoc, AuditLogRepository } from "../repositories/auditLogRepository.js";
 import type {
@@ -13,7 +13,7 @@ export class SystemService {
   private readonly pluginsRepo: PluginsRepository;
   private readonly auditLogRepo: AuditLogRepository;
   private readonly pluginLoader: PluginLoader;
-  private readonly hooks: HookManager;
+  private readonly hooks: IHookManager;
   private readonly db: IDatabase;
   private readonly logger: ILogger;
   private readonly brandSettingsService: BrandSettingsService;
@@ -23,9 +23,9 @@ export class SystemService {
     pluginsRepo: PluginsRepository,
     featureFlagsRepo: FeatureFlagsRepository,
     auditLogRepo: AuditLogRepository,
-    settingsService: SettingsService,
+    settingsService: ISettingsService,
     pluginLoader: PluginLoader,
-    hooks: HookManager,
+    hooks: IHookManager,
     db: IDatabase,
     logger: ILogger,
     brandSettingsService?: BrandSettingsService,

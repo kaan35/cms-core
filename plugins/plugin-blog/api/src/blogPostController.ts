@@ -1,13 +1,13 @@
-import type { RedirectsService } from "@cms/core";
+import type { IRedirectsService } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { BlogPostService } from "./blogPostService.js";
 import { BLOG_PERMISSIONS } from "./domain/blogPost.rules.js";
 
 export class BlogPostController {
   private readonly blogService: BlogPostService;
-  private readonly redirectsService: RedirectsService;
+  private readonly redirectsService: IRedirectsService;
 
-  constructor(blogService: BlogPostService, redirectsService: RedirectsService) {
+  constructor(blogService: BlogPostService, redirectsService: IRedirectsService) {
     this.blogService = blogService;
     this.redirectsService = redirectsService;
   }

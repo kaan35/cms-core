@@ -1,5 +1,5 @@
 import type { AuthUser, ILogger } from "@cms/core";
-import { UnauthorizedError } from "@cms/core";
+import { ForbiddenError, NotFoundError, UnauthorizedError } from "@cms/core";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import type { SessionsRepository } from "./repositories/sessionsRepository.js";
@@ -10,7 +10,31 @@ export interface TokenPayload {
   permissions: string[];
 }
 
-export class SessionService {
+export interface ISessionInfo {
+  id: string;
+  userAgent?: string | undefined;
+  ip?: string | undefined;
+  expiresAt: Date;
+  createdAt?: Date | undefined;
+  current?: boolean | undefined;
+}
+
+export interface ISessionService {
+  generateCsrfToken(): string;
+  createSession(
+    userId: string,
+    permissions: string[],
+    options?: { userAgent?: string | undefined; ip?: string | undefined },
+  ): Promise<{ token: string; csrfToken: string; expiresAt: Date; sessionId: string }>;
+  validateAndSlideSession(token: string): Promise<AuthUser>;
+  listUserSessions(userId: string, currentSessionId?: string): Promise<ISessionInfo[]>;
+  deleteUserSession(sessionId: string, user: { id: string; permissions: string[] }): Promise<void>;
+  revokeSession(sessionId: string): Promise<void>;
+  revokeUserSessions(userId: string): Promise<void>;
+  revokeAllSessions(): Promise<void>;
+}
+
+export class SessionService implements ISessionService {
   private readonly sessionsRepo: SessionsRepository;
   private readonly jwtSecret: string;
   private readonly logger: ILogger;
@@ -102,6 +126,32 @@ export class SessionService {
       permissions: payload.permissions,
       sessionId: session.id,
     };
+  }
+
+  async listUserSessions(userId: string, currentSessionId?: string) {
+    const sessions = await this.sessionsRepo.findByUserId(userId);
+    return sessions.map((s) => ({
+      id: s.id,
+      userAgent: s.userAgent,
+      ip: s.ip,
+      expiresAt: s.expiresAt,
+      createdAt: s.createdAt,
+      current: s.id === currentSessionId,
+    }));
+  }
+
+  async deleteUserSession(
+    sessionId: string,
+    user: { id: string; permissions: string[] },
+  ): Promise<void> {
+    const session = await this.sessionsRepo.findById(sessionId);
+    if (!session) throw new NotFoundError("Session not found");
+    const isOwn = session.userId === user.id;
+    const canManageAll = user.permissions.includes("*") || user.permissions.includes("users:write");
+    if (!isOwn && !canManageAll) {
+      throw new ForbiddenError("You can only delete your own sessions");
+    }
+    await this.revokeSession(sessionId);
   }
 
   async revokeSession(sessionId: string): Promise<void> {

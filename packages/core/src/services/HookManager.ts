@@ -1,6 +1,6 @@
-type HookHandler<T = unknown> = (payload: T) => void | Promise<void>;
+import type { HookHandler, IHookManager } from "../types/services.js";
 
-export class HookManager {
+export class HookManager implements IHookManager {
   private readonly listeners = new Map<string, Array<HookHandler<unknown>>>();
 
   on<T>(event: string, handler: HookHandler<T>): void {

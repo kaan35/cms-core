@@ -1,35 +1,16 @@
 import { apiClient, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
 import type { NavigationMenuItem } from "@cms/plugin-system-api";
 import * as React from "react";
+import {
+  createDefaultFooterMenu,
+  createDefaultHeaderMenu,
+  createPresetMenuItem,
+  type EffectiveMenuItem,
+  type PublishedPage,
+  type SettingsResponse,
+} from "./menuDefaults";
 
-export interface SettingsResponse {
-  settings: {
-    siteTitle: string;
-    siteDescription: string;
-    brandColor: string;
-    brandFont: string;
-    primaryColor: string;
-    fontFamily: string;
-    defaultTheme: string;
-    footerText: string;
-    headerMenu: NavigationMenuItem[];
-    footerMenu: NavigationMenuItem[];
-    allowRegistration: boolean;
-    sessionTimeoutMinutes: number;
-  };
-}
-
-export interface PublishedPage {
-  id: string;
-  title: string;
-  slug: string;
-  status: string;
-}
-
-export interface EffectiveMenuItem extends NavigationMenuItem {
-  pageTitle?: string | undefined;
-  isSynced: boolean;
-}
+export type { EffectiveMenuItem, PublishedPage, SettingsResponse };
 
 export function useNavigationMenu() {
   const { data, isLoading, mutate } = useApi<SettingsResponse>("/api/settings");
@@ -59,24 +40,7 @@ export function useNavigationMenu() {
       setHeaderMenu(
         Array.isArray(settings.headerMenu) && settings.headerMenu.length > 0
           ? settings.headerMenu
-          : [
-              {
-                id: crypto.randomUUID(),
-                label: "Home",
-                url: "/",
-                type: "custom",
-                style: "link",
-                icon: "Home",
-              },
-              {
-                id: crypto.randomUUID(),
-                label: "Blog",
-                url: "/blog",
-                type: "blog",
-                style: "link",
-                icon: "BookOpen",
-              },
-            ],
+          : createDefaultHeaderMenu([]),
       );
       setFooterMenu(
         Array.isArray(settings.footerMenu) && settings.footerMenu.length > 0
@@ -147,48 +111,12 @@ export function useNavigationMenu() {
     toast.success(`Added "${page.title}" to menu (auto-sync enabled)`);
   };
 
-  const handleAddBlog = () => {
-    const newItem: NavigationMenuItem = {
-      id: crypto.randomUUID(),
-      label: "Blog",
-      url: "/blog",
-      type: "blog",
-      icon: "BookOpen",
-      style: "link",
-      external: false,
-    };
-    setCurrentMenu((prev) => [...prev, newItem]);
-  };
-
   const handleAddSelectedPreset = () => {
     if (!selectedPresetRoute) return;
-
-    if (selectedPresetRoute === "/blog") {
-      handleAddBlog();
-    } else if (selectedPresetRoute === "/") {
-      const newItem: NavigationMenuItem = {
-        id: crypto.randomUUID(),
-        label: "Home",
-        url: "/",
-        type: "custom",
-        icon: "Home",
-        style: "link",
-        external: false,
-      };
-      setCurrentMenu((prev) => [...prev, newItem]);
-    } else if (selectedPresetRoute === "/dashboard") {
-      const newItem: NavigationMenuItem = {
-        id: crypto.randomUUID(),
-        label: "Admin Portal",
-        url: "/dashboard",
-        type: "custom",
-        icon: "Compass",
-        style: "link",
-        external: true,
-      };
-      setCurrentMenu((prev) => [...prev, newItem]);
+    const presetItem = createPresetMenuItem(selectedPresetRoute);
+    if (presetItem) {
+      setCurrentMenu((prev) => [...prev, presetItem]);
     }
-
     setSelectedPresetRoute("");
     toast.success("Added route to menu");
   };
@@ -216,51 +144,9 @@ export function useNavigationMenu() {
 
   const handleResetDefaults = () => {
     if (activeLocation === "header") {
-      const defaultHeader: NavigationMenuItem[] = [
-        {
-          id: crypto.randomUUID(),
-          label: "Home",
-          url: "/",
-          type: "custom",
-          style: "link",
-          icon: "Home",
-        },
-        {
-          id: crypto.randomUUID(),
-          label: "Blog",
-          url: "/blog",
-          type: "blog",
-          style: "link",
-          icon: "BookOpen",
-        },
-        ...publishedPages.map((p) => ({
-          id: crypto.randomUUID(),
-          label: p.title,
-          url: `/${p.slug.replace(/^\//, "")}`,
-          type: "page" as const,
-          pageId: p.id,
-          customLabel: false,
-          style: "link" as const,
-          external: false,
-        })),
-      ];
-      setHeaderMenu(defaultHeader);
+      setHeaderMenu(createDefaultHeaderMenu(publishedPages));
     } else {
-      const defaultFooter: NavigationMenuItem[] = [
-        { id: crypto.randomUUID(), label: "Home", url: "/", type: "custom", style: "link" },
-        { id: crypto.randomUUID(), label: "Blog", url: "/blog", type: "blog", style: "link" },
-        ...publishedPages.map((p) => ({
-          id: crypto.randomUUID(),
-          label: p.title,
-          url: `/${p.slug.replace(/^\//, "")}`,
-          type: "page" as const,
-          pageId: p.id,
-          customLabel: false,
-          style: "link" as const,
-          external: false,
-        })),
-      ];
-      setFooterMenu(defaultFooter);
+      setFooterMenu(createDefaultFooterMenu(publishedPages));
     }
     toast.success("Reset to default menu items");
   };

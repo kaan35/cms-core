@@ -1,4 +1,4 @@
-import type { HookManager, ILogger } from "@cms/core";
+import type { IHookManager, ILogger } from "@cms/core";
 import { ConflictError, NotFoundError } from "@cms/core";
 import { EVENTS } from "@cms/core";
 import {
@@ -14,10 +14,10 @@ import type {
 
 export class FeatureFlagService {
   private readonly featureFlagsRepo: FeatureFlagsRepository;
-  private readonly hooks: HookManager;
+  private readonly hooks: IHookManager;
   private readonly logger: ILogger;
 
-  constructor(featureFlagsRepo: FeatureFlagsRepository, hooks: HookManager, logger: ILogger) {
+  constructor(featureFlagsRepo: FeatureFlagsRepository, hooks: IHookManager, logger: ILogger) {
     this.featureFlagsRepo = featureFlagsRepo;
     this.hooks = hooks;
     this.logger = logger;

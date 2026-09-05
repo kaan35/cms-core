@@ -1,4 +1,6 @@
-export class ConfigService {
+import type { IConfigService } from "../types/services.js";
+
+export class ConfigService implements IConfigService {
   private readonly env: Record<string, string | undefined>;
 
   constructor(env: Record<string, string | undefined>) {

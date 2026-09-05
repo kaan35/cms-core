@@ -1,17 +1,7 @@
 "use client";
 
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   apiClient,
-  Badge,
-  Button,
-  Input,
   Skeleton,
   Table,
   TableBody,
@@ -22,9 +12,11 @@ import {
   toast,
   useApi,
 } from "@cms/admin-shell";
-import { FileEdit, FileText, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
-import Link from "next/link";
+import { FileText } from "lucide-react";
 import * as React from "react";
+import { PageDeleteDialog } from "./components/PageDeleteDialog";
+import { PageListToolbar } from "./components/PageListToolbar";
+import { PageTableRow } from "./components/PageTableRow";
 
 export interface PageListItem {
   id: string;
@@ -95,71 +87,13 @@ export function PageList() {
 
   return (
     <div className="space-y-6">
-      {/* Search & Actions Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col sm:flex-row flex-1 sm:items-center gap-3">
-          <div className="relative flex-1 w-full sm:max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by title or slug..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-card w-full"
-            />
-          </div>
-
-          <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setStatusFilter("all")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                statusFilter === "all"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("published")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                statusFilter === "published"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Published
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("draft")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                statusFilter === "draft"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Drafts
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => mutate()}
-            iconStart={<RefreshCw />}
-          />
-
-          <Link href="/dashboard/pages/new" className="flex-1 sm:flex-none">
-            <Button iconStart={<Plus />} className="w-full sm:w-auto">
-              Create Page
-            </Button>
-          </Link>
-        </div>
-      </div>
+      <PageListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        onRefresh={() => mutate()}
+      />
 
       {/* Pages Table */}
       <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
@@ -226,96 +160,23 @@ export function PageList() {
             </TableHeader>
             <TableBody>
               {filteredPages.map((page) => (
-                <TableRow key={page.id} className="hover:bg-muted/30 transition-colors">
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <FileEdit className="size-3.5" />
-                      </div>
-                      <Link
-                        href={`/dashboard/pages/${page.id}`}
-                        className="text-foreground hover:text-primary transition-colors font-semibold flex items-center gap-1.5"
-                      >
-                        <span>{page.title}</span>
-                        {page.pageType === "home" && (
-                          <Badge
-                            variant="outline"
-                            className="border-amber-500/40 text-amber-500 bg-amber-500/10 text-[9px] px-1.5 py-0"
-                          >
-                            Home
-                          </Badge>
-                        )}
-                      </Link>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    /{page.slug}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={page.status === "published" ? "default" : "secondary"}
-                      className="text-[10px]"
-                    >
-                      {page.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {page.blocks?.length || 0} blocks
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {page.updatedAt ? new Date(page.updatedAt).toLocaleDateString() : "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link href={`/dashboard/pages/${page.id}`}>
-                        <Button variant="ghost" iconStart={<Pencil />}>
-                          Edit
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteModal({ target: page, isDeleting: false })}
-                        iconStart={<Trash2 className="text-destructive" />}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <PageTableRow
+                  key={page.id}
+                  page={page}
+                  onDeleteRequest={(target) => setDeleteModal({ target, isDeleting: false })}
+                />
               ))}
             </TableBody>
           </Table>
         )}
       </div>
 
-      {/* Delete Confirmation Alert */}
-      <AlertDialog
-        open={Boolean(deleteModal.target)}
-        onOpenChange={(open) => !open && setDeleteModal({ target: null, isDeleting: false })}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Page?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deleteModal.target?.title}&quot;? This will
-              remove the page and all of its blocks from the live site and system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
-              <X className="size-3.5" />
-              Cancel
-            </AlertDialogCancel>
-            <Button
-              variant="destructive"
-              loading={deleteModal.isDeleting}
-              iconStart={<Trash2 />}
-              onClick={handleConfirmDelete}
-            >
-              {deleteModal.isDeleting ? "Deleting..." : "Delete Page"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PageDeleteDialog
+        target={deleteModal.target}
+        isDeleting={deleteModal.isDeleting}
+        onClose={() => setDeleteModal({ target: null, isDeleting: false })}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

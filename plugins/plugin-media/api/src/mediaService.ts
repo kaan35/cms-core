@@ -1,4 +1,4 @@
-import type { HookManager, ILogger, PaginatedResult } from "@cms/core";
+import type { IHookManager, ILogger, PaginatedResult } from "@cms/core";
 import { EVENTS, NotFoundError } from "@cms/core";
 import {
   generateStorageKey,
@@ -12,13 +12,13 @@ import type { IStorageAdapter } from "./storageAdapter.js";
 export class MediaService {
   private readonly mediaRepo: MediaRepository;
   private readonly storageAdapter: IStorageAdapter;
-  private readonly hooks: HookManager;
+  private readonly hooks: IHookManager;
   private readonly logger: ILogger;
 
   constructor(
     mediaRepo: MediaRepository,
     storageAdapter: IStorageAdapter,
-    hooks: HookManager,
+    hooks: IHookManager,
     logger: ILogger,
   ) {
     this.mediaRepo = mediaRepo;

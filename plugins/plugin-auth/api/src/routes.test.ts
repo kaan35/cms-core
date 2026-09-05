@@ -468,7 +468,7 @@ describe("plugin-auth routes & workflows", () => {
     await app.close();
   });
 
-  it("POST /auth/sessions/revoke-all revokes all sessions and requires auth:revoke-all-sessions permission", async () => {
+  it("POST /auth/sessions/revoke-all revokes all sessions and requires auth:sessions:revoke_all permission", async () => {
     const { app } = await setupTestApp();
 
     const setupRes = await app.inject({

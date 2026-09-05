@@ -1,4 +1,4 @@
-import type { HookManager, ILogger } from "@cms/core";
+import type { IHookManager, ILogger } from "@cms/core";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@cms/core";
 import { EVENTS } from "@cms/core";
 import {
@@ -14,13 +14,13 @@ import type { UsersRepository } from "../repositories/usersRepository.js";
 export class RoleService {
   private readonly rolesRepo: RolesRepository;
   private readonly usersRepo: UsersRepository;
-  private readonly hooks: HookManager;
+  private readonly hooks: IHookManager;
   private readonly logger: ILogger;
 
   constructor(
     rolesRepo: RolesRepository,
     usersRepo: UsersRepository,
-    hooks: HookManager,
+    hooks: IHookManager,
     logger: ILogger,
   ) {
     this.rolesRepo = rolesRepo;

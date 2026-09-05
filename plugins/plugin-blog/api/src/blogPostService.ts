@@ -1,4 +1,4 @@
-import type { HookManager, ILogger, PaginatedResult } from "@cms/core";
+import type { IHookManager, ILogger, PaginatedResult } from "@cms/core";
 import { NotFoundError } from "@cms/core";
 import type { BlogPostDoc, BlogPostVersionDoc } from "./domain/blogPost.rules.js";
 import {
@@ -10,10 +10,10 @@ import type { BlogPostsRepository } from "./repositories/blogPostsRepository.js"
 
 export class BlogPostService {
   private readonly blogRepo: BlogPostsRepository;
-  private readonly hooks: HookManager;
+  private readonly hooks: IHookManager;
   private readonly logger: ILogger;
 
-  constructor(blogRepo: BlogPostsRepository, hooks: HookManager, logger: ILogger) {
+  constructor(blogRepo: BlogPostsRepository, hooks: IHookManager, logger: ILogger) {
     this.blogRepo = blogRepo;
     this.hooks = hooks;
     this.logger = logger;

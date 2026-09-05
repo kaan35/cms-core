@@ -1,22 +1,10 @@
 "use client";
 
-import {
-  cn,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  slugify,
-  Textarea,
-  useSaveShortcut,
-} from "@cms/admin-shell";
-import { MediaPicker } from "@cms/plugin-media-admin";
-import { Sparkles } from "lucide-react";
+import { cn, Input, Label, slugify, Textarea, useSaveShortcut } from "@cms/admin-shell";
 import * as React from "react";
 import type { BlogPostDoc } from "./BlogPostVersionHistory";
+import { BlogPostSeoCard } from "./components/BlogPostSeoCard";
+import { BlogPostSidebar } from "./components/BlogPostSidebar";
 
 export interface BlogPostFormData {
   title: string;
@@ -171,95 +159,23 @@ export function BlogPostEditor({ initialData, onSave, className }: BlogPostEdito
           </div>
 
           {/* SEO Metadata Box */}
-          <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-4">
-            <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-              <Sparkles className="size-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">
-                Search Engine Optimization (SEO)
-              </h3>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="post-meta-title">SEO Meta Title</Label>
-              <Input
-                id="post-meta-title"
-                placeholder="Defaults to article title if empty"
-                value={inputData.metaTitle || ""}
-                onChange={(e) => setInputData((prev) => ({ ...prev, metaTitle: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="post-meta-desc">SEO Meta Description</Label>
-              <Textarea
-                id="post-meta-desc"
-                rows={2}
-                placeholder="Defaults to summary excerpt if empty"
-                value={inputData.metaDescription || ""}
-                onChange={(e) =>
-                  setInputData((prev) => ({ ...prev, metaDescription: e.target.value }))
-                }
-              />
-            </div>
-          </div>
+          <BlogPostSeoCard
+            metaTitle={inputData.metaTitle}
+            metaDescription={inputData.metaDescription}
+            onMetaTitleChange={(val) => setInputData((prev) => ({ ...prev, metaTitle: val }))}
+            onMetaDescriptionChange={(val) =>
+              setInputData((prev) => ({ ...prev, metaDescription: val }))
+            }
+          />
         </div>
 
         {/* Right Sidebar Publishing & Cover Image (4 cols) */}
-        <div className="space-y-6 lg:col-span-4">
-          {/* Publishing Card */}
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Publishing Options
-            </h3>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="post-status">Status</Label>
-              <Select
-                value={inputData.status}
-                onValueChange={(val) =>
-                  setInputData((prev) => ({ ...prev, status: val as "draft" | "published" }))
-                }
-              >
-                <SelectTrigger id="post-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">
-                    <span className="flex items-center gap-2">
-                      <span className="size-2 rounded-full bg-muted-foreground" />
-                      Draft
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="published">
-                    <span className="flex items-center gap-2">
-                      <span className="size-2 rounded-full bg-emerald-500" />
-                      Published
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Cover Media Card */}
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Cover Image
-            </h3>
-            <MediaPicker
-              value={inputData.coverMediaId}
-              onChange={(media) =>
-                setInputData((prev) => ({
-                  ...prev,
-                  coverMediaId: media?.url || media?.id || undefined,
-                }))
-              }
-              dialogTitle="Select Blog Cover Image"
-              aspectRatio="video"
-              description="Header banner image for article header and social share preview"
-            />
-          </div>
-        </div>
+        <BlogPostSidebar
+          status={inputData.status}
+          onStatusChange={(val) => setInputData((prev) => ({ ...prev, status: val }))}
+          coverMediaId={inputData.coverMediaId}
+          onCoverMediaChange={(val) => setInputData((prev) => ({ ...prev, coverMediaId: val }))}
+        />
       </div>
     </form>
   );

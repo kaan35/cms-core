@@ -1,4 +1,4 @@
-import type { ICollection, IDatabase, PaginatedResult, RedirectsService } from "@cms/core";
+import type { ICollection, IDatabase, IRedirectsService, PaginatedResult } from "@cms/core";
 import {
   assertUniqueSlug,
   buildPaginatedResult,
@@ -20,9 +20,9 @@ import type {
 export class PagesRepository {
   private readonly pagesCollection: ICollection<PageDoc>;
   private readonly versionsCollection: ICollection<PageVersionDoc>;
-  private readonly redirectsService: RedirectsService;
+  private readonly redirectsService: IRedirectsService;
 
-  constructor(db: IDatabase, redirectsService: RedirectsService) {
+  constructor(db: IDatabase, redirectsService: IRedirectsService) {
     this.pagesCollection = db.collection<PageDoc>("cms_pages");
     this.versionsCollection = db.collection<PageVersionDoc>("cms_page_versions");
     this.redirectsService = redirectsService;

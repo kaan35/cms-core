@@ -1,4 +1,4 @@
-import type { HookManager, ILogger } from "@cms/core";
+import type { IHookManager, ILogger } from "@cms/core";
 import { ConflictError, NotFoundError, ValidationError, buildPaginatedResult } from "@cms/core";
 import { EVENTS } from "@cms/core";
 import {
@@ -16,7 +16,7 @@ export class UserService {
   private readonly usersRepo: UsersRepository;
   private readonly rolesRepo: RolesRepository;
   private readonly sessionsRepo: SessionsRepository;
-  private readonly hooks: HookManager;
+  private readonly hooks: IHookManager;
   private readonly logger: ILogger;
   private readonly saltRounds: number;
 
@@ -24,7 +24,7 @@ export class UserService {
     usersRepo: UsersRepository,
     rolesRepo: RolesRepository,
     sessionsRepo: SessionsRepository,
-    hooks: HookManager,
+    hooks: IHookManager,
     logger: ILogger,
     saltRounds = 12,
   ) {

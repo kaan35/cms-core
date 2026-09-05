@@ -1,4 +1,4 @@
-import type { HookManager, ILogger, PaginatedResult } from "@cms/core";
+import type { IHookManager, ILogger, PaginatedResult } from "@cms/core";
 import { EVENTS, NotFoundError } from "@cms/core";
 import type { PageDoc, PageVersionDoc } from "./domain/page.rules.js";
 import { validateCreatePage, validateUpdatePage } from "./domain/page.rules.js";
@@ -6,10 +6,10 @@ import type { PagesRepository } from "./repositories/pagesRepository.js";
 
 export class PageService {
   private readonly pagesRepo: PagesRepository;
-  private readonly hooks: HookManager;
+  private readonly hooks: IHookManager;
   private readonly logger: ILogger;
 
-  constructor(pagesRepo: PagesRepository, hooks: HookManager, logger: ILogger) {
+  constructor(pagesRepo: PagesRepository, hooks: IHookManager, logger: ILogger) {
     this.pagesRepo = pagesRepo;
     this.hooks = hooks;
     this.logger = logger;

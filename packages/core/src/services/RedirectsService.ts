@@ -1,13 +1,8 @@
 import type { IDatabase } from "../types/IDatabase.js";
 import type { ILogger } from "../types/ILogger.js";
+import type { IRedirectsService, RedirectDoc } from "../types/services.js";
 
-interface RedirectDoc extends Record<string, unknown> {
-  from: string;
-  to: string;
-  createdAt: Date;
-}
-
-export class RedirectsService {
+export class RedirectsService implements IRedirectsService {
   private readonly logger: ILogger;
   private readonly collection;
 

@@ -1,55 +1,24 @@
 "use client";
 
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   apiClient,
-  Badge,
-  Button,
-  Input,
   Skeleton,
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
   toast,
   useApi,
 } from "@cms/admin-shell";
-import {
-  ClipboardList,
-  Inbox,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Search,
-  ShieldAlert,
-  ShieldCheck,
-  Trash2,
-  X,
-} from "lucide-react";
-import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 import * as React from "react";
+import { FormDeleteDialog } from "./components/FormDeleteDialog";
+import { FormListToolbar } from "./components/FormListToolbar";
+import { FormTableRow } from "./components/FormTableRow";
+import type { FormListItem } from "./components/formTypes";
 
-export interface FormListItem {
-  id: string;
-  title: string;
-  slug: string;
-  description?: string | undefined;
-  fields: unknown[];
-  captchaProvider: "none" | "challenge";
-  challengeType: "alphanumeric" | "math";
-  submitButtonText: string;
-  successMessage: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type { FormListItem };
 
 export function FormList() {
   const [search, setSearch] = React.useState("");
@@ -101,33 +70,7 @@ export function FormList() {
   return (
     <div className="space-y-4">
       {/* Search & Actions Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative w-full sm:max-w-xs flex-1">
-          <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search forms by title or slug..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-8 text-xs w-full"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => mutate()}
-            title="Refresh forms list"
-            iconStart={<RefreshCw />}
-          />
-
-          <Link href="/dashboard/forms/new" className="flex-1 sm:flex-none">
-            <Button iconStart={<Plus />} className="w-full sm:w-auto">
-              Create Form
-            </Button>
-          </Link>
-        </div>
-      </div>
+      <FormListToolbar search={search} onSearchChange={setSearch} onRefresh={() => mutate()} />
 
       {/* Forms Table */}
       <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
@@ -160,83 +103,11 @@ export function FormList() {
             </TableHeader>
             <TableBody>
               {filteredForms.map((form) => (
-                <TableRow key={form.id} className="text-xs hover:bg-muted/30 transition-colors">
-                  <TableCell>
-                    <div className="flex items-start gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0 mt-0.5">
-                        <ClipboardList className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <Link
-                          href={`/dashboard/forms/${form.id}`}
-                          className="font-semibold text-foreground hover:text-primary transition-colors block truncate"
-                        >
-                          {form.title}
-                        </Link>
-                        <span className="text-[10px] font-mono text-muted-foreground">
-                          /{form.slug}
-                        </span>
-                        {form.description && (
-                          <p className="text-[11px] text-muted-foreground/80 line-clamp-1 mt-0.5">
-                            {form.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-
-                  <TableCell className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">
-                      {form.fields?.length || 0}
-                    </span>{" "}
-                    fields
-                  </TableCell>
-
-                  <TableCell>
-                    {form.captchaProvider === "challenge" ? (
-                      <Badge
-                        variant="outline"
-                        className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px] gap-1 py-0.5"
-                      >
-                        <ShieldCheck className="size-3" />
-                        {form.challengeType === "math" ? "Math Captcha" : "Code Captcha"}
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="bg-muted text-muted-foreground border-border text-[10px] gap-1 py-0.5"
-                      >
-                        <ShieldAlert className="size-3" />
-                        No Captcha
-                      </Badge>
-                    )}
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Link href={`/dashboard/forms/${form.id}/submissions`}>
-                        <Button variant="outline" iconStart={<Inbox />}>
-                          Submissions
-                        </Button>
-                      </Link>
-                      <Link href={`/dashboard/forms/${form.id}`}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Edit Form"
-                          iconStart={<Pencil />}
-                        />
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteModal({ target: form, isDeleting: false })}
-                        title="Delete Form"
-                        iconStart={<Trash2 className="text-destructive" />}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <FormTableRow
+                  key={form.id}
+                  form={form}
+                  onDeleteClick={(target) => setDeleteModal({ target, isDeleting: false })}
+                />
               ))}
             </TableBody>
           </Table>
@@ -244,39 +115,12 @@ export function FormList() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      <AlertDialog
-        open={Boolean(deleteModal.target)}
-        onOpenChange={(open) => !open && setDeleteModal({ target: null, isDeleting: false })}
-      >
-        <AlertDialogContent className="max-w-md p-5 rounded-2xl bg-card border-border/80 shadow-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-semibold text-foreground">
-              Delete Form Definition
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              Are you sure you want to delete form{" "}
-              <strong className="text-foreground font-semibold">
-                "{deleteModal.target?.title}"
-              </strong>
-              ? All associated fields and captured submissions will be permanently deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 pt-3">
-            <AlertDialogCancel disabled={deleteModal.isDeleting} className="gap-1.5">
-              <X className="size-3.5" />
-              Cancel
-            </AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              loading={deleteModal.isDeleting}
-              iconStart={<Trash2 />}
-            >
-              {deleteModal.isDeleting ? "Deleting..." : "Delete Form"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <FormDeleteDialog
+        target={deleteModal.target}
+        isDeleting={deleteModal.isDeleting}
+        onClose={() => setDeleteModal({ target: null, isDeleting: false })}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

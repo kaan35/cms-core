@@ -1,20 +1,22 @@
 import type { FastifyInstance } from "fastify";
-import type { ConfigService } from "../services/ConfigService.js";
-import type { HookManager } from "../services/HookManager.js";
-import type { RedirectsService } from "../services/RedirectsService.js";
-import type { SettingsService } from "../services/SettingsService.js";
 import type { ICache } from "./ICache.js";
 import type { IDatabase } from "./IDatabase.js";
 import type { ILogger } from "./ILogger.js";
+import type {
+  IConfigService,
+  IHookManager,
+  IRedirectsService,
+  ISettingsService,
+} from "./services.js";
 
 export interface CoreServices {
-  config: ConfigService;
+  config: IConfigService;
   logger: ILogger;
   db: IDatabase;
   cache: ICache;
-  hooks: HookManager;
-  redirects: RedirectsService;
-  settings: SettingsService;
+  hooks: IHookManager;
+  redirects: IRedirectsService;
+  settings: ISettingsService;
 }
 
 export interface Migration {

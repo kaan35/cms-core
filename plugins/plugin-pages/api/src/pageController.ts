@@ -1,13 +1,13 @@
-import type { RedirectsService } from "@cms/core";
+import type { IRedirectsService } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { PAGES_PERMISSIONS } from "./domain/page.rules.js";
 import type { PageService } from "./pageService.js";
 
 export class PageController {
   private readonly pageService: PageService;
-  private readonly redirectsService: RedirectsService;
+  private readonly redirectsService: IRedirectsService;
 
-  constructor(pageService: PageService, redirectsService: RedirectsService) {
+  constructor(pageService: PageService, redirectsService: IRedirectsService) {
     this.pageService = pageService;
     this.redirectsService = redirectsService;
   }

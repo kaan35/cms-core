@@ -1,4 +1,4 @@
-import type { ICollection, IDatabase, PaginatedResult, RedirectsService } from "@cms/core";
+import type { ICollection, IDatabase, IRedirectsService, PaginatedResult } from "@cms/core";
 import {
   assertUniqueSlug,
   buildPaginatedResult,
@@ -20,9 +20,9 @@ import type {
 export class BlogPostsRepository {
   private readonly postsCollection: ICollection<BlogPostDoc>;
   private readonly versionsCollection: ICollection<BlogPostVersionDoc>;
-  private readonly redirectsService: RedirectsService;
+  private readonly redirectsService: IRedirectsService;
 
-  constructor(db: IDatabase, redirectsService: RedirectsService) {
+  constructor(db: IDatabase, redirectsService: IRedirectsService) {
     this.postsCollection = db.collection<BlogPostDoc>("cms_blog_posts");
     this.versionsCollection = db.collection<BlogPostVersionDoc>("cms_post_versions");
     this.redirectsService = redirectsService;

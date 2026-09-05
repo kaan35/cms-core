@@ -71,7 +71,7 @@ export { SessionsRepository } from "./repositories/sessionsRepository.js";
 export type { SessionDoc } from "./repositories/sessionsRepository.js";
 export { UsersRepository } from "./repositories/usersRepository.js";
 export type { UserDoc } from "./repositories/usersRepository.js";
-export { SessionService } from "./sessionService.js";
+export { SessionService, type ISessionService, type ISessionInfo } from "./sessionService.js";
 
 export async function registerAuthPlugin(
   app: FastifyInstance,

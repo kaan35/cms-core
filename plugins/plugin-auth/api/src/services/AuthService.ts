@@ -1,4 +1,4 @@
-import type { HookManager, ILogger, SettingsService } from "@cms/core";
+import type { IHookManager, ILogger, ISettingsService } from "@cms/core";
 import {
   ConflictError,
   EVENTS,
@@ -7,48 +7,29 @@ import {
   UnauthorizedError,
   ValidationError,
 } from "@cms/core";
-import {
-  type LoginInput,
-  type RegisterInput,
-  type SetupInput,
-  validateLogin,
-  validateRegister,
-  validateSetup,
-} from "../domain/auth.rules.js";
-import {
-  hashPassword,
-  validatePasswordStrength,
-  verifyPassword,
-} from "../domain/password.rules.js";
+import { hashPassword, verifyPassword } from "../domain/password.rules.js";
 import type { RolesRepository } from "../repositories/rolesRepository.js";
 import type { SessionsRepository } from "../repositories/sessionsRepository.js";
 import type { UserDoc, UsersRepository } from "../repositories/usersRepository.js";
-import type { SessionService } from "../sessionService.js";
+import type { ISessionService } from "../sessionService.js";
+import {
+  createAuthResult,
+  normalizeLoginInput,
+  normalizeRegisterInput,
+  normalizeSetupInput,
+  validateEmail,
+  validatePassword,
+  type AuthResult,
+} from "./authNormalizer.js";
 
-export interface AuthResult {
-  user: {
-    id: string;
-    email: string;
-    name?: string | undefined;
-    roleIds: string[];
-    permissions: string[];
-    createdAt?: Date;
-  };
-  session: {
-    token: string;
-    csrfToken: string;
-    expiresAt: Date;
-    sessionId: string;
-  };
-}
+export type { AuthResult } from "./authNormalizer.js";
 
 export class AuthService {
   private readonly usersRepo: UsersRepository;
   private readonly rolesRepo: RolesRepository;
-  private readonly sessionsRepo: SessionsRepository;
-  private readonly sessionService: SessionService;
-  private readonly settingsService: SettingsService;
-  private readonly hooks: HookManager;
+  private readonly sessionService: ISessionService;
+  private readonly settingsService: ISettingsService;
+  private readonly hooks: IHookManager;
   private readonly logger: ILogger;
   private readonly saltRounds: number;
   private readonly passwordMinLength: number;
@@ -57,10 +38,10 @@ export class AuthService {
   constructor(
     usersRepo: UsersRepository,
     rolesRepo: RolesRepository,
-    sessionsRepo: SessionsRepository,
-    sessionService: SessionService,
-    settingsService: SettingsService,
-    hooks: HookManager,
+    _sessionsRepo: SessionsRepository,
+    sessionService: ISessionService,
+    settingsService: ISettingsService,
+    hooks: IHookManager,
     logger: ILogger,
     saltRounds = 12,
     passwordMinLength = 8,
@@ -68,7 +49,6 @@ export class AuthService {
   ) {
     this.usersRepo = usersRepo;
     this.rolesRepo = rolesRepo;
-    this.sessionsRepo = sessionsRepo;
     this.sessionService = sessionService;
     this.settingsService = settingsService;
     this.hooks = hooks;
@@ -82,63 +62,15 @@ export class AuthService {
     user: UserDoc,
     meta: { userAgent?: string | undefined; ip?: string | undefined },
   ): Promise<AuthResult> {
-    const roles = await this.rolesRepo.findByIds(user.roleIds || []);
-    const rolePermissions = roles.flatMap((r) => r.permissions || []);
-    const directPermissions = user.permissions || [];
-    const permissions = Array.from(new Set([...rolePermissions, ...directPermissions]));
-
-    const session = await this.sessionService.createSession(user.id, permissions, meta);
-
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        roleIds: user.roleIds,
-        permissions,
-        createdAt: user.createdAt,
-      },
-      session,
-    };
+    return createAuthResult(user, this.rolesRepo, this.sessionService, meta);
   }
 
   validateEmail(email: string): string {
-    const sanitized = email.trim().toLowerCase();
-    if (!sanitized || !sanitized.includes("@")) {
-      throw new ValidationError("A valid email address is required");
-    }
-    return sanitized;
+    return validateEmail(email);
   }
 
   validatePassword(password: string): void {
-    const val = validatePasswordStrength(password, this.passwordMinLength);
-    if (!val.valid) {
-      throw new ValidationError(val.error ?? "Invalid password");
-    }
-  }
-
-  private normalizeSetupInput(emailOrInput: string | unknown, passwordRaw?: string): SetupInput {
-    if (typeof emailOrInput === "string") {
-      return { email: emailOrInput, password: passwordRaw || "" };
-    }
-    return validateSetup(emailOrInput);
-  }
-
-  private normalizeRegisterInput(
-    emailOrInput: string | unknown,
-    passwordRaw?: string,
-  ): RegisterInput {
-    if (typeof emailOrInput === "string") {
-      return { email: emailOrInput, password: passwordRaw || "" };
-    }
-    return validateRegister(emailOrInput);
-  }
-
-  private normalizeLoginInput(emailOrInput: string | unknown, passwordRaw?: string): LoginInput {
-    if (typeof emailOrInput === "string") {
-      return { email: emailOrInput, password: passwordRaw || "" };
-    }
-    return validateLogin(emailOrInput);
+    validatePassword(password, this.passwordMinLength);
   }
 
   async getSetupStatus(): Promise<{ needsSetup: boolean; setupEnabled: boolean }> {
@@ -172,7 +104,7 @@ export class AuthService {
     const passwordStr = typeof passwordOrMeta === "string" ? passwordOrMeta : undefined;
     const meta = typeof passwordOrMeta === "object" ? passwordOrMeta : metaArg || {};
 
-    const validated = this.normalizeSetupInput(emailOrInput, passwordStr);
+    const validated = normalizeSetupInput(emailOrInput, passwordStr);
     const email = this.validateEmail(validated.email);
     this.validatePassword(validated.password);
 
@@ -217,7 +149,7 @@ export class AuthService {
     const passwordStr = typeof passwordOrMeta === "string" ? passwordOrMeta : undefined;
     const meta = typeof passwordOrMeta === "object" ? passwordOrMeta : metaArg || {};
 
-    const validated = this.normalizeRegisterInput(emailOrInput, passwordStr);
+    const validated = normalizeRegisterInput(emailOrInput, passwordStr);
     const email = this.validateEmail(validated.email);
     this.validatePassword(validated.password);
 
@@ -246,7 +178,7 @@ export class AuthService {
     const passwordStr = typeof passwordOrMeta === "string" ? passwordOrMeta : undefined;
     const meta = typeof passwordOrMeta === "object" ? passwordOrMeta : metaArg || {};
 
-    const validated = this.normalizeLoginInput(emailOrInput, passwordStr);
+    const validated = normalizeLoginInput(emailOrInput, passwordStr);
     const email = this.validateEmail(validated.email);
     if (!validated.password) {
       throw new ValidationError("Password is required");
@@ -266,54 +198,30 @@ export class AuthService {
   }
 
   async logout(sessionId?: string): Promise<void> {
-    if (sessionId) {
-      await this.sessionService.revokeSession(sessionId);
-    }
+    if (sessionId) await this.sessionService.revokeSession(sessionId);
   }
 
   async listSessions(userId: string, currentSessionId?: string) {
-    const sessions = await this.sessionsRepo.findByUserId(userId);
-    return sessions.map((s) => ({
-      id: s.id,
-      userAgent: s.userAgent,
-      ip: s.ip,
-      expiresAt: s.expiresAt,
-      createdAt: s.createdAt,
-      current: s.id === currentSessionId,
-    }));
+    return this.sessionService.listUserSessions(userId, currentSessionId);
   }
 
   async deleteSession(
     sessionId: string,
     user: { id: string; permissions: string[] },
   ): Promise<void> {
-    const session = await this.sessionsRepo.findById(sessionId);
-    if (!session) {
-      throw new NotFoundError("Session not found");
-    }
-
-    const isOwn = session.userId === user.id;
-    const canManageAll = user.permissions.includes("*") || user.permissions.includes("users:write");
-
-    if (!isOwn && !canManageAll) {
-      throw new ForbiddenError("You can only delete your own sessions");
-    }
-
-    await this.sessionService.revokeSession(sessionId);
+    return this.sessionService.deleteUserSession(sessionId, user);
   }
 
   async revokeAllUserSessions(userId: string, actorId?: string): Promise<void> {
     const targetUser = await this.usersRepo.findById(userId);
-    if (!targetUser) {
-      throw new NotFoundError("User not found");
-    }
-    await this.sessionsRepo.deleteByUserId(userId);
+    if (!targetUser) throw new NotFoundError("User not found");
+    await this.sessionService.revokeUserSessions(userId);
     await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, { userId, actorId });
     this.logger.info("Admin revoked all sessions for user", { userId, actorId });
   }
 
   async revokeAllSessions(actorId?: string): Promise<void> {
-    await this.sessionsRepo.deleteAll();
+    await this.sessionService.revokeAllSessions();
     await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, { all: true, actorId });
     this.logger.warn("PANIC: Revoked all active sessions across entire system", { actorId });
   }

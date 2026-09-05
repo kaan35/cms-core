@@ -1,4 +1,4 @@
-import type { HookManager, ILogger, SettingsService } from "@cms/core";
+import type { IHookManager, ILogger, ISettingsService } from "@cms/core";
 import { EVENTS } from "@cms/core";
 import {
   type NavigationMenuItem,
@@ -7,11 +7,11 @@ import {
 } from "../domain/system.rules.js";
 
 export class BrandSettingsService {
-  private readonly settingsService: SettingsService;
-  private readonly hooks: HookManager;
+  private readonly settingsService: ISettingsService;
+  private readonly hooks: IHookManager;
   private readonly logger: ILogger;
 
-  constructor(settingsService: SettingsService, hooks: HookManager, logger: ILogger) {
+  constructor(settingsService: ISettingsService, hooks: IHookManager, logger: ILogger) {
     this.settingsService = settingsService;
     this.hooks = hooks;
     this.logger = logger;

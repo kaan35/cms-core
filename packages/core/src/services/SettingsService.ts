@@ -1,5 +1,6 @@
 import type { IDatabase } from "../types/IDatabase.js";
 import type { ILogger } from "../types/ILogger.js";
+import type { ISettingsService } from "../types/services.js";
 
 interface SettingDoc extends Record<string, unknown> {
   key: string;
@@ -7,7 +8,7 @@ interface SettingDoc extends Record<string, unknown> {
   updatedAt: Date;
 }
 
-export class SettingsService {
+export class SettingsService implements ISettingsService {
   private readonly logger: ILogger;
   private readonly collection;
 

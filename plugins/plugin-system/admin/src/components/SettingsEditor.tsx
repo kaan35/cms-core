@@ -1,35 +1,14 @@
 "use client";
 
-import {
-  apiClient,
-  Button,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Skeleton,
-  Switch,
-  toast,
-  useApi,
-  useSaveShortcut,
-} from "@cms/admin-shell";
-import { Compass, Globe, Palette, Save, Shield } from "lucide-react";
+import { apiClient, Button, Skeleton, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
+import { Compass, Globe, Palette, Save } from "lucide-react";
 import * as React from "react";
 import { NavigationManager } from "./NavigationManager";
+import { GeneralSettingsTab } from "./settings/GeneralSettingsTab";
+import type { SettingsFormData, SystemSettingsData } from "./settings/settingsTypes";
+import { ThemeSettingsTab } from "./settings/ThemeSettingsTab";
 
-interface SystemSettingsData {
-  siteTitle?: string;
-  siteDescription?: string;
-  primaryColor?: string;
-  fontFamily?: string;
-  defaultTheme?: string;
-  footerText?: string;
-  allowRegistration?: boolean;
-  sessionTimeoutMinutes?: number;
-}
+export type { SettingsFormData, SystemSettingsData } from "./settings/settingsTypes";
 
 export function SettingsEditor() {
   const {
@@ -45,16 +24,7 @@ export function SettingsEditor() {
 
   const [activeTab, setActiveTab] = React.useState<"general" | "theme" | "navigation">("general");
 
-  const [inputData, setInputData] = React.useState<{
-    siteTitle: string;
-    siteDescription: string;
-    primaryColor: string;
-    fontFamily: string;
-    defaultTheme: string;
-    footerText: string;
-    allowRegistration: boolean;
-    sessionTimeoutMinutes: number;
-  }>({
+  const [inputData, setInputData] = React.useState<SettingsFormData>({
     siteTitle: "",
     siteDescription: "",
     primaryColor: "#3b82f6",
@@ -65,9 +35,7 @@ export function SettingsEditor() {
     sessionTimeoutMinutes: 60,
   });
 
-  const [formState, setFormState] = React.useState({
-    isSubmitting: false,
-  });
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     if (settings && Object.keys(settings).length > 0) {
@@ -84,9 +52,13 @@ export function SettingsEditor() {
     }
   }, [settings]);
 
+  const handleInputChange = (patch: Partial<SettingsFormData>) => {
+    setInputData((prev) => ({ ...prev, ...patch }));
+  };
+
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setFormState({ isSubmitting: true });
+    setIsSubmitting(true);
 
     try {
       const payload = {
@@ -112,7 +84,7 @@ export function SettingsEditor() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to update settings");
     } finally {
-      setFormState({ isSubmitting: false });
+      setIsSubmitting(false);
     }
   };
 
@@ -143,11 +115,11 @@ export function SettingsEditor() {
           <Button
             type="submit"
             form="settings-form"
-            loading={formState.isSubmitting}
+            loading={isSubmitting}
             iconStart={<Save />}
             shortcut="save"
           >
-            {formState.isSubmitting ? "Saving..." : "Save Settings"}
+            {isSubmitting ? "Saving..." : "Save Settings"}
           </Button>
         )}
       </div>
@@ -199,187 +171,20 @@ export function SettingsEditor() {
 
       {/* Tab 1: General & Security Settings */}
       {activeTab === "general" && (
-        <form id="settings-form" onSubmit={handleSave} className="space-y-6">
-          <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-5">
-            <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
-              <Globe className="size-4 text-primary" />
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Website Identity</h2>
-                <p className="text-xs text-muted-foreground">
-                  General site details and footer information
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <Label htmlFor="siteTitle">Site Title</Label>
-                <Input
-                  id="siteTitle"
-                  placeholder="e.g. My Website"
-                  value={inputData.siteTitle}
-                  onChange={(e) => setInputData((prev) => ({ ...prev, siteTitle: e.target.value }))}
-                  className="max-w-md"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="siteDescription">Site Description / Tagline</Label>
-                <Input
-                  id="siteDescription"
-                  placeholder="A short description of your website for SEO and search results"
-                  value={inputData.siteDescription}
-                  onChange={(e) =>
-                    setInputData((prev) => ({ ...prev, siteDescription: e.target.value }))
-                  }
-                  className="max-w-md"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="footerText">Footer Copyright Text</Label>
-              <Input
-                id="footerText"
-                placeholder="e.g. © 2026 My Website. All rights reserved."
-                value={inputData.footerText}
-                onChange={(e) => setInputData((prev) => ({ ...prev, footerText: e.target.value }))}
-                className="max-w-md"
-              />
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-5">
-            <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
-              <Shield className="size-4 text-primary" />
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">
-                  Authentication & Session Policy
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Control registration gates and idle session timeouts
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-              <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-card/40">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-semibold text-foreground block">
-                    Public Self-Registration
-                  </span>
-                  <p className="text-[11px] text-muted-foreground">
-                    Allow new visitors to register from the login screen
-                  </p>
-                </div>
-                <Switch
-                  checked={inputData.allowRegistration}
-                  onCheckedChange={(val) =>
-                    setInputData((prev) => ({ ...prev, allowRegistration: val }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="session-timeout">Session Lifetime (Minutes)</Label>
-                <Input
-                  id="session-timeout"
-                  type="number"
-                  min={5}
-                  max={10080}
-                  value={inputData.sessionTimeoutMinutes}
-                  onChange={(e) =>
-                    setInputData((prev) => ({
-                      ...prev,
-                      sessionTimeoutMinutes: parseInt(e.target.value, 10) || 60,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-          </div>
-        </form>
+        <GeneralSettingsTab
+          inputData={inputData}
+          onChange={handleInputChange}
+          onSubmit={handleSave}
+        />
       )}
 
       {/* Tab 2: Theme & Appearance */}
       {activeTab === "theme" && (
-        <form id="settings-form" onSubmit={handleSave} className="space-y-6">
-          <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-5">
-            <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
-              <Palette className="size-4 text-primary" />
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">
-                  Appearance & Brand Palette
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Select default color schemes, accents, and typography
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="space-y-1.5">
-                <Label>Default Client Theme</Label>
-                <Select
-                  value={inputData.defaultTheme}
-                  onValueChange={(val) =>
-                    setInputData((prev) => ({ ...prev, defaultTheme: val || "dark" }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dark">Dark Theme (Default)</SelectItem>
-                    <SelectItem value="light">Light Theme</SelectItem>
-                    <SelectItem value="system">System Synchronized</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Primary Brand Accent Color</Label>
-                <div className="flex items-center gap-2.5">
-                  <input
-                    type="color"
-                    value={inputData.primaryColor}
-                    onChange={(e) =>
-                      setInputData((prev) => ({ ...prev, primaryColor: e.target.value }))
-                    }
-                    className="size-9 rounded-lg border border-border cursor-pointer bg-transparent p-0.5"
-                  />
-                  <Input
-                    value={inputData.primaryColor}
-                    onChange={(e) =>
-                      setInputData((prev) => ({ ...prev, primaryColor: e.target.value }))
-                    }
-                    className="font-mono text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Default Font Family</Label>
-                <Select
-                  value={inputData.fontFamily}
-                  onValueChange={(val) =>
-                    setInputData((prev) => ({ ...prev, fontFamily: val || "Inter" }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Inter">Inter (Sans-Serif)</SelectItem>
-                    <SelectItem value="Geist">Geist (Modern Sans)</SelectItem>
-                    <SelectItem value="Roboto">Roboto</SelectItem>
-                    <SelectItem value="Fira Code">Fira Code (Monospace)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        </form>
+        <ThemeSettingsTab
+          inputData={inputData}
+          onChange={handleInputChange}
+          onSubmit={handleSave}
+        />
       )}
     </div>
   );
