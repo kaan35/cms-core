@@ -1,3 +1,4 @@
+import type { ILogger } from "./types/ILogger.js";
 import type { PluginManifestEntry } from "./types/plugin.js";
 
 export const PLUGIN_MANIFEST: PluginManifestEntry[] = [
@@ -118,3 +119,53 @@ export const PLUGIN_MANIFEST: PluginManifestEntry[] = [
     },
   },
 ];
+
+const PLUGIN_MODULE_MAP: Record<string, string> = {
+  "plugin-auth": "@cms/plugin-auth-api",
+  "plugin-system": "@cms/plugin-system-api",
+  "plugin-media": "@cms/plugin-media-api",
+  "plugin-pages": "@cms/plugin-pages-api",
+  "plugin-blog": "@cms/plugin-blog-api",
+  "plugin-forms": "@cms/plugin-forms-api",
+};
+
+export async function resolvePluginManifest(
+  baseManifest: PluginManifestEntry[] = PLUGIN_MANIFEST,
+  logger?: ILogger | undefined,
+): Promise<PluginManifestEntry[]> {
+  logger?.debug("Resolving available plugin manifests for server bootstrap");
+  const activeEntries: PluginManifestEntry[] = [];
+  for (const entry of baseManifest) {
+    const pkg = PLUGIN_MODULE_MAP[entry.name];
+    if (!pkg) {
+      activeEntries.push(entry);
+      continue;
+    }
+    try {
+      await import(pkg as string);
+      activeEntries.push(entry);
+      logger?.debug("Plugin manifest resolved", { plugin: entry.name, package: pkg });
+    } catch (err: unknown) {
+      const error = err as NodeJS.ErrnoException;
+      const isMissing =
+        error.code === "ERR_MODULE_NOT_FOUND" ||
+        (error.message && error.message.includes("Cannot find module"));
+      if (isMissing) {
+        if (entry.name === "plugin-auth" || entry.name === "plugin-system") {
+          throw err;
+        }
+        logger?.debug("Optional plugin not installed, skipping", {
+          plugin: entry.name,
+          package: pkg,
+        });
+        continue;
+      }
+      throw err;
+    }
+  }
+  logger?.debug("Plugin manifest resolution complete", {
+    totalResolved: activeEntries.length,
+    plugins: activeEntries.map((e) => e.name),
+  });
+  return activeEntries;
+}

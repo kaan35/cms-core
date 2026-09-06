@@ -6,16 +6,17 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 import { useAuth, type AuthUser } from "../hooks/useAuth";
 import { AuthProvider } from "./AuthProvider";
-import { Sidebar } from "./Sidebar";
+import { Sidebar, type NavSection } from "./Sidebar";
 import { Skeleton } from "./ui/skeleton";
 
 export interface AdminLayoutProps {
-  initialUser?: AuthUser | null;
+  initialUser?: AuthUser | null | undefined;
+  navSections?: NavSection[] | undefined;
   children: React.ReactNode;
 }
 
-export function AdminLayout({ initialUser, children }: AdminLayoutProps) {
-  const content = <AdminLayoutInner>{children}</AdminLayoutInner>;
+export function AdminLayout({ initialUser, navSections, children }: AdminLayoutProps) {
+  const content = <AdminLayoutInner navSections={navSections}>{children}</AdminLayoutInner>;
 
   if (initialUser) {
     return <AuthProvider initialUser={initialUser}>{content}</AuthProvider>;
@@ -24,7 +25,13 @@ export function AdminLayout({ initialUser, children }: AdminLayoutProps) {
   return content;
 }
 
-function AdminLayoutInner({ children }: { children: React.ReactNode }) {
+function AdminLayoutInner({
+  navSections,
+  children,
+}: {
+  navSections?: NavSection[] | undefined;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const { isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -72,7 +79,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen w-screen p-2 md:p-3 gap-2 md:gap-3 bg-background text-foreground overflow-hidden">
       {/* Desktop Persistent Sidebar */}
-      <Sidebar className="hidden md:flex h-full" />
+      <Sidebar className="hidden md:flex h-full" sections={navSections} />
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
@@ -82,7 +89,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileMenuOpen(false)}
           />
           <div className="relative flex w-72 h-full flex-col bg-sidebar p-3 border-r border-border shadow-2xl">
-            <Sidebar className="h-full w-full border-0 shadow-none p-0" />
+            <Sidebar className="h-full w-full border-0 shadow-none p-0" sections={navSections} />
           </div>
         </div>
       )}

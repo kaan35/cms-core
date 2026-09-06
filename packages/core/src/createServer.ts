@@ -8,7 +8,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import Fastify from "fastify";
 import { AppError } from "./errors/AppError.js";
 import { coreMigrations } from "./migrations/index.js";
-import { PLUGIN_MANIFEST } from "./pluginManifest.js";
+import { PLUGIN_MANIFEST, resolvePluginManifest } from "./pluginManifest.js";
 import { ConfigService } from "./services/ConfigService.js";
 import { HookManager } from "./services/HookManager.js";
 import type { LogLevel } from "./services/LogService.js";
@@ -18,11 +18,13 @@ import { RedirectsService } from "./services/RedirectsService.js";
 import { SettingsService } from "./services/SettingsService.js";
 import type { ICache } from "./types/ICache.js";
 import type { IDatabase } from "./types/IDatabase.js";
+import type { PluginManifestEntry } from "./types/plugin.js";
 
 export async function createServer(
   db: IDatabase,
   cache: ICache,
   env: Record<string, string | undefined> = process.env,
+  customManifest?: PluginManifestEntry[] | undefined,
 ): Promise<FastifyInstance> {
   const config = new ConfigService(env);
   const logger = new LogService(config.getOrDefault("LOG_LEVEL", "info") as LogLevel);
@@ -226,7 +228,8 @@ export async function createServer(
   app.decorate("pluginLoader", pluginLoader);
   app.decorate("hooks", hooks);
 
-  await pluginLoader.loadAll(PLUGIN_MANIFEST, coreMigrations);
+  const manifest = customManifest ?? (await resolvePluginManifest(PLUGIN_MANIFEST, logger));
+  await pluginLoader.loadAll(manifest, coreMigrations);
 
   const shutdown = async (): Promise<void> => {
     logger.info("Graceful shutdown initiated");

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createServer } from "./createServer.js";
 import { NotFoundError } from "./errors/AppError.js";
+import { resolvePluginManifest } from "./pluginManifest.js";
 import type { ICache } from "./types/ICache.js";
 import type { ICollection, IDatabase } from "./types/IDatabase.js";
 
@@ -186,6 +187,25 @@ describe("createServer", () => {
       db: "down",
       cache: "ok",
     });
+    await app.close();
+  });
+
+  it("boots with customManifest and resolvePluginManifest with debug logging", async () => {
+    const debugLogs: string[] = [];
+    const testLogger = {
+      debug: (msg: string) => {
+        debugLogs.push(msg);
+      },
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+    };
+    const resolved = await resolvePluginManifest(undefined, testLogger);
+    assert.ok(resolved.length >= 2);
+    assert.ok(debugLogs.some((l) => l.includes("Resolving available plugin manifests")));
+
+    const app = await createServer(stubDb, stubCache, testEnv, resolved);
+    assert.ok(app);
     await app.close();
   });
 });

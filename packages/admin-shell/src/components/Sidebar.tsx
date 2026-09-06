@@ -78,7 +78,12 @@ export const defaultNavSections: NavSection[] = [
   },
 ];
 
-export function Sidebar({ className }: { className?: string }) {
+export interface SidebarProps {
+  className?: string | undefined;
+  sections?: NavSection[] | undefined;
+}
+
+export function Sidebar({ className, sections }: SidebarProps) {
   const pathname = usePathname();
 
   const { data: rawPlugins } = useApi<
@@ -92,26 +97,28 @@ export function Sidebar({ className }: { className?: string }) {
       ? rawPlugins.plugins
       : [];
 
-  const disabledPlugins = React.useMemo(() => {
+  const activePlugins = React.useMemo(() => {
+    if (!rawPlugins) return null;
     const set = new Set<string>();
     for (const p of plugins) {
-      if (p.enabled === false) {
+      if (p.enabled !== false) {
         set.add(p.name);
       }
     }
     return set;
-  }, [plugins]);
+  }, [plugins, rawPlugins]);
 
   const visibleSections = React.useMemo(() => {
-    return defaultNavSections
+    const base = sections ?? defaultNavSections;
+    return base
       .map((section) => ({
         ...section,
         items: section.items.filter(
-          (item) => !item.pluginId || !disabledPlugins.has(item.pluginId),
+          (item) => !item.pluginId || (activePlugins ? activePlugins.has(item.pluginId) : true),
         ),
       }))
       .filter((section) => section.items.length > 0);
-  }, [disabledPlugins]);
+  }, [sections, activePlugins]);
 
   const isItemActive = (item: NavItem) => {
     if (item.exact) {

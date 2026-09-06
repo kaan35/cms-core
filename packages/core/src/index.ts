@@ -60,7 +60,7 @@ export { RedisCacheService } from "./services/RedisCacheService.js";
 export { SettingsService } from "./services/SettingsService.js";
 
 // Plugin manifest
-export { PLUGIN_MANIFEST } from "./pluginManifest.js";
+export { PLUGIN_MANIFEST, resolvePluginManifest } from "./pluginManifest.js";
 
 // Migrations
 export { coreMigrations, runMigrations } from "./migrations/index.js";
