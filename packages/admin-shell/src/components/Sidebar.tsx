@@ -7,6 +7,7 @@ import {
   FileText,
   Flame,
   Image as ImageIcon,
+  KeyRound,
   LayoutDashboard,
   Plug,
   Settings,
@@ -46,7 +47,7 @@ export const defaultNavSections: NavSection[] = [
         name: "Navigation",
         href: "/dashboard/navigation",
         icon: Compass,
-        pluginId: "plugin-system",
+        pluginId: "plugin-pages",
       },
       {
         name: "Media Library",
@@ -59,6 +60,12 @@ export const defaultNavSections: NavSection[] = [
         href: "/dashboard/forms",
         icon: ClipboardList,
         pluginId: "plugin-forms",
+      },
+      {
+        name: "Password Vault",
+        href: "/dashboard/vault",
+        icon: KeyRound,
+        pluginId: "plugin-vault",
       },
     ],
   },
@@ -81,10 +88,25 @@ export const defaultNavSections: NavSection[] = [
 export interface SidebarProps {
   className?: string | undefined;
   sections?: NavSection[] | undefined;
+  brandTitle?: string | undefined;
 }
 
-export function Sidebar({ className, sections }: SidebarProps) {
+export function Sidebar({ className, sections, brandTitle: propBrandTitle }: SidebarProps) {
   const pathname = usePathname();
+
+  const { data: rawSettings } = useApi<
+    | { settings?: { adminTitle?: string; siteTitle?: string } }
+    | { adminTitle?: string; siteTitle?: string }
+  >("/api/settings");
+
+  const brandTitle = React.useMemo(() => {
+    if (propBrandTitle) return propBrandTitle;
+    const s =
+      rawSettings && "settings" in rawSettings && rawSettings.settings
+        ? rawSettings.settings
+        : (rawSettings as { adminTitle?: string; siteTitle?: string } | undefined);
+    return s?.adminTitle || s?.siteTitle || "CMS Core";
+  }, [propBrandTitle, rawSettings]);
 
   const { data: rawPlugins } = useApi<
     | { plugins: Array<{ name: string; enabled: boolean }> }
@@ -109,12 +131,13 @@ export function Sidebar({ className, sections }: SidebarProps) {
   }, [plugins, rawPlugins]);
 
   const visibleSections = React.useMemo(() => {
-    const base = sections ?? defaultNavSections;
+    if (sections) return sections;
+    const base = defaultNavSections;
     return base
       .map((section) => ({
         ...section,
-        items: section.items.filter(
-          (item) => !item.pluginId || (activePlugins ? activePlugins.has(item.pluginId) : true),
+        items: section.items.filter((item) =>
+          item.pluginId ? Boolean(activePlugins?.has(item.pluginId)) : true,
         ),
       }))
       .filter((section) => section.items.length > 0);
@@ -135,11 +158,13 @@ export function Sidebar({ className, sections }: SidebarProps) {
       )}
     >
       {/* Brand Header */}
-      <div className="flex items-center gap-2.5 px-3 py-2.5 mb-3">
-        <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+      <div className="flex items-center gap-2.5 px-3 py-2.5 mb-3 min-w-0">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
           <Flame className="size-4 fill-primary-foreground" />
         </div>
-        <span className="font-semibold text-sm tracking-tight text-foreground">Cms Core</span>
+        <span className="font-semibold text-sm tracking-tight text-foreground truncate">
+          {brandTitle}
+        </span>
       </div>
 
       {/* Navigation Sections */}

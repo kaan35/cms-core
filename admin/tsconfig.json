@@ -9,7 +9,8 @@
       "@cms/plugin-forms-admin": ["../plugins/plugin-forms/admin/src/index.ts"],
       "@cms/plugin-media-admin": ["../plugins/plugin-media/admin/src/index.ts"],
       "@cms/plugin-pages-admin": ["../plugins/plugin-pages/admin/src/index.ts"],
-      "@cms/plugin-system-admin": ["../plugins/plugin-system/admin/src/index.ts"]
+      "@cms/plugin-system-admin": ["../plugins/plugin-system/admin/src/index.ts"],
+      "@cms/plugin-vault-admin": ["../plugins/plugin-vault/admin/src/index.ts"]
     }
   },
   "include": [

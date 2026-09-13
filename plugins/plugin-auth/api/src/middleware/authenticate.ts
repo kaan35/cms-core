@@ -8,9 +8,12 @@ export function createAuthenticateMiddleware(
   sessionService: SessionService,
   usersRepo: UsersRepository,
   rolesRepo?: RolesRepository,
+  cookiePrefix = "",
 ) {
+  const tokenCookieName = `${cookiePrefix}token`;
   return async function authenticate(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
-    const cookieToken = request.cookies["token"];
+    const cookieToken =
+      request.cookies[tokenCookieName] || (!cookiePrefix ? request.cookies["token"] : undefined);
     let token = cookieToken;
 
     if (!token && request.headers.authorization) {

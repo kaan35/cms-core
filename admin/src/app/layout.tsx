@@ -30,7 +30,6 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Anti-flash inline script */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -40,7 +39,13 @@ export default function RootLayout({
                   if (t === 'system') {
                     t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
                   }
-                  document.documentElement.classList.add(t);
+                  if (t === 'light') {
+                    document.documentElement.classList.add('light');
+                    document.documentElement.classList.remove('dark');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                  }
                 } catch(e) {
                   document.documentElement.classList.add('dark');
                 }

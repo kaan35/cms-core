@@ -4,6 +4,7 @@ import { ChevronRight, Home, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
+import { useApi } from "../hooks/useApi";
 import { useAuth, type AuthUser } from "../hooks/useAuth";
 import { AuthProvider } from "./AuthProvider";
 import { Sidebar, type NavSection } from "./Sidebar";
@@ -11,15 +12,25 @@ import { Skeleton } from "./ui/skeleton";
 
 export interface AdminLayoutProps {
   initialUser?: AuthUser | null | undefined;
+  initialPlugins?: unknown | null | undefined;
   navSections?: NavSection[] | undefined;
   children: React.ReactNode;
 }
 
-export function AdminLayout({ initialUser, navSections, children }: AdminLayoutProps) {
+export function AdminLayout({
+  initialUser,
+  initialPlugins,
+  navSections,
+  children,
+}: AdminLayoutProps) {
   const content = <AdminLayoutInner navSections={navSections}>{children}</AdminLayoutInner>;
 
-  if (initialUser) {
-    return <AuthProvider initialUser={initialUser}>{content}</AuthProvider>;
+  if (initialUser || initialPlugins) {
+    return (
+      <AuthProvider initialUser={initialUser} initialPlugins={initialPlugins}>
+        {content}
+      </AuthProvider>
+    );
   }
 
   return content;
@@ -35,6 +46,28 @@ function AdminLayoutInner({
   const pathname = usePathname();
   const { isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
+  const { data: rawSettings } = useApi<{
+    settings?: { primaryColor?: string; brandColor?: string; fontFamily?: string };
+    primaryColor?: string;
+    brandColor?: string;
+  }>("/api/settings");
+
+  React.useEffect(() => {
+    const s =
+      rawSettings && "settings" in rawSettings && rawSettings.settings
+        ? rawSettings.settings
+        : (rawSettings as { primaryColor?: string; brandColor?: string } | undefined);
+    const color = s?.primaryColor || s?.brandColor;
+    if (color) {
+      const root = document.documentElement;
+      root.style.setProperty("--primary", color);
+      root.style.setProperty("--color-primary", color);
+      root.style.setProperty("--sidebar-primary", color);
+      root.style.setProperty("--sidebar-ring", color);
+      root.style.setProperty("--ring", color);
+    }
+  }, [rawSettings]);
 
   // Generate clean breadcrumbs from path
   const pathSegments = pathname.split("/").filter(Boolean);

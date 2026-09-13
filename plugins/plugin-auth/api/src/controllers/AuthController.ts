@@ -8,6 +8,8 @@ export class AuthController {
   private readonly cookieDomain?: string | undefined;
   private readonly cookieSameSite: "lax" | "strict" | "none";
   private readonly cookieSecure: boolean;
+  private readonly tokenCookieName: string;
+  private readonly csrfCookieName: string;
 
   constructor(
     authService: AuthService,
@@ -15,11 +17,14 @@ export class AuthController {
     cookieDomain?: string | undefined,
     cookieSameSite: "lax" | "strict" | "none" = "lax",
     cookieSecure?: boolean | undefined,
+    cookiePrefix = "",
   ) {
     this.authService = authService;
     this.cookieDomain = cookieDomain;
     this.cookieSameSite = cookieSameSite;
     this.cookieSecure = cookieSecure ?? isProduction;
+    this.tokenCookieName = `${cookiePrefix}token`;
+    this.csrfCookieName = `${cookiePrefix}csrfToken`;
   }
 
   private setAuthCookies(
@@ -31,7 +36,7 @@ export class AuthController {
     const maxAgeSeconds = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
     const domainOpt = this.cookieDomain ? { domain: this.cookieDomain } : {};
 
-    reply.setCookie("token", token, {
+    reply.setCookie(this.tokenCookieName, token, {
       httpOnly: true,
       secure: this.cookieSecure,
       sameSite: this.cookieSameSite,
@@ -40,7 +45,7 @@ export class AuthController {
       ...domainOpt,
     });
 
-    reply.setCookie("csrfToken", csrfToken, {
+    reply.setCookie(this.csrfCookieName, csrfToken, {
       httpOnly: false,
       secure: this.cookieSecure,
       sameSite: this.cookieSameSite,
@@ -48,12 +53,21 @@ export class AuthController {
       maxAge: maxAgeSeconds,
       ...domainOpt,
     });
+
+    if (this.tokenCookieName !== "token") {
+      reply.clearCookie("token", { path: "/", ...domainOpt });
+      reply.clearCookie("csrfToken", { path: "/", ...domainOpt });
+    }
   }
 
   private clearAuthCookies(reply: FastifyReply): void {
     const domainOpt = this.cookieDomain ? { domain: this.cookieDomain } : {};
-    reply.clearCookie("token", { path: "/", ...domainOpt });
-    reply.clearCookie("csrfToken", { path: "/", ...domainOpt });
+    reply.clearCookie(this.tokenCookieName, { path: "/", ...domainOpt });
+    reply.clearCookie(this.csrfCookieName, { path: "/", ...domainOpt });
+    if (this.tokenCookieName !== "token") {
+      reply.clearCookie("token", { path: "/", ...domainOpt });
+      reply.clearCookie("csrfToken", { path: "/", ...domainOpt });
+    }
   }
 
   async getSetupStatus(_request: FastifyRequest, reply: FastifyReply): Promise<void> {

@@ -7,7 +7,7 @@ export function getCookie(name: string): string | null {
 export function setCsrfToken(token: string): void {
   if (!token) return;
   if (typeof document !== "undefined") {
-    document.cookie = `csrfToken=${encodeURIComponent(token)}; path=/; SameSite=Lax`;
+    document.cookie = "csrfToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   }
   if (typeof window !== "undefined") {
     try {
@@ -19,7 +19,24 @@ export function setCsrfToken(token: string): void {
 }
 
 export function getCsrfToken(): string {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("cms_csrf_token");
+      if (stored) {
+        return stored;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const env = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env;
+  const prefix = env ? env["NEXT_PUBLIC_COOKIE_PREFIX"] || "" : "";
   const fromCookie =
+    (prefix ? getCookie(`${prefix}csrfToken`) : null) ||
+    getCookie("cms_csrfToken") ||
+    getCookie("pwm_csrfToken") ||
     getCookie("csrfToken") ||
     getCookie("csrf_token") ||
     getCookie("_csrf") ||
@@ -34,18 +51,6 @@ export function getCsrfToken(): string {
       }
     }
     return fromCookie;
-  }
-
-  if (typeof window !== "undefined") {
-    try {
-      const stored = localStorage.getItem("cms_csrf_token");
-      if (stored) {
-        setCsrfToken(stored);
-        return stored;
-      }
-    } catch {
-      // ignore
-    }
   }
 
   const generated =

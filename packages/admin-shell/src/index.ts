@@ -29,6 +29,7 @@ export * from "./components/AdminLayout";
 export * from "./components/AuthProvider";
 export * from "./components/DialogConfirm";
 export * from "./components/PageHeader";
+export * from "./components/PluginGuard";
 export * from "./components/ProtectedRoute";
 export * from "./components/Sidebar";
 export * from "./components/StatCard";

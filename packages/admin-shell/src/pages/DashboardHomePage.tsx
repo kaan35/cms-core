@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ClipboardList, FileText, Plug } from "lucide-react";
+import { BookOpen, ClipboardList, FileText, Plug, Users } from "lucide-react";
 import * as React from "react";
 import { DashboardQuickActions } from "../components/dashboard/DashboardQuickActions";
 import { DashboardShortcuts } from "../components/dashboard/DashboardShortcuts";
@@ -28,21 +28,21 @@ export function DashboardHomePage() {
       ? rawPlugins.plugins
       : [];
 
-  const disabledPlugins = React.useMemo(() => {
+  const activePlugins = React.useMemo(() => {
     const set = new Set<string>();
     for (const p of plugins) {
-      if (p.enabled === false) {
+      if (p.enabled !== false) {
         set.add(p.name);
       }
     }
     return set;
   }, [plugins]);
 
-  const isPagesEnabled = !disabledPlugins.has("plugin-pages");
-  const isBlogEnabled = !disabledPlugins.has("plugin-blog");
-  const isFormsEnabled = !disabledPlugins.has("plugin-forms");
-  const isMediaEnabled = !disabledPlugins.has("plugin-media");
-  const isAuthEnabled = !disabledPlugins.has("plugin-auth");
+  const isPagesEnabled = activePlugins.has("plugin-pages");
+  const isBlogEnabled = activePlugins.has("plugin-blog");
+  const isFormsEnabled = activePlugins.has("plugin-forms");
+  const isMediaEnabled = activePlugins.has("plugin-media");
+  const isAuthEnabled = activePlugins.has("plugin-auth");
 
   const pagesCount = statsData?.pagesCount ?? 0;
   const postsCount = statsData?.postsCount ?? 0;
@@ -79,6 +79,15 @@ export function DashboardHomePage() {
             description="Active contact & lead forms"
             icon={ClipboardList}
             iconColor="purple"
+          />
+        )}
+        {isAuthEnabled && (
+          <StatCard
+            title="USERS"
+            value={statsData?.usersCount ?? 1}
+            description="Active accounts & roles"
+            icon={Users}
+            iconColor="teal"
           />
         )}
         <StatCard

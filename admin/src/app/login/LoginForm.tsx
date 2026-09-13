@@ -2,10 +2,31 @@
 
 import * as React from "react";
 import { Flame, Lock, LogIn, Mail } from "lucide-react";
-import { apiClient, Button, InputField, setCsrfToken, toast, useAuth } from "@cms/admin-shell";
+import {
+  apiClient,
+  Button,
+  InputField,
+  setCsrfToken,
+  toast,
+  useApi,
+  useAuth,
+} from "@cms/admin-shell";
 
 export function LoginForm() {
   const { isAuthenticated, isLoading, mutate } = useAuth();
+
+  const { data: rawSettings } = useApi<
+    | { settings?: { adminTitle?: string; siteTitle?: string } }
+    | { adminTitle?: string; siteTitle?: string }
+  >("/api/settings");
+
+  const brandTitle = React.useMemo(() => {
+    const s =
+      rawSettings && "settings" in rawSettings && rawSettings.settings
+        ? rawSettings.settings
+        : (rawSettings as { adminTitle?: string; siteTitle?: string } | undefined);
+    return s?.adminTitle || s?.siteTitle || "CMS Core";
+  }, [rawSettings]);
 
   const [inputData, setInputData] = React.useState({
     email: "",
@@ -15,6 +36,17 @@ export function LoginForm() {
   const [formState, setFormState] = React.useState({
     isSubmitting: false,
   });
+
+  // Automatically restore session if active cookie exists (e.g. after container restart)
+  React.useEffect(() => {
+    mutate()
+      .then((data) => {
+        if (data?.user) {
+          window.location.href = "/dashboard";
+        }
+      })
+      .catch(() => {});
+  }, [mutate]);
 
   React.useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -60,13 +92,16 @@ export function LoginForm() {
           <div className="flex size-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md">
             <Flame className="size-6 fill-primary-foreground" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">CMS Core</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{brandTitle}</h1>
         </div>
 
         {/* Card */}
         <div className="w-full rounded-2xl border border-border/80 bg-card p-6 shadow-xl">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} method="post" autoComplete="on" className="space-y-4">
             <InputField
+              id="email"
+              name="email"
+              autoComplete="username"
               label="Email"
               type="email"
               placeholder="admin@cms.com"
@@ -77,6 +112,9 @@ export function LoginForm() {
             />
 
             <InputField
+              id="password"
+              name="password"
+              autoComplete="current-password"
               label="Password"
               type="password"
               placeholder="••••••••"

@@ -93,6 +93,7 @@ export async function registerAuthPlugin(
   const sessionTtlHours = config.getInt("SESSION_TTL_HOURS", 24);
   const slideThresholdMinutes = config.getInt("SESSION_SLIDE_THRESHOLD_MINUTES", 15);
   const setupEnabled = config.getBoolean("SETUP_ENABLED", true);
+  const cookiePrefix = config.getOrDefault("COOKIE_PREFIX", "");
 
   const sessionService = new SessionService(
     sessionsRepo,
@@ -102,9 +103,14 @@ export async function registerAuthPlugin(
     slideThresholdMinutes,
   );
 
-  const authenticate = createAuthenticateMiddleware(sessionService, usersRepo, rolesRepo);
+  const authenticate = createAuthenticateMiddleware(
+    sessionService,
+    usersRepo,
+    rolesRepo,
+    cookiePrefix,
+  );
   const checkPermission = createCheckPermissionMiddleware();
-  const verifyCsrf = createVerifyCsrfMiddleware();
+  const verifyCsrf = createVerifyCsrfMiddleware(cookiePrefix);
 
   const customApp = app as unknown as {
     setAuthMiddlewares?: (middlewares: Record<string, unknown>) => void;
@@ -169,6 +175,7 @@ export async function registerAuthPlugin(
     cookieDomain,
     cookieSameSite,
     cookieSecure,
+    cookiePrefix,
   );
   const userController = new UserController(userService);
   const roleController = new RoleController(roleService);

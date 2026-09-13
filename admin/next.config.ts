@@ -10,16 +10,8 @@ const nextConfig: NextConfig = {
     "@cms/plugin-media-admin",
     "@cms/plugin-pages-admin",
     "@cms/plugin-system-admin",
+    "@cms/plugin-vault-admin",
   ],
-  async rewrites() {
-    const apiUrl = process.env.API_URL || "http://localhost:3001";
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${apiUrl}/:path*`,
-      },
-    ];
-  },
 };
 
 export default nextConfig;
