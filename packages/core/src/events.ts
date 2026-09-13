@@ -35,6 +35,12 @@ export const EVENTS = {
     UPDATED: "forms.updated",
     DELETED: "forms.deleted",
   },
+  VAULT: {
+    CREATED: "vault.item.created",
+    UPDATED: "vault.item.updated",
+    DELETED: "vault.item.deleted",
+    REVEALED: "vault.secret.revealed",
+  },
 } as const;
 
 export type EventKey =
@@ -43,4 +49,5 @@ export type EventKey =
   | (typeof EVENTS.MEDIA)[keyof typeof EVENTS.MEDIA]
   | (typeof EVENTS.PAGE)[keyof typeof EVENTS.PAGE]
   | (typeof EVENTS.BLOG)[keyof typeof EVENTS.BLOG]
-  | (typeof EVENTS.FORMS)[keyof typeof EVENTS.FORMS];
+  | (typeof EVENTS.FORMS)[keyof typeof EVENTS.FORMS]
+  | (typeof EVENTS.VAULT)[keyof typeof EVENTS.VAULT];

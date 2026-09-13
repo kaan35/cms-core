@@ -118,6 +118,24 @@ export const PLUGIN_MANIFEST: PluginManifestEntry[] = [
       await registerFormsPlugin(scope, services);
     },
   },
+  {
+    name: "plugin-vault",
+    priority: 30,
+    migrations: [
+      {
+        id: "202601070000_init_vault",
+        description: "Create indexes for cms_vault_items",
+        up: async (db) => {
+          const { initVaultMigration } = await import("@cms/plugin-vault-api" as string);
+          await initVaultMigration.up(db);
+        },
+      },
+    ],
+    register: async (scope, services) => {
+      const { registerVaultPlugin } = await import("@cms/plugin-vault-api" as string);
+      await registerVaultPlugin(scope, services);
+    },
+  },
 ];
 
 const PLUGIN_MODULE_MAP: Record<string, string> = {
@@ -127,15 +145,32 @@ const PLUGIN_MODULE_MAP: Record<string, string> = {
   "plugin-pages": "@cms/plugin-pages-api",
   "plugin-blog": "@cms/plugin-blog-api",
   "plugin-forms": "@cms/plugin-forms-api",
+  "plugin-vault": "@cms/plugin-vault-api",
 };
 
 export async function resolvePluginManifest(
   baseManifest: PluginManifestEntry[] = PLUGIN_MANIFEST,
   logger?: ILogger | undefined,
+  profile?: "minimal" | "full" | string | undefined,
 ): Promise<PluginManifestEntry[]> {
-  logger?.debug("Resolving available plugin manifests for server bootstrap");
+  logger?.debug("Resolving available plugin manifests for server bootstrap", { profile });
+  let filteredBase: PluginManifestEntry[];
+  if (profile === "minimal") {
+    filteredBase = baseManifest.filter(
+      (e) => e.name === "plugin-auth" || e.name === "plugin-system",
+    );
+  } else if (profile && profile !== "full") {
+    const list = profile
+      .split(",")
+      .map((s) => (s.trim().startsWith("plugin-") ? s.trim() : `plugin-${s.trim()}`));
+    list.push("plugin-auth", "plugin-system");
+    const allowed = new Set(list);
+    filteredBase = baseManifest.filter((e) => allowed.has(e.name));
+  } else {
+    filteredBase = baseManifest;
+  }
   const activeEntries: PluginManifestEntry[] = [];
-  for (const entry of baseManifest) {
+  for (const entry of filteredBase) {
     const pkg = PLUGIN_MODULE_MAP[entry.name];
     if (!pkg) {
       activeEntries.push(entry);

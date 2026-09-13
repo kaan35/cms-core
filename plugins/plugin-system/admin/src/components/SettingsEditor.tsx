@@ -1,6 +1,14 @@
 "use client";
 
-import { apiClient, Button, Skeleton, toast, useApi, useSaveShortcut, mutate as globalMutate } from "@cms/admin-shell";
+import {
+  apiClient,
+  Button,
+  Skeleton,
+  toast,
+  useApi,
+  useSaveShortcut,
+  mutate as globalMutate,
+} from "@cms/admin-shell";
 import { Globe, Palette, Save } from "lucide-react";
 import * as React from "react";
 import { GeneralSettingsTab } from "./settings/GeneralSettingsTab";
@@ -10,10 +18,9 @@ import { ThemeSettingsTab } from "./settings/ThemeSettingsTab";
 export type { SettingsFormData, SystemSettingsData } from "./settings/settingsTypes";
 
 export function SettingsEditor() {
-  const {
-    data: rawData,
-    isLoading,
-  } = useApi<{ settings: SystemSettingsData } | SystemSettingsData>("/api/settings");
+  const { data: rawData, isLoading } = useApi<
+    { settings: SystemSettingsData } | SystemSettingsData
+  >("/api/settings");
 
   const settings: SystemSettingsData =
     rawData && "settings" in rawData
@@ -77,7 +84,7 @@ export function SettingsEditor() {
     try {
       const payload = {
         adminTitle: inputData.adminTitle.trim(),
-        siteTitle: (inputData.siteTitle.trim() || inputData.adminTitle.trim() || "CMS Core"),
+        siteTitle: inputData.siteTitle.trim() || inputData.adminTitle.trim() || "CMS Core",
         siteDescription: inputData.siteDescription.trim(),
         primaryColor: inputData.primaryColor,
         brandColor: inputData.primaryColor,

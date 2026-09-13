@@ -20,11 +20,30 @@ import * as React from "react";
 interface AuditLog {
   id: string;
   action: string;
+  userId?: string | undefined;
+  userEmail?: string | undefined;
+  resource?: string | undefined;
+  ip?: string | undefined;
+  timestamp: string;
+}
+
+interface ApiAuditItem {
+  id: string;
+  event?: string;
+  action?: string;
+  actorId?: string;
   userId?: string;
   userEmail?: string;
   resource?: string;
-  ip?: string;
-  timestamp: string;
+  data?: Record<string, unknown>;
+  createdAt?: string;
+  timestamp?: string;
+}
+
+interface AuditLogResponse {
+  data?: ApiAuditItem[];
+  logs?: ApiAuditItem[];
+  total?: number;
 }
 
 export function AuditLogTable() {
@@ -33,38 +52,40 @@ export function AuditLogTable() {
     data: rawData,
     isLoading,
     mutate,
-  } = useApi<{ logs: AuditLog[] } | AuditLog[]>("/api/audit-log");
+  } = useApi<AuditLogResponse | ApiAuditItem[]>("/api/audit-log");
 
-  const logs: AuditLog[] = Array.isArray(rawData)
+  const rawList: ApiAuditItem[] = Array.isArray(rawData)
     ? rawData
-    : Array.isArray(rawData?.logs)
-      ? rawData.logs
-      : [
-          {
-            id: "log-1",
-            action: "USER_LOGIN",
-            userEmail: "admin@cms.com",
-            resource: "auth",
-            ip: "127.0.0.1",
-            timestamp: new Date().toISOString(),
-          },
-          {
-            id: "log-2",
-            action: "SETTINGS_UPDATE",
-            userEmail: "admin@cms.com",
-            resource: "system",
-            ip: "127.0.0.1",
-            timestamp: new Date(Date.now() - 3600000).toISOString(),
-          },
-          {
-            id: "log-3",
-            action: "PAGE_PUBLISHED",
-            userEmail: "admin@cms.com",
-            resource: "pages",
-            ip: "127.0.0.1",
-            timestamp: new Date(Date.now() - 86400000).toISOString(),
-          },
-        ];
+    : Array.isArray(rawData?.data)
+      ? rawData.data
+      : Array.isArray(rawData?.logs)
+        ? rawData.logs
+        : [];
+
+  const logs: AuditLog[] = rawList.map((item) => {
+    const actionName = item.event || item.action || "SYSTEM_EVENT";
+    const resourceName = item.event
+      ? item.event.split(".")[0] || "system"
+      : item.resource || "system";
+    const userDisplay =
+      item.userEmail ||
+      (item.data?.["userEmail"] as string | undefined) ||
+      (item.actorId
+        ? item.actorId.length > 12
+          ? `${item.actorId.slice(0, 8)}...`
+          : item.actorId
+        : "System");
+    const timeValue = item.createdAt || item.timestamp || new Date().toISOString();
+
+    return {
+      id: item.id,
+      action: actionName,
+      userEmail: userDisplay,
+      userId: item.actorId || item.userId,
+      resource: resourceName,
+      timestamp: timeValue,
+    };
+  });
 
   const filteredLogs = logs.filter(
     (l) =>
@@ -125,7 +146,10 @@ export function AuditLogTable() {
                       {log.action}
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-sans text-foreground text-xs">
+                  <TableCell
+                    className="font-sans text-foreground text-xs"
+                    title={log.userId || log.userEmail}
+                  >
                     {log.userEmail || "System"}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-[11px]">

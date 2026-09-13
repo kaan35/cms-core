@@ -131,7 +131,34 @@ export class SystemService {
       this.auditLogRepo.list(skip, limit),
       this.auditLogRepo.count(),
     ]);
-    return buildPaginatedResult(items, total, page, limit);
+
+    const actorIds = [
+      ...new Set(items.map((i) => i.actorId).filter((id): id is string => Boolean(id))),
+    ];
+    const userMap = new Map<string, string>();
+    if (actorIds.length > 0) {
+      try {
+        const usersCol = this.db.collection<{ id: string; email: string }>("cms_users");
+        const allUsers = await usersCol.find();
+        for (const u of allUsers) {
+          if (u.id && u.email) {
+            userMap.set(u.id, u.email);
+          }
+        }
+      } catch {
+        // Fallback gracefully if users collection is inaccessible
+      }
+    }
+
+    const enriched = items.map((item) => {
+      const email = item.actorId ? userMap.get(item.actorId) : undefined;
+      return {
+        ...item,
+        ...(email ? { userEmail: email } : {}),
+      };
+    });
+
+    return buildPaginatedResult(enriched, total, page, limit);
   }
 
   async recordAuditLog(entry: {
@@ -179,6 +206,10 @@ export class SystemService {
       EVENTS.SYSTEM.FEATURE_FLAG_CREATED,
       EVENTS.SYSTEM.FEATURE_FLAG_UPDATED,
       EVENTS.SYSTEM.FEATURE_FLAG_DELETED,
+      EVENTS.VAULT.CREATED,
+      EVENTS.VAULT.UPDATED,
+      EVENTS.VAULT.DELETED,
+      EVENTS.VAULT.REVEALED,
     ];
 
     for (const event of auditEvents) {

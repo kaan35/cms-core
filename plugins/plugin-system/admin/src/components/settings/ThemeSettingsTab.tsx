@@ -30,7 +30,9 @@ export function ThemeSettingsTab({
           </div>
         </div>
 
-        <div className={`grid grid-cols-1 ${hasPagesPlugin ? "md:grid-cols-3" : "md:grid-cols-2"} gap-5`}>
+        <div
+          className={`grid grid-cols-1 ${hasPagesPlugin ? "md:grid-cols-3" : "md:grid-cols-2"} gap-5`}
+        >
           {hasPagesPlugin && (
             <InputSelectField
               label="Default Client Theme"

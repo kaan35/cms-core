@@ -1,0 +1,28 @@
+{
+  "name": "@cms/plugin-vault-api",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "node --import tsx/esm --test 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cms/core": "*",
+    "@cms/db": "*",
+    "fastify": "^5",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^26"
+  }
+}

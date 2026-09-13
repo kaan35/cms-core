@@ -39,3 +39,13 @@ export function capitalize(text: string): string {
   if (!text) return "";
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
+
+export function generateSecurePassword(length = 18): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=";
+  const buf = new Uint32Array(length);
+  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(buf);
+    return Array.from(buf, (n) => chars[n % chars.length]).join("");
+  }
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}

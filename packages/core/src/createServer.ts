@@ -98,20 +98,15 @@ export async function createServer(
     timeWindow: rateLimitTimeWindow,
   });
 
-  const allowedOriginsRaw = config.getOrDefault("CORS_ALLOWED_ORIGINS", "");
-  const allowedOrigins = allowedOriginsRaw
+  const allowedOrigins = config
+    .getOrDefault("CORS_ALLOWED_ORIGINS", "")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
 
   await app.register(cors, {
     origin: (origin: string | undefined, cb: (err: Error | null, allow: boolean) => void) => {
-      if (!origin) {
-        return cb(null, true);
-      }
-      if (allowedOrigins.includes(origin)) {
-        return cb(null, true);
-      }
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
       return cb(null, false);
     },
     credentials: true,
@@ -228,7 +223,9 @@ export async function createServer(
   app.decorate("pluginLoader", pluginLoader);
   app.decorate("hooks", hooks);
 
-  const manifest = customManifest ?? (await resolvePluginManifest(PLUGIN_MANIFEST, logger));
+  const profile = config.getOrDefault("PLUGINS_PROFILE", "full");
+  const manifest =
+    customManifest ?? (await resolvePluginManifest(PLUGIN_MANIFEST, logger, profile));
   await pluginLoader.loadAll(manifest, coreMigrations);
 
   const shutdown = async (): Promise<void> => {
