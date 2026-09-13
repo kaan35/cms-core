@@ -1,4 +1,5 @@
 export interface SystemSettingsData {
+  adminTitle?: string;
   siteTitle?: string;
   siteDescription?: string;
   primaryColor?: string;
@@ -10,6 +11,7 @@ export interface SystemSettingsData {
 }
 
 export interface SettingsFormData {
+  adminTitle: string;
   siteTitle: string;
   siteDescription: string;
   primaryColor: string;

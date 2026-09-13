@@ -1,9 +1,8 @@
 "use client";
 
-import { apiClient, Button, Skeleton, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
-import { Compass, Globe, Palette, Save } from "lucide-react";
+import { apiClient, Button, Skeleton, toast, useApi, useSaveShortcut, mutate as globalMutate } from "@cms/admin-shell";
+import { Globe, Palette, Save } from "lucide-react";
 import * as React from "react";
-import { NavigationManager } from "./NavigationManager";
 import { GeneralSettingsTab } from "./settings/GeneralSettingsTab";
 import type { SettingsFormData, SystemSettingsData } from "./settings/settingsTypes";
 import { ThemeSettingsTab } from "./settings/ThemeSettingsTab";
@@ -14,7 +13,6 @@ export function SettingsEditor() {
   const {
     data: rawData,
     isLoading,
-    mutate,
   } = useApi<{ settings: SystemSettingsData } | SystemSettingsData>("/api/settings");
 
   const settings: SystemSettingsData =
@@ -22,9 +20,24 @@ export function SettingsEditor() {
       ? (rawData.settings as SystemSettingsData)
       : (rawData as SystemSettingsData) || {};
 
-  const [activeTab, setActiveTab] = React.useState<"general" | "theme" | "navigation">("general");
+  const [activeTab, setActiveTab] = React.useState<"general" | "theme">("general");
+
+  const { data: rawPlugins } = useApi<
+    | { plugins: Array<{ name: string; enabled: boolean }> }
+    | Array<{ name: string; enabled: boolean }>
+  >("/api/plugins");
+
+  const hasPagesPlugin = React.useMemo(() => {
+    const list = Array.isArray(rawPlugins)
+      ? rawPlugins
+      : Array.isArray(rawPlugins?.plugins)
+        ? rawPlugins.plugins
+        : [];
+    return list.some((p) => p.name === "plugin-pages" && p.enabled !== false);
+  }, [rawPlugins]);
 
   const [inputData, setInputData] = React.useState<SettingsFormData>({
+    adminTitle: "",
     siteTitle: "",
     siteDescription: "",
     primaryColor: "#3b82f6",
@@ -40,6 +53,7 @@ export function SettingsEditor() {
   React.useEffect(() => {
     if (settings && Object.keys(settings).length > 0) {
       setInputData({
+        adminTitle: settings.adminTitle || settings.siteTitle || "CMS Core",
         siteTitle: settings.siteTitle || "CMS Core",
         siteDescription: settings.siteDescription || "Headless CMS Engine",
         primaryColor: settings.primaryColor || "#3b82f6",
@@ -62,7 +76,8 @@ export function SettingsEditor() {
 
     try {
       const payload = {
-        siteTitle: inputData.siteTitle.trim(),
+        adminTitle: inputData.adminTitle.trim(),
+        siteTitle: (inputData.siteTitle.trim() || inputData.adminTitle.trim() || "CMS Core"),
         siteDescription: inputData.siteDescription.trim(),
         primaryColor: inputData.primaryColor,
         brandColor: inputData.primaryColor,
@@ -80,7 +95,7 @@ export function SettingsEditor() {
       });
 
       toast.success("Settings saved successfully");
-      mutate(updated, false);
+      await globalMutate("/api/settings", updated, { revalidate: true });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to update settings");
     } finally {
@@ -88,7 +103,7 @@ export function SettingsEditor() {
     }
   };
 
-  useSaveShortcut(handleSave, activeTab !== "navigation");
+  useSaveShortcut(handleSave, true);
 
   if (isLoading) {
     return (
@@ -107,21 +122,19 @@ export function SettingsEditor() {
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">System Settings</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Manage global site branding, themes, security defaults, and navigation.
+            Manage global application branding, appearance, and security defaults.
           </p>
         </div>
 
-        {activeTab !== "navigation" && (
-          <Button
-            type="submit"
-            form="settings-form"
-            loading={isSubmitting}
-            iconStart={<Save />}
-            shortcut="save"
-          >
-            {isSubmitting ? "Saving..." : "Save Settings"}
-          </Button>
-        )}
+        <Button
+          type="submit"
+          form="settings-form"
+          loading={isSubmitting}
+          iconStart={<Save />}
+          shortcut="save"
+        >
+          {isSubmitting ? "Saving..." : "Save Settings"}
+        </Button>
       </div>
 
       {/* Navigation Tabs */}
@@ -151,23 +164,7 @@ export function SettingsEditor() {
           <Palette className="size-3.5" />
           <span>Theme & Branding</span>
         </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("navigation")}
-          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-            activeTab === "navigation"
-              ? "bg-card text-foreground shadow-xs border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Compass className="size-3.5" />
-          <span>Navigation Menu</span>
-        </button>
       </div>
-
-      {/* Tab 3: Navigation Menu */}
-      {activeTab === "navigation" && <NavigationManager />}
 
       {/* Tab 1: General & Security Settings */}
       {activeTab === "general" && (
@@ -175,6 +172,7 @@ export function SettingsEditor() {
           inputData={inputData}
           onChange={handleInputChange}
           onSubmit={handleSave}
+          hasPagesPlugin={hasPagesPlugin}
         />
       )}
 
@@ -184,6 +182,7 @@ export function SettingsEditor() {
           inputData={inputData}
           onChange={handleInputChange}
           onSubmit={handleSave}
+          hasPagesPlugin={hasPagesPlugin}
         />
       )}
     </div>

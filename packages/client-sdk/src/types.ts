@@ -1,8 +1,12 @@
 export interface SettingsDoc {
+  adminTitle?: string;
   siteTitle?: string;
   siteDescription?: string;
   defaultTheme?: "dark" | "light" | "system";
   brandColor?: string;
+  primaryColor?: string;
+  brandFont?: string;
+  fontFamily?: string;
   footerText?: string;
   headerMenu?: Array<{
     id: string;

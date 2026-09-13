@@ -56,6 +56,7 @@ export const NavigationMenuItemSchema = z.object({
 });
 
 export const UpdateSettingsSchema = z.object({
+  adminTitle: z.string().trim().min(1, "Admin title cannot be empty").optional(),
   siteTitle: z.string().trim().min(1, "Site title cannot be empty").optional(),
   siteDescription: z.string().trim().optional(),
   brandColor: z

@@ -81,9 +81,16 @@ describe("SystemService", () => {
       ValidationError,
     );
 
-    const updated = await service.updateSettings({ brandColor: "#ff00aa", brandFont: "Roboto" });
+    const updated = await service.updateSettings({
+      brandColor: "#ff00aa",
+      brandFont: "Roboto",
+      adminTitle: "Password Manager Admin",
+      siteTitle: "Password Manager Website",
+    });
     assert.equal(updated.brandColor, "#ff00aa");
     assert.equal(updated.brandFont, "Roboto");
+    assert.equal(updated.adminTitle, "Password Manager Admin");
+    assert.equal(updated.siteTitle, "Password Manager Website");
   });
 
   it("manages feature flags lifecycle", async () => {

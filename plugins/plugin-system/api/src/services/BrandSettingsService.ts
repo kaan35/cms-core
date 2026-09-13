@@ -18,6 +18,7 @@ export class BrandSettingsService {
   }
 
   async getSettings(): Promise<{
+    adminTitle: string;
     siteTitle: string;
     siteDescription: string;
     brandColor: string;
@@ -32,6 +33,7 @@ export class BrandSettingsService {
     sessionTimeoutMinutes: number;
   }> {
     const siteTitle = await this.settingsService.get<string>("system.site.title", "CMS Core");
+    const adminTitle = await this.settingsService.get<string>("system.admin.title", siteTitle);
     const siteDescription = await this.settingsService.get<string>(
       "system.site.description",
       "Headless CMS Engine",
@@ -61,6 +63,7 @@ export class BrandSettingsService {
     );
 
     return {
+      adminTitle: adminTitle || siteTitle || "CMS Core",
       siteTitle,
       siteDescription,
       brandColor,
@@ -79,6 +82,9 @@ export class BrandSettingsService {
   async updateSettings(input: unknown | UpdateSettingsInput, actorId?: string) {
     const validated = validateUpdateSettings(input);
 
+    if (validated.adminTitle !== undefined) {
+      await this.settingsService.set("system.admin.title", validated.adminTitle);
+    }
     if (validated.siteTitle !== undefined) {
       await this.settingsService.set("system.site.title", validated.siteTitle);
     }

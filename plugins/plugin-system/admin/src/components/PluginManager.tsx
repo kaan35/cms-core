@@ -66,6 +66,12 @@ const PLUGIN_METADATA: Record<
     version: "0.1.0",
     isCore: false,
   },
+  "plugin-vault": {
+    label: "Password Vault",
+    description: "Encrypted credential storage, secrets vault and password generator",
+    version: "0.1.0",
+    isCore: false,
+  },
 };
 
 const DEFAULT_PLUGINS: PluginApiItem[] = [
@@ -75,6 +81,7 @@ const DEFAULT_PLUGINS: PluginApiItem[] = [
   { name: "plugin-pages", enabled: true },
   { name: "plugin-blog", enabled: true },
   { name: "plugin-forms", enabled: true },
+  { name: "plugin-vault", enabled: true },
 ];
 
 export function PluginManager() {

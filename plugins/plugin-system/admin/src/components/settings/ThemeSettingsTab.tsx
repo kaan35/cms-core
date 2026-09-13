@@ -8,9 +8,15 @@ interface ThemeSettingsTabProps {
   inputData: SettingsFormData;
   onChange: (patch: Partial<SettingsFormData>) => void;
   onSubmit: (e: React.FormEvent) => void;
+  hasPagesPlugin?: boolean | undefined;
 }
 
-export function ThemeSettingsTab({ inputData, onChange, onSubmit }: ThemeSettingsTabProps) {
+export function ThemeSettingsTab({
+  inputData,
+  onChange,
+  onSubmit,
+  hasPagesPlugin = true,
+}: ThemeSettingsTabProps) {
   return (
     <form id="settings-form" onSubmit={onSubmit} className="space-y-6">
       <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-5">
@@ -24,17 +30,19 @@ export function ThemeSettingsTab({ inputData, onChange, onSubmit }: ThemeSetting
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <InputSelectField
-            label="Default Client Theme"
-            value={inputData.defaultTheme}
-            onValueChange={(val) => onChange({ defaultTheme: val || "dark" })}
-            options={[
-              { value: "dark", label: "Dark Theme (Default)" },
-              { value: "light", label: "Light Theme" },
-              { value: "system", label: "System Synchronized" },
-            ]}
-          />
+        <div className={`grid grid-cols-1 ${hasPagesPlugin ? "md:grid-cols-3" : "md:grid-cols-2"} gap-5`}>
+          {hasPagesPlugin && (
+            <InputSelectField
+              label="Default Client Theme"
+              value={inputData.defaultTheme}
+              onValueChange={(val) => onChange({ defaultTheme: val || "dark" })}
+              options={[
+                { value: "dark", label: "Dark Theme (Default)" },
+                { value: "light", label: "Light Theme" },
+                { value: "system", label: "System Synchronized" },
+              ]}
+            />
+          )}
 
           <FormField label="Primary Brand Accent Color">
             <div className="flex items-center gap-2.5">
