@@ -82,7 +82,7 @@ export class SystemController {
   }
 
   async getStats(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const stats = await this.systemService.getHealthStatus();
+    const stats = await this.systemService.getStats();
     return reply.send(stats);
   }
 }

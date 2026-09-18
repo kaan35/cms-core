@@ -141,4 +141,34 @@ describe("SystemService", () => {
     assert.equal(logs.data.length, 1);
     assert.equal(logs.data[0]?.event, "user.created");
   });
+
+  it("getStats returns counts for pages, posts, forms, users, and plugins", async () => {
+    const { service, db } = await setup();
+
+    const pagesCol = db.collection("cms_pages");
+    await pagesCol.insertOne({ id: "p1", title: "Home", status: "published" });
+    await pagesCol.insertOne({ id: "p2", title: "Draft", status: "draft" });
+
+    const postsCol = db.collection("cms_blog_posts");
+    await postsCol.insertOne({ id: "b1", title: "Post 1", status: "published" });
+
+    const formsCol = db.collection("cms_forms");
+    await formsCol.insertOne({ id: "f1", title: "Contact" });
+
+    const usersCol = db.collection("cms_users");
+    await usersCol.insertOne({ id: "u1", email: "admin@example.com" });
+
+    const pluginsCol = db.collection("cms_plugins");
+    await pluginsCol.insertOne({ name: "plugin-auth", enabled: true });
+    await pluginsCol.insertOne({ name: "plugin-pages", enabled: false });
+
+    const stats = await service.getStats();
+    assert.equal(stats.status, "ok");
+    assert.equal(stats.pagesCount, 1);
+    assert.equal(stats.postsCount, 1);
+    assert.equal(stats.formsCount, 1);
+    assert.equal(stats.usersCount, 1);
+    assert.equal(stats.pluginsCount, 1);
+    assert.equal(stats.totalPlugins, 2);
+  });
 });

@@ -227,6 +227,66 @@ export class SystemService {
     }
   }
 
+  async getStats(): Promise<{
+    status: "ok" | "degraded" | "error";
+    db: boolean;
+    pluginsCount: number;
+    totalPlugins: number;
+    pagesCount: number;
+    postsCount: number;
+    formsCount: number;
+    usersCount: number;
+    timestamp: Date;
+  }> {
+    const dbAlive = await this.db.isAlive().catch(() => false);
+    const plugins = await this.pluginsRepo.list().catch(() => []);
+
+    let pagesCount = 0;
+    let postsCount = 0;
+    let formsCount = 0;
+    let usersCount = 0;
+
+    try {
+      const pagesCol = this.db.collection("cms_pages");
+      pagesCount = await pagesCol.countDocuments({ status: "published" });
+    } catch {
+      // Fallback gracefully if collection is inaccessible
+    }
+
+    try {
+      const postsCol = this.db.collection("cms_blog_posts");
+      postsCount = await postsCol.countDocuments({ status: "published" });
+    } catch {
+      // Fallback gracefully if collection is inaccessible
+    }
+
+    try {
+      const formsCol = this.db.collection("cms_forms");
+      formsCount = await formsCol.countDocuments();
+    } catch {
+      // Fallback gracefully if collection is inaccessible
+    }
+
+    try {
+      const usersCol = this.db.collection("cms_users");
+      usersCount = await usersCol.countDocuments();
+    } catch {
+      // Fallback gracefully if collection is inaccessible
+    }
+
+    return {
+      status: dbAlive ? "ok" : "error",
+      db: dbAlive,
+      pluginsCount: plugins.filter((p) => p.enabled).length,
+      totalPlugins: plugins.length,
+      pagesCount,
+      postsCount,
+      formsCount,
+      usersCount,
+      timestamp: new Date(),
+    };
+  }
+
   async getHealthStatus(): Promise<{
     status: "ok" | "degraded" | "error";
     db: boolean;

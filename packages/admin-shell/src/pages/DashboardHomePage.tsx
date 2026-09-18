@@ -47,6 +47,7 @@ export function DashboardHomePage() {
   const pagesCount = statsData?.pagesCount ?? 0;
   const postsCount = statsData?.postsCount ?? 0;
   const formsCount = statsData?.formsCount ?? 0;
+  const usersCount = statsData?.usersCount ?? 0;
   const pluginsCount = statsData?.pluginsCount ?? (plugins.filter((p) => p.enabled).length || 0);
   const totalPlugins = statsData?.totalPlugins ?? (plugins.length || 0);
 
@@ -84,7 +85,7 @@ export function DashboardHomePage() {
         {isAuthEnabled && (
           <StatCard
             title="USERS"
-            value={statsData?.usersCount ?? 1}
+            value={usersCount}
             description="Active accounts & roles"
             icon={Users}
             iconColor="teal"
