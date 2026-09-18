@@ -1,14 +1,21 @@
 node_modules/
 dist/
+.next/
+coverage/
 .tsbuildinfo
 *.tsbuildinfo
 
 .env
 .env.local
 .env.*.local
+!.env.example
 
 .npmrc
 .npmrc.local
 !*.npmrc.example
 
 .DS_Store
+scratch/
+projects/
+backups/
+*.archive
