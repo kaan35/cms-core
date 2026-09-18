@@ -70,7 +70,7 @@ export function generateComposeContent(options: GenerateComposeOptions = {}): st
 ${adminBlock}${clientBlock}
   mongo:
     container_name: \${PROJECT_NAME}-mongo
-    image: mongo:7
+    image: mongo:8
     restart: unless-stopped
     environment:
       MONGO_INITDB_DATABASE: \${MONGO_DB_NAME:-cms}
@@ -84,7 +84,7 @@ ${adminBlock}${clientBlock}
 
   redis:
     container_name: \${PROJECT_NAME}-redis
-    image: redis:7
+    image: redis:8
     restart: unless-stopped
     volumes:
       - redis_data:/data
