@@ -1,10 +1,12 @@
+import { BrandThemeSync } from "@/components/BrandThemeSync";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { getContrastForeground, getFontFamilyCss } from "@/lib/utils";
 import { api, type SettingsDoc } from "@cms/client-sdk";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter, Roboto } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,6 +16,17 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const roboto = Roboto({
+  weight: ["400", "500", "700"],
+  variable: "--font-roboto",
   subsets: ["latin"],
 });
 
@@ -61,10 +74,38 @@ export default async function RootLayout({
 
   const enableScrollAnimations = (flags as Record<string, boolean>).scrollAnimations !== false;
   const defaultTheme = (settings?.defaultTheme as "dark" | "light" | "system") || "light";
+  const primaryColor = settings?.primaryColor || settings?.brandColor || "#3b82f6";
+  const foregroundColor = getContrastForeground(primaryColor);
+  const fontFamily = settings?.fontFamily || settings?.brandFont || "Inter";
+  const fontFamilyCss = getFontFamilyCss(fontFamily);
 
   return (
-    <html lang="en" suppressHydrationWarning className={defaultTheme === "dark" ? "dark" : ""}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${roboto.variable} ${
+        defaultTheme === "dark" ? "dark" : ""
+      }`}
+    >
       <head>
+        <style
+          id="brand-theme-styles"
+          dangerouslySetInnerHTML={{
+            __html: `
+              :root, .dark {
+                --primary: ${primaryColor} !important;
+                --color-primary: ${primaryColor} !important;
+                --primary-foreground: ${foregroundColor} !important;
+                --color-primary-foreground: ${foregroundColor} !important;
+                --ring: ${primaryColor} !important;
+                --font-family: ${fontFamilyCss};
+              }
+              body {
+                font-family: ${fontFamilyCss} !important;
+              }
+            `,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -86,10 +127,15 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground ${
+        className={`antialiased min-h-screen flex flex-col bg-background text-foreground ${
           enableScrollAnimations ? "scroll-smooth" : ""
         }`}
       >
+        <BrandThemeSync
+          primaryColor={primaryColor}
+          foregroundColor={foregroundColor}
+          fontFamilyCss={fontFamilyCss}
+        />
         <ThemeProvider defaultTheme={defaultTheme}>
           <Header />
           <main className={`flex-1 ${enableScrollAnimations ? "scroll-animate" : ""}`}>

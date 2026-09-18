@@ -17,12 +17,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cms/plugin-auth-api": "*",
-    "@cms/plugin-blog-api": "*",
-    "@cms/plugin-forms-api": "*",
-    "@cms/plugin-media-api": "*",
-    "@cms/plugin-pages-api": "*",
-    "@cms/plugin-system-api": "*",
     "swr": "^2"
   },
   "devDependencies": {

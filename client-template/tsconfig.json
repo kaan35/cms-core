@@ -21,11 +21,11 @@
     "paths": {
       "@/*": ["./src/*"],
       "@cms/client-sdk": ["../packages/client-sdk/src/index.ts"],
-      "@cms/plugin-pages-api": ["../plugins/plugin-pages/api/src/index.ts"],
-      "@cms/plugin-blog-api": ["../plugins/plugin-blog/api/src/index.ts"],
-      "@cms/plugin-forms-api": ["../plugins/plugin-forms/api/src/index.ts"],
-      "@cms/plugin-media-api": ["../plugins/plugin-media/api/src/index.ts"],
-      "@cms/plugin-system-api": ["../plugins/plugin-system/api/src/index.ts"]
+      "@cms/plugin-pages-api": ["../packages/client-sdk/src/types.ts"],
+      "@cms/plugin-blog-api": ["../packages/client-sdk/src/types.ts"],
+      "@cms/plugin-forms-api": ["../packages/client-sdk/src/types.ts"],
+      "@cms/plugin-media-api": ["../packages/client-sdk/src/types.ts"],
+      "@cms/plugin-system-api": ["../packages/client-sdk/src/types.ts"]
     }
   },
   "include": [

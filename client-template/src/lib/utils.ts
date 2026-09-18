@@ -38,3 +38,34 @@ export function resolveMediaUrl(mediaIdOrUrl?: string | null): string | null {
     process.env.API_URL || (typeof window === "undefined" ? "http://localhost:3001" : "");
   return `${apiBase}/media/${trimmed}`;
 }
+
+export function getContrastForeground(hexColor: string): string {
+  const clean = hexColor.replace("#", "").trim();
+  if (clean.length === 3) {
+    const r = parseInt(clean[0] + clean[0], 16);
+    const g = parseInt(clean[1] + clean[1], 16);
+    const b = parseInt(clean[2] + clean[2], 16);
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 140 ? "#09090b" : "#ffffff";
+  }
+  if (clean.length === 6) {
+    const r = parseInt(clean.substring(0, 2), 16);
+    const g = parseInt(clean.substring(2, 4), 16);
+    const b = parseInt(clean.substring(4, 6), 16);
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 140 ? "#09090b" : "#ffffff";
+  }
+  return "#ffffff";
+}
+
+export function getFontFamilyCss(fontFamily?: string): string {
+  switch (fontFamily) {
+    case "Inter":
+      return "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif";
+    case "Roboto":
+      return "var(--font-roboto), -apple-system, BlinkMacSystemFont, sans-serif";
+    case "Geist":
+    default:
+      return "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif";
+  }
+}

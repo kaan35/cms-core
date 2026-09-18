@@ -1,3 +1,15 @@
-import { nextConfig } from "@cms/eslint-config/next";
+import js from "@eslint/js";
 
-export default nextConfig(import.meta.dirname);
+export default [
+  {
+    ignores: [
+      ".next/**",
+      "dist/**",
+      "node_modules/**",
+      "coverage/**",
+      "**/*.d.ts",
+      ".tsbuildinfo",
+    ],
+  },
+  js.configs.recommended,
+];
