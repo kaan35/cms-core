@@ -33,6 +33,10 @@ export const seedHomePageMigration: Migration = {
           },
           {
             type: "bento_grid",
+            title: "Core Architectural Capabilities",
+            subtitle:
+              "Composable layout blocks, zero-overhead React Server Components, and a fully decoupled plugin ecosystem.",
+            columns: "3",
             cards: [
               {
                 title: "Zero-SDK Server Fetching",
@@ -40,7 +44,7 @@ export const seedHomePageMigration: Migration = {
                   "Server Components query backend endpoints with direct typed JSON fetchers. No heavy SDK runtimes, minimal bundle size.",
                 icon: "Zap",
                 badge: "Performance",
-                size: "large",
+                size: "2",
               },
               {
                 title: "Pluggable Verification",
@@ -48,7 +52,7 @@ export const seedHomePageMigration: Migration = {
                   "Forms leverage dynamic validation and mathematical challenge captchas with zero third-party tracking.",
                 icon: "Shield",
                 badge: "Security",
-                size: "medium",
+                size: "1",
               },
               {
                 title: "Dynamic Block Engine",
@@ -56,12 +60,24 @@ export const seedHomePageMigration: Migration = {
                   "Editors assemble pages using composable Hero, Gallery, Text, Form, and Blog blocks in real time.",
                 icon: "Layers",
                 badge: "Extensible",
-                size: "medium",
+                size: "1",
+              },
+              {
+                title: "Encrypted Secrets & App Vault",
+                description:
+                  "Integrated custom application plugins like Password Vault provide AES-256-GCM secure storage and secrets entropy generation.",
+                icon: "Lock",
+                badge: "Security",
+                size: "2",
               },
             ],
           },
           {
             type: "blog_posts",
+            title: "Latest Publications",
+            subtitle:
+              "Read our latest architectural deep dives, release notes, and engineering patterns.",
+            badge: "From the Blog",
             limit: 3,
             layout: "grid",
           },
