@@ -32,7 +32,7 @@
     "test": "node --import tsx/esm --test 'packages/**/*.test.ts' 'api/**/*.test.ts' 'plugins/**/*.test.ts' 'cli/**/*.test.ts'",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
-    "ci": "npm run typecheck && npm run lint && npm test",
+    "ci": "npm run build && npm run typecheck && npm run lint && npm test",
     "version:patch": "npm version patch --workspaces",
     "version:minor": "npm version minor --workspaces",
     "version:major": "npm version major --workspaces",
