@@ -44,8 +44,7 @@ export function HeroBlock({ data }: { data: HeroBlockType }) {
   if (layout === "featured" && bgUrl) {
     return (
       <section className="relative overflow-hidden py-16 sm:py-24">
-        {/* Subtle Ambient Radial Glow */}
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 size-96 rounded-full bg-primary/15 blur-3xl pointer-events-none -z-10" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_25%_50%,var(--primary)_0%,transparent_65%)] opacity-15 pointer-events-none -z-10" />
 
         <div className="container mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -91,8 +90,7 @@ export function HeroBlock({ data }: { data: HeroBlockType }) {
   if (layout === "banner" && bgUrl) {
     return (
       <section className="relative overflow-hidden py-20 sm:py-28 text-center">
-        {/* Ambient Glow */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 size-96 rounded-full bg-primary/20 blur-3xl pointer-events-none -z-10" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,var(--primary)_0%,transparent_65%)] opacity-15 pointer-events-none -z-10" />
 
         <div className="container mx-auto max-w-5xl px-4 sm:px-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/80 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur-md mb-6 shadow-xs">
@@ -143,7 +141,7 @@ export function HeroBlock({ data }: { data: HeroBlockType }) {
       )}
 
       {/* Subtle Ambient Radial Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-96 rounded-full bg-primary/20 blur-3xl pointer-events-none -z-10" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--primary)_0%,transparent_70%)] opacity-15 pointer-events-none -z-10" />
 
       <div className="container relative z-10 mx-auto max-w-4xl px-4 sm:px-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/80 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur-md mb-6 shadow-sm">

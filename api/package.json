@@ -19,7 +19,8 @@
     "@cms/plugin-media-api": "*",
     "@cms/plugin-pages-api": "*",
     "@cms/plugin-blog-api": "*",
-    "@cms/plugin-forms-api": "*"
+    "@cms/plugin-forms-api": "*",
+    "@cms/plugin-vault-api": "*"
   },
   "devDependencies": {
     "@types/node": "^26"

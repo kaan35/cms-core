@@ -1,12 +1,14 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #09090b;
-  --card: #f8fafc;
+  --card: #ffffff;
   --card-foreground: #0f172a;
-  --border: rgba(0, 0, 0, 0.08);
-  --muted: #f1f5f9;
+  --border: #e2e8f0;
+  --muted: #f8fafc;
   --muted-foreground: #64748b;
   --primary: #2563eb;
   --primary-foreground: #ffffff;
@@ -14,6 +16,8 @@
   --accent-foreground: #0f172a;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
+  --input: #e2e8f0;
+  --ring: #2563eb;
 }
 
 .dark {
@@ -22,7 +26,7 @@
   --card: #121215;
   --card-foreground: #fafafa;
   --border: rgba(255, 255, 255, 0.1);
-  --muted: #27272a;
+  --muted: #1c1c21;
   --muted-foreground: #a1a1aa;
   --primary: #3b82f6;
   --primary-foreground: #ffffff;
@@ -30,6 +34,8 @@
   --accent-foreground: #f4f4f5;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: #3b82f6;
 }
 
 @theme inline {
@@ -46,6 +52,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 }
 
 body {
