@@ -101,7 +101,7 @@ export function validateUpdateForm(input: unknown): UpdateFormInput {
   return validateWithSchema(UpdateFormSchema, input, "Invalid form update payload");
 }
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 export function validateSubmission(form: FormDoc, input: unknown): Record<string, unknown> {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {

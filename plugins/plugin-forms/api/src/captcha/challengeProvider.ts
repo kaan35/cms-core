@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import process from "node:process";
 import type { CaptchaVerifyResult, ICaptchaProvider } from "./captchaProvider.js";
 
@@ -23,30 +23,29 @@ export function generateChallenge(
 
   if (challengeType === "math") {
     const ops = ["+", "-", "*"] as const;
-    const op = ops[Math.floor(Math.random() * ops.length)]!;
+    const op = ops[randomInt(0, ops.length)]!;
 
     if (op === "+") {
-      const a = Math.floor(Math.random() * 800) + 100;
-      const b = Math.floor(Math.random() * 800) + 100;
+      const a = randomInt(100, 900);
+      const b = randomInt(100, 900);
       question = `${a} + ${b} = ?`;
       answer = String(a + b);
     } else if (op === "-") {
-      const a = Math.floor(Math.random() * 500) + 500;
-      const b = Math.floor(Math.random() * 400) + 50;
+      const a = randomInt(500, 1000);
+      const b = randomInt(50, 450);
       question = `${a} - ${b} = ?`;
       answer = String(a - b);
     } else {
-      const a = Math.floor(Math.random() * 40) + 10;
-      const b = Math.floor(Math.random() * 8) + 2;
+      const a = randomInt(10, 50);
+      const b = randomInt(2, 10);
       question = `${a} * ${b} = ?`;
       answer = String(a * b);
     }
   } else {
     const len = 5;
-    const bytes = randomBytes(len);
     let code = "";
     for (let i = 0; i < len; i++) {
-      code += SAFE_CHARS[bytes[i]! % SAFE_CHARS.length];
+      code += SAFE_CHARS[randomInt(SAFE_CHARS.length)]!;
     }
     question = `Enter code: ${code}`;
     answer = code.toLowerCase();

@@ -23,7 +23,8 @@ export function slugify(text: string): string {
     .trim()
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/^-+/, "")
+    .replace(/-+$/, "");
 }
 
 export function toSnakeCase(text: string): string {
@@ -42,10 +43,31 @@ export function capitalize(text: string): string {
 
 export function generateSecurePassword(length = 18): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=";
-  const buf = new Uint32Array(length);
-  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
-    window.crypto.getRandomValues(buf);
-    return Array.from(buf, (n) => chars[n % chars.length]).join("");
+  const charsLen = chars.length;
+  const maxValid = 256 - (256 % charsLen);
+  const cryptoObj =
+    typeof globalThis !== "undefined" && globalThis.crypto
+      ? globalThis.crypto
+      : typeof window !== "undefined" && window.crypto
+        ? window.crypto
+        : null;
+
+  if (!cryptoObj) {
+    throw new Error("Cryptographically secure random number generator is unavailable.");
   }
-  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+
+  let result = "";
+  const buf = new Uint8Array(length * 2);
+
+  while (result.length < length) {
+    cryptoObj.getRandomValues(buf);
+    for (let i = 0; i < buf.length && result.length < length; i++) {
+      const val = buf[i]!;
+      if (val < maxValid) {
+        result += chars[val % charsLen];
+      }
+    }
+  }
+
+  return result;
 }
