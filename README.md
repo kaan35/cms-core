@@ -8,7 +8,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=flat&logo=tailwindcss)](https://tailwindcss.com)
 [![Zod](https://img.shields.io/badge/Zod-v4-3E67B1?style=flat&logo=zod)](https://zod.dev)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/Tests-188%20Passing-success?style=flat&logo=node.js)](#-testing--code-quality)
+[![Tests](https://img.shields.io/badge/Tests-204%20Passing-success?style=flat&logo=node.js)](#-testing--code-quality)
 
 A modular, production-ready headless CMS and application platform built with **Fastify 5** and **Next.js 16 (React 19)**. Features are organized into self-contained plugins that can be enabled or disabled at runtime per project without modifying or forking core code.
 

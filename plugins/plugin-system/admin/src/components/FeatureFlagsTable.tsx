@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Badge,
   Button,
   Skeleton,
@@ -30,7 +30,7 @@ export function FeatureFlagsTable() {
     data: rawData,
     isLoading,
     mutate,
-  } = useApi<{ flags: FeatureFlag[] } | FeatureFlag[]>("/api/feature-flags");
+  } = useApi<{ flags: FeatureFlag[] } | FeatureFlag[]>("/feature-flags");
 
   const flags: FeatureFlag[] = Array.isArray(rawData)
     ? rawData
@@ -69,10 +69,7 @@ export function FeatureFlagsTable() {
 
   const handleToggle = async (flag: FeatureFlag, newChecked: boolean) => {
     try {
-      await apiClient(`/api/feature-flags/${flag.key}`, {
-        method: "PUT",
-        body: { enabled: newChecked },
-      });
+      await api.put(`/feature-flags/${flag.key}`, { enabled: newChecked });
       toast.success(`Feature '${flag.name}' ${newChecked ? "enabled" : "disabled"}.`);
       mutate();
     } catch (err: unknown) {

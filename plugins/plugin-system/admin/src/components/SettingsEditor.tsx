@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Button,
   Skeleton,
   toast,
@@ -20,7 +20,7 @@ export type { SettingsFormData, SystemSettingsData } from "./settings/settingsTy
 export function SettingsEditor() {
   const { data: rawData, isLoading } = useApi<
     { settings: SystemSettingsData } | SystemSettingsData
-  >("/api/settings");
+  >("/settings");
 
   const settings: SystemSettingsData =
     rawData && "settings" in rawData
@@ -96,10 +96,7 @@ export function SettingsEditor() {
         sessionTimeoutMinutes: inputData.sessionTimeoutMinutes,
       };
 
-      const updated = await apiClient<{ settings: SystemSettingsData }>("/api/settings", {
-        method: "PUT",
-        body: payload,
-      });
+      const updated = await api.put<{ settings: SystemSettingsData }>("/settings", payload);
 
       toast.success("Settings saved successfully");
       await globalMutate("/api/settings", updated, { revalidate: true });

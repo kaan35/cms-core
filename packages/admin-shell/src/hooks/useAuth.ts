@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { apiClient, ApiError } from "../lib/api-client";
+import { api, ApiError } from "../lib/api-client";
 
 export interface AuthUser {
   id: string;
@@ -16,7 +16,7 @@ export function useAuth() {
     "/api/auth/me",
     async (url: string) => {
       try {
-        return await apiClient<{ user: AuthUser }>(url);
+        return await api.get<{ user: AuthUser }>(url);
       } catch (err: unknown) {
         if (err instanceof ApiError && err.status === 401) {
           return null;
@@ -37,7 +37,7 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      await apiClient("/api/auth/logout", { method: "POST" });
+      await api.post("/auth/logout");
     } catch {
       // ignore
     } finally {

@@ -11,7 +11,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  apiClient,
+  api,
   toast,
   useApi,
 } from "@cms/admin-shell";
@@ -32,7 +32,7 @@ export function VaultListPage() {
   const [deleteCandidate, setDeleteCandidate] = React.useState<VaultItem | null>(null);
   const [revealedPasswords, setRevealedPasswords] = React.useState<Record<string, string>>({});
 
-  const { data, isLoading, mutate } = useApi<VaultApiResponse>("/api/vault/items");
+  const { data, isLoading, mutate } = useApi<VaultApiResponse>("/vault/items");
   const items = data?.items || [];
 
   const categories = React.useMemo(() => {
@@ -66,9 +66,7 @@ export function VaultListPage() {
       return;
     }
     try {
-      const res = await apiClient<{ password: string }>(`/api/vault/items/${id}/reveal`, {
-        method: "POST",
-      });
+      const res = await api.post<{ password: string }>(`/vault/items/${id}/reveal`);
       if (res?.password) {
         setRevealedPasswords((prev) => ({ ...prev, [id]: res.password }));
       }
@@ -81,9 +79,7 @@ export function VaultListPage() {
     try {
       let pwd = revealedPasswords[id];
       if (!pwd) {
-        const res = await apiClient<{ password: string }>(`/api/vault/items/${id}/reveal`, {
-          method: "POST",
-        });
+        const res = await api.post<{ password: string }>(`/vault/items/${id}/reveal`);
         pwd = res?.password;
       }
       if (pwd) {
@@ -98,7 +94,7 @@ export function VaultListPage() {
   const handleDelete = async () => {
     if (!deleteCandidate?.id) return;
     try {
-      await apiClient(`/api/vault/items/${deleteCandidate.id}`, { method: "DELETE" });
+      await api.delete(`/vault/items/${deleteCandidate.id}`);
       toast.success("Credential deleted");
       mutate();
     } catch {

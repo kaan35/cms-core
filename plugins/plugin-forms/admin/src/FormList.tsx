@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Skeleton,
   Table,
   TableBody,
@@ -34,7 +34,7 @@ export function FormList() {
     data: rawData,
     isLoading,
     mutate,
-  } = useApi<{ forms: FormListItem[] } | { data: FormListItem[] } | FormListItem[]>("/api/forms");
+  } = useApi<{ forms: FormListItem[] } | { data: FormListItem[] } | FormListItem[]>("/forms");
 
   const forms: FormListItem[] = React.useMemo(() => {
     if (Array.isArray(rawData)) return rawData;
@@ -57,7 +57,7 @@ export function FormList() {
     if (!deleteModal.target) return;
     setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
     try {
-      await apiClient(`/api/forms/${deleteModal.target.id}`, { method: "DELETE" });
+      await api.delete(`/forms/${deleteModal.target.id}`);
       toast.success(`Form "${deleteModal.target.title}" deleted`);
       setDeleteModal({ target: null, isDeleting: false });
       mutate();

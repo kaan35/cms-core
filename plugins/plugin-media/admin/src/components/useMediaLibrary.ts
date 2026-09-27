@@ -1,4 +1,4 @@
-import { apiClient, toast, useApi } from "@cms/admin-shell";
+import { api, toast, useApi } from "@cms/admin-shell";
 import * as React from "react";
 
 export interface MediaItem {
@@ -42,7 +42,7 @@ export function useMediaLibrary() {
         limit: number;
       }
     | MediaItem[]
-  >("/api/media?limit=100");
+  >("/media?limit=100");
 
   const mediaList: MediaItem[] = React.useMemo(() => {
     if (Array.isArray(rawData)) return rawData;
@@ -90,10 +90,7 @@ export function useMediaLibrary() {
       formData.append("file", file);
 
       try {
-        await apiClient<MediaItem>("/api/media", {
-          method: "POST",
-          body: formData,
-        });
+        await api.post<MediaItem>("/media", formData);
         successCount++;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Upload failed";
@@ -116,7 +113,7 @@ export function useMediaLibrary() {
     if (!deleteModal.target) return;
     setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
     try {
-      await apiClient(`/api/media/${deleteModal.target.id}`, { method: "DELETE" });
+      await api.delete(`/media/${deleteModal.target.id}`);
       toast.success("Media deleted successfully");
       if (previewItem?.id === deleteModal.target.id) setPreviewItem(null);
       setDeleteModal({ target: null, isDeleting: false });

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Badge,
   Button,
   Skeleton,
@@ -89,9 +89,7 @@ export function PluginManager() {
     data: rawData,
     isLoading,
     mutate,
-  } = useApi<{ plugins?: PluginApiItem[]; data?: PluginApiItem[] } | PluginApiItem[]>(
-    "/api/plugins",
-  );
+  } = useApi<{ plugins?: PluginApiItem[]; data?: PluginApiItem[] } | PluginApiItem[]>("/plugins");
 
   const rawList: PluginApiItem[] = Array.isArray(rawData)
     ? rawData
@@ -125,10 +123,7 @@ export function PluginManager() {
     if (isCore) return;
 
     try {
-      await apiClient(`/api/plugins/${pluginKey}`, {
-        method: "PUT",
-        body: { enabled: newChecked },
-      });
+      await api.put(`/plugins/${pluginKey}`, { enabled: newChecked });
       toast.success(`Plugin '${pluginLabel}' ${newChecked ? "enabled" : "disabled"}.`);
       mutate();
     } catch (err: unknown) {

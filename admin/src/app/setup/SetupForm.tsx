@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Flame, Lock, Mail, ShieldCheck, UserPlus } from "lucide-react";
-import { apiClient, Button, InputField, setCsrfToken, toast, useAuth } from "@cms/admin-shell";
+import { api, Button, InputField, setCsrfToken, toast, useAuth } from "@cms/admin-shell";
 
 export function SetupForm() {
   const { isAuthenticated, isLoading, mutate } = useAuth();
@@ -42,12 +42,9 @@ export function SetupForm() {
     setIsSubmitting(true);
 
     try {
-      const res = await apiClient<{ csrfToken?: string; user?: unknown }>("/api/auth/setup", {
-        method: "POST",
-        body: {
-          email: inputData.email.trim(),
-          password: inputData.password,
-        },
+      const res = await api.post<{ csrfToken?: string; user?: unknown }>("/auth/setup", {
+        email: inputData.email.trim(),
+        password: inputData.password,
       });
 
       if (res?.csrfToken) {

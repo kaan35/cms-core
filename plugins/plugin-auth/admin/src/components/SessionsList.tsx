@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Button,
   Skeleton,
   Table,
@@ -25,7 +25,7 @@ export function SessionsList() {
     data: rawData,
     isLoading,
     mutate,
-  } = useApi<{ sessions: SessionItem[] } | SessionItem[]>("/api/auth/sessions");
+  } = useApi<{ sessions: SessionItem[] } | SessionItem[]>("/auth/sessions");
 
   const [revokingId, setRevokingId] = React.useState<string | null>(null);
   const [sessionToRevoke, setSessionToRevoke] = React.useState<string | null>(null);
@@ -44,7 +44,7 @@ export function SessionsList() {
     setRevokingId(id);
     setSessionToRevoke(null);
     try {
-      await apiClient(`/api/auth/sessions/${id}`, { method: "DELETE" });
+      await api.delete(`/auth/sessions/${id}`);
       toast.success("Session terminated successfully!");
       mutate();
     } catch (err: unknown) {
@@ -58,7 +58,7 @@ export function SessionsList() {
   const handleConfirmRevokeAllOther = async () => {
     setIsRevokingAll(true);
     try {
-      await apiClient("/api/auth/sessions/revoke-others", { method: "POST" });
+      await api.post("/auth/sessions/revoke-others");
       toast.success("All other sessions terminated successfully!");
       setRevokeAllModalOpen(false);
       mutate();

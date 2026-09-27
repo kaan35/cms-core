@@ -23,12 +23,21 @@ export function resolveMediaUrl(mediaIdOrUrl?: string | null): string | null {
   const trimmed = mediaIdOrUrl.trim();
   if (!trimmed) return null;
 
+  const lower = trimmed.toLowerCase();
+  // XSS protection: block javascript:, vbscript:, and unsafe data URIs
+  if (lower.startsWith("javascript:") || lower.startsWith("vbscript:") || lower.startsWith("data:")) {
+    // Only permit safe raster images for data: URLs
+    if (/^data:image\/(png|jpeg|jpg|webp|gif|bmp|avif);base64,/i.test(trimmed)) {
+      return trimmed;
+    }
+    return null;
+  }
+
   // 1. If it's already an absolute or relative URL
   if (
     trimmed.startsWith("http://") ||
     trimmed.startsWith("https://") ||
-    trimmed.startsWith("/") ||
-    trimmed.startsWith("data:")
+    trimmed.startsWith("/")
   ) {
     return trimmed;
   }

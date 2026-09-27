@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Badge,
   Button,
   DialogDeleteConfirm,
@@ -44,11 +44,7 @@ export function UserList() {
     isDeleting: false,
   });
 
-  const {
-    data: rawData,
-    isLoading,
-    mutate,
-  } = useApi<{ data: UserItem[] } | UserItem[]>("/api/users");
+  const { data: rawData, isLoading, mutate } = useApi<{ data: UserItem[] } | UserItem[]>("/users");
 
   const rawObj = rawData as { data?: UserItem[]; users?: UserItem[]; items?: UserItem[] } | null;
   const users: UserItem[] = Array.isArray(rawData)
@@ -71,7 +67,7 @@ export function UserList() {
     if (!deleteModal.target) return;
     setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
     try {
-      await apiClient(`/api/users/${deleteModal.target.id}`, { method: "DELETE" });
+      await api.delete(`/users/${deleteModal.target.id}`);
       toast.success("User deleted successfully!");
       setDeleteModal({ target: null, isDeleting: false });
       mutate();

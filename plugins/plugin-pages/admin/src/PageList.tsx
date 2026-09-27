@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Skeleton,
   Table,
   TableBody,
@@ -51,7 +51,7 @@ export function PageList() {
         total: number;
       }
     | PageListItem[]
-  >("/api/pages");
+  >("/pages");
 
   const pages: PageListItem[] = React.useMemo(() => {
     if (Array.isArray(rawData)) return rawData;
@@ -74,7 +74,7 @@ export function PageList() {
     if (!deleteModal.target) return;
     setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
     try {
-      await apiClient(`/api/pages/${deleteModal.target.id}`, { method: "DELETE" });
+      await api.delete(`/pages/${deleteModal.target.id}`);
       toast.success(`Page "${deleteModal.target.title}" deleted`);
       setDeleteModal({ target: null, isDeleting: false });
       await mutate();

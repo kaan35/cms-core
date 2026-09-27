@@ -1,6 +1,6 @@
 "use client";
 
-import { apiClient, Button, InputField, toast, type AuthUser } from "@cms/admin-shell";
+import { api, Button, InputField, toast, type AuthUser } from "@cms/admin-shell";
 import { Key, Lock, Save } from "lucide-react";
 import * as React from "react";
 
@@ -37,11 +37,8 @@ export function PasswordCard({ user }: PasswordCardProps) {
 
     setIsSubmitting(true);
     try {
-      await apiClient(`/users/${user.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          password: inputData.newPassword,
-        }),
+      await api.put(`/users/${user.id}`, {
+        password: inputData.newPassword,
       });
       toast.success("Password updated successfully");
       setInputData({ newPassword: "", confirmPassword: "" });

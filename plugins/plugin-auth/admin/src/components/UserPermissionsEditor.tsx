@@ -1,6 +1,6 @@
 "use client";
 
-import { apiClient, Button, Skeleton, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
+import { api, Button, Skeleton, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
 import { ArrowLeft, Save, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -21,12 +21,12 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
     data: rawUserData,
     isLoading: isUserLoading,
     mutate: mutateUser,
-  } = useApi<UserDetailResponse>(isNew ? null : `/api/users/${userId}`);
+  } = useApi<UserDetailResponse>(isNew ? null : `/users/${userId}`);
 
   const { data: rawRolesData, isLoading: isRolesLoading } = useApi<
     | { roles: Array<{ id: string; name: string; permissions: string[] }> }
     | Array<{ id: string; name: string; permissions: string[] }>
-  >("/api/roles");
+  >("/roles");
 
   const rolesData = Array.isArray(rawRolesData)
     ? rawRolesData
@@ -117,15 +117,12 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
 
     try {
       if (isNew) {
-        await apiClient("/api/users", {
-          method: "POST",
-          body: {
-            email: inputData.email,
-            name: inputData.name || undefined,
-            password: inputData.password,
-            role: inputData.role,
-            permissions: inputData.permissions,
-          },
+        await api.post("/users", {
+          email: inputData.email,
+          name: inputData.name || undefined,
+          password: inputData.password,
+          role: inputData.role,
+          permissions: inputData.permissions,
         });
         toast.success("User created successfully!");
         router.push("/dashboard/users");
@@ -140,10 +137,7 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
           payload["password"] = inputData.password;
         }
 
-        await apiClient(`/api/users/${userId}`, {
-          method: "PUT",
-          body: payload,
-        });
+        await api.put(`/users/${userId}`, payload);
         toast.success("User updated successfully!");
         mutateUser();
       }

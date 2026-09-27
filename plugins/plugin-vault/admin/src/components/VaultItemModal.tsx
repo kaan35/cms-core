@@ -10,7 +10,7 @@ import {
   Input,
   Label,
   Textarea,
-  apiClient,
+  api,
   generateSecurePassword,
   toast,
   useSaveShortcut,
@@ -64,9 +64,8 @@ export function VaultItemModal({ open, onOpenChange, item, onSuccess }: VaultIte
 
   const handleGeneratePassword = async () => {
     try {
-      const res = await apiClient<{ password: string }>("/api/vault/generate-password", {
-        method: "POST",
-        body: JSON.stringify({ length: 18 }),
+      const res = await api.post<{ password: string }>("/vault/generate-password", {
+        length: 18,
       });
       if (res?.password) {
         setInputData((p) => ({ ...p, password: res.password }));
@@ -90,9 +89,7 @@ export function VaultItemModal({ open, onOpenChange, item, onSuccess }: VaultIte
     if (!inputData.password && item?.id) {
       setFormState((p) => ({ ...p, isRevealing: true }));
       try {
-        const res = await apiClient<{ password: string }>(`/api/vault/items/${item.id}/reveal`, {
-          method: "POST",
-        });
+        const res = await api.post<{ password: string }>(`/vault/items/${item.id}/reveal`);
         if (res?.password) {
           setInputData((p) => ({ ...p, password: res.password }));
           setFormState((p) => ({ ...p, showPassword: true }));
@@ -129,13 +126,10 @@ export function VaultItemModal({ open, onOpenChange, item, onSuccess }: VaultIte
       if (inputData.password) payload["password"] = inputData.password;
 
       if (item?.id) {
-        await apiClient(`/api/vault/items/${item.id}`, {
-          method: "PUT",
-          body: JSON.stringify(payload),
-        });
+        await api.put(`/vault/items/${item.id}`, payload);
         toast.success("Vault credential updated");
       } else {
-        await apiClient("/api/vault/items", { method: "POST", body: JSON.stringify(payload) });
+        await api.post("/vault/items", payload);
         toast.success("Vault credential saved");
       }
       onSuccess();

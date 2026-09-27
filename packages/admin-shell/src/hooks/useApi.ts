@@ -1,42 +1,58 @@
 "use client";
 
-import useSWR, { mutate, type SWRConfiguration, type SWRResponse } from "swr";
-import { apiClient, type RequestOptions } from "../lib/api-client";
+import useSWR, { mutate as swrMutate, type SWRConfiguration, type SWRResponse } from "swr";
+import { api, resolveRequestUrl, type RequestOptions } from "../lib/api-client";
+
+function normalizeKey(
+  key: string | null | (() => string | null),
+): string | null | (() => string | null) {
+  if (typeof key === "function") {
+    return () => {
+      const res = key();
+      return typeof res === "string" ? resolveRequestUrl(res).url : res;
+    };
+  }
+  if (typeof key === "string") {
+    return resolveRequestUrl(key).url;
+  }
+  return key;
+}
 
 /**
  * Global cache mutation and invalidation utility (SWR).
- *
- * Equivalent to TanStack Query's `queryClient.invalidateQueries`.
+ * Automatically normalizes endpoint paths (e.g. `/users` -> `/api/users`) so mutations match queries.
  *
  * @example
  * ```ts
  * import { mutate } from "@cms/admin-shell";
  *
- * // 1. Invalidate a single endpoint (exact key match)
- * mutate("/api/users");
+ * // 1. Invalidate a single endpoint (exact key match, automatically resolves prefix)
+ * mutate("/users");
  *
  * // 2. Invalidate all paginated or filtered queries under a path (prefix matcher)
- * mutate((key) => typeof key === "string" && key.startsWith("/api/users"));
- *
- * // 3. Optimistic update: instantly update cache without immediate network wait
- * mutate("/api/users", updatedUsersList, { revalidate: true });
+ * mutate((key) => typeof key === "string" && key.includes("/users"));
  * ```
  */
-export { mutate };
+export const mutate: typeof swrMutate = (key, data, opts) => {
+  if (typeof key === "string") {
+    return swrMutate(resolveRequestUrl(key).url, data, opts);
+  }
+  return swrMutate(key, data, opts);
+};
 
 /**
  * Standard data fetching hook with automated caching and SWR capabilities.
  *
- * @param url Target API endpoint (e.g. `/api/users`), null to skip fetching, or a conditional function.
+ * @param url Target API endpoint (e.g. `/users` or `/api/users`), null to skip fetching, or a conditional function.
  * @param options Optional fetch configuration (headers, credentials, timeout).
  * @param config SWR configuration overrides.
  *
  * @example
  * ```tsx
- * const { data, isLoading, error, mutate } = useApi<{ users: UserItem[] }>("/api/users");
+ * const { data, isLoading, error, mutate } = useApi<{ users: UserItem[] }>("/users");
  *
  * const handleSave = async () => {
- *   await apiClient("/api/users/1", { method: "PUT", body: { name: "Alice" } });
+ *   await api.put("/users/1", { name: "Alice" });
  *   // Revalidate the local query:
  *   mutate();
  * };
@@ -47,11 +63,13 @@ export function useApi<T = unknown>(
   options?: RequestOptions,
   config?: SWRConfiguration<T>,
 ): SWRResponse<T, Error> {
+  const normalizedKey = normalizeKey(url);
+
   const fetcher = async (targetUrl: string): Promise<T> => {
-    return apiClient<T>(targetUrl, options);
+    return api.get<T>(targetUrl, options);
   };
 
-  return useSWR<T, Error>(url, fetcher, {
+  return useSWR<T, Error>(normalizedKey, fetcher, {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
     ...config,

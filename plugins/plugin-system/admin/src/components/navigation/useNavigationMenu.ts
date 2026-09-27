@@ -1,4 +1,4 @@
-import { apiClient, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
+import { api, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
 import type { NavigationMenuItem } from "@cms/plugin-system-api";
 import * as React from "react";
 import {
@@ -13,13 +13,13 @@ import {
 export type { EffectiveMenuItem, PublishedPage, SettingsResponse };
 
 export function useNavigationMenu() {
-  const { data, isLoading, mutate } = useApi<SettingsResponse>("/api/settings");
+  const { data, isLoading, mutate } = useApi<SettingsResponse>("/settings");
   const settings = data?.settings;
 
   const { data: rawPages } = useApi<{
     data?: PublishedPage[];
     items?: PublishedPage[];
-  }>("/api/pages?status=published");
+  }>("/pages?status=published");
 
   const publishedPages = React.useMemo(() => {
     if (!rawPages) return [];
@@ -154,12 +154,9 @@ export function useNavigationMenu() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const updated = await apiClient<SettingsResponse>("/api/settings", {
-        method: "PUT",
-        body: {
-          headerMenu,
-          footerMenu,
-        },
+      const updated = await api.put<SettingsResponse>("/settings", {
+        headerMenu,
+        footerMenu,
       });
 
       await mutate(updated, false);

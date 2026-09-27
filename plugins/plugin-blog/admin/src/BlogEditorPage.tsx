@@ -1,6 +1,6 @@
 "use client";
 
-import { apiClient, Button, Skeleton, toast, useApi } from "@cms/admin-shell";
+import { api, Button, Skeleton, toast, useApi } from "@cms/admin-shell";
 import { ArrowLeft, Clock, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,7 +16,7 @@ export function BlogEditorPage({ id }: { id: string }) {
     data: fetchedPost,
     isLoading,
     mutate,
-  } = useApi<BlogPostDoc>(isNew ? null : `/api/blog/${id}`);
+  } = useApi<BlogPostDoc>(isNew ? null : `/blog/${id}`);
   const [restoredSnapshot, setRestoredSnapshot] = React.useState<BlogPostDoc | null>(null);
   const post = restoredSnapshot || fetchedPost || null;
 
@@ -42,17 +42,11 @@ export function BlogEditorPage({ id }: { id: string }) {
     setFormState({ isSubmitting: true });
     try {
       if (isNew) {
-        const created = await apiClient<BlogPostDoc>("/api/blog", {
-          method: "POST",
-          body: data,
-        });
+        const created = await api.post<BlogPostDoc>("/blog", data);
         toast.success("Blog post created successfully");
         router.push(`/dashboard/blog/${created.id}`);
       } else {
-        const updated = await apiClient<BlogPostDoc>(`/api/blog/${id}`, {
-          method: "PUT",
-          body: data,
-        });
+        const updated = await api.put<BlogPostDoc>(`/blog/${id}`, data);
         toast.success("Blog post updated successfully");
         setRestoredSnapshot(null);
         mutate(updated, false);

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Button,
   InputField,
   Skeleton,
@@ -32,7 +32,7 @@ export function RoleEditor({ id }: { id: string }) {
     data: rawData,
     isLoading,
     mutate,
-  } = useApi<{ role: RoleData } | RoleData>(isNew ? null : `/api/roles/${id}`);
+  } = useApi<{ role: RoleData } | RoleData>(isNew ? null : `/roles/${id}`);
 
   const role = rawData && ("role" in rawData ? rawData.role : rawData);
 
@@ -94,18 +94,12 @@ export function RoleEditor({ id }: { id: string }) {
     setFormState({ isSubmitting: true });
     try {
       if (isNew) {
-        await apiClient("/api/roles", {
-          method: "POST",
-          body: inputData,
-        });
+        await api.post("/roles", inputData);
         toast.success("Role template created successfully!");
         router.push("/dashboard/roles");
       } else {
         const targetId = role?.id || role?._id || id;
-        await apiClient(`/api/roles/${targetId}`, {
-          method: "PUT",
-          body: inputData,
-        });
+        await api.put(`/roles/${targetId}`, inputData);
         toast.success("Role template updated successfully!");
         mutate();
       }

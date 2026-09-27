@@ -1,3 +1,5 @@
+import { apiServer } from "./server-api";
+
 export interface SetupStatus {
   needsSetup: boolean;
   setupEnabled: boolean;
@@ -5,12 +7,9 @@ export interface SetupStatus {
 
 export async function getSetupStatusServer(): Promise<SetupStatus> {
   try {
-    const apiUrl = process.env.API_URL || "http://localhost:3001";
-    const res = await fetch(`${apiUrl}/auth/setup`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      return (await res.json()) as SetupStatus;
+    const res = await apiServer.get<SetupStatus>("/auth/setup");
+    if (res) {
+      return res;
     }
   } catch {
     // If backend is starting up or unreachable

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiClient, useApi, Button, Skeleton, toast } from "@cms/admin-shell";
+import { api, useApi, Button, Skeleton, toast } from "@cms/admin-shell";
 import { ArrowLeft, Save } from "lucide-react";
 import { FormBuilder, type FormDoc } from "./FormBuilder";
 
@@ -19,7 +19,7 @@ export function FormEditorPage({ id }: FormEditorPageProps) {
     data: rawData,
     isLoading,
     mutate,
-  } = useApi<{ form: FormDoc } | FormDoc>(isNew ? null : `/api/forms/${id}`);
+  } = useApi<{ form: FormDoc } | FormDoc>(isNew ? null : `/forms/${id}`);
 
   const form: FormDoc | null = React.useMemo(() => {
     if (!rawData) return null;
@@ -35,10 +35,7 @@ export function FormEditorPage({ id }: FormEditorPageProps) {
     setFormState({ isSubmitting: true });
     try {
       if (isNew) {
-        const res = await apiClient<{ form: FormDoc }>("/api/forms", {
-          method: "POST",
-          body: formData,
-        });
+        const res = await api.post<{ form: FormDoc }>("/forms", formData);
         toast.success("Form created successfully!");
         if (res?.form?.id) {
           router.push(`/dashboard/forms/${res.form.id}`);
@@ -46,10 +43,7 @@ export function FormEditorPage({ id }: FormEditorPageProps) {
           router.push("/dashboard/forms");
         }
       } else {
-        await apiClient(`/api/forms/${id}`, {
-          method: "PUT",
-          body: formData,
-        });
+        await api.put(`/forms/${id}`, formData);
         toast.success("Form definition updated successfully!");
         mutate();
       }

@@ -1,4 +1,4 @@
-import { apiClient, slugify, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
+import { api, slugify, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import type { PageBlock } from "./blockCatalog";
@@ -49,7 +49,7 @@ export function usePageEditor(id: string) {
   const router = useRouter();
   const isNew = id === "new";
 
-  const { data: pageDoc, isLoading, mutate } = useApi<PageDoc>(isNew ? null : `/api/pages/${id}`);
+  const { data: pageDoc, isLoading, mutate } = useApi<PageDoc>(isNew ? null : `/pages/${id}`);
 
   const [inputData, setInputData] = React.useState<PageEditorState>({
     title: "",
@@ -67,7 +67,7 @@ export function usePageEditor(id: string) {
 
   const shouldFetchVersions = isVersionsOpen && !isNew;
   const { data: rawVersions, isLoading: isLoadingVersions } = useApi<PageVersion[]>(
-    shouldFetchVersions ? `/api/pages/${id}/versions` : null,
+    shouldFetchVersions ? `/pages/${id}/versions` : null,
   );
   const versions = React.useMemo(() => {
     return Array.isArray(rawVersions) ? rawVersions : [];
@@ -156,17 +156,11 @@ export function usePageEditor(id: string) {
 
     try {
       if (isNew) {
-        const created = await apiClient<PageDoc>("/api/pages", {
-          method: "POST",
-          body: payload,
-        });
+        const created = await api.post<PageDoc>("/pages", payload);
         toast.success("Page created successfully");
         router.push(`/dashboard/pages/${created.id}`);
       } else {
-        const updated = await apiClient<PageDoc>(`/api/pages/${id}`, {
-          method: "PUT",
-          body: payload,
-        });
+        const updated = await api.put<PageDoc>(`/pages/${id}`, payload);
         toast.success("Page updated successfully");
         setInputData((prev) => ({ ...prev, version: updated.version }));
         mutate(updated, false);

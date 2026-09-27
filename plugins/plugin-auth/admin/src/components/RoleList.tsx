@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Badge,
   Button,
   DialogDeleteConfirm,
@@ -41,11 +41,7 @@ export function RoleList() {
     isDeleting: false,
   });
 
-  const {
-    data: rawData,
-    isLoading,
-    mutate,
-  } = useApi<{ roles: RoleItem[] } | RoleItem[]>("/api/roles");
+  const { data: rawData, isLoading, mutate } = useApi<{ roles: RoleItem[] } | RoleItem[]>("/roles");
 
   const rawObj = rawData as { roles?: RoleItem[]; data?: RoleItem[]; items?: RoleItem[] } | null;
   const roles: RoleItem[] = Array.isArray(rawData)
@@ -62,7 +58,7 @@ export function RoleList() {
     if (!deleteModal.target) return;
     setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
     try {
-      await apiClient(`/api/roles/${deleteModal.target.id}`, { method: "DELETE" });
+      await api.delete(`/roles/${deleteModal.target.id}`);
       toast.success("Role deleted successfully!");
       setDeleteModal({ target: null, isDeleting: false });
       mutate();

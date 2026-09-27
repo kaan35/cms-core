@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  apiClient,
+  api,
   Skeleton,
   Table,
   TableBody,
@@ -41,7 +41,7 @@ export function BlogPostList() {
         total: number;
       }
     | BlogPostListItem[]
-  >("/api/blog");
+  >("/blog");
 
   const posts: BlogPostListItem[] = React.useMemo(() => {
     if (Array.isArray(rawData)) return rawData;
@@ -66,7 +66,7 @@ export function BlogPostList() {
     if (!deleteModal.target) return;
     setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
     try {
-      await apiClient(`/api/blog/${deleteModal.target.id}`, { method: "DELETE" });
+      await api.delete(`/blog/${deleteModal.target.id}`);
       toast.success(`Post "${deleteModal.target.title}" deleted`);
       setDeleteModal({ target: null, isDeleting: false });
       mutate();
