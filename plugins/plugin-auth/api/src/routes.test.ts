@@ -498,4 +498,27 @@ describe("plugin-auth routes & workflows", () => {
 
     await app.close();
   });
+
+  it("enforces fail-closed boot when JWT_SECRET is missing or < 32 characters", async () => {
+    const originalEnv = process.env["JWT_SECRET"];
+    delete process.env["JWT_SECRET"];
+
+    try {
+      await assert.rejects(
+        async () => setupTestApp({ JWT_SECRET: "" }),
+        /JWT_SECRET is required and must be at least 32 characters long\. Boot failed\./,
+      );
+
+      await assert.rejects(
+        async () => setupTestApp({ JWT_SECRET: "short-secret" }),
+        /JWT_SECRET is required and must be at least 32 characters long\. Boot failed\./,
+      );
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env["JWT_SECRET"] = originalEnv;
+      } else {
+        delete process.env["JWT_SECRET"];
+      }
+    }
+  });
 });

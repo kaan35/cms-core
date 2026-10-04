@@ -19,7 +19,12 @@ export async function registerFormsPlugin(
   services: CoreServices,
 ): Promise<void> {
   const { db, logger, hooks, config } = services;
-  const captchaSecret = config?.getOrDefault("CAPTCHA_SECRET", "cms-challenge-secret-salt-2026");
+  const captchaSecret = config?.getOrDefault("CAPTCHA_SECRET", "") || "";
+  if (!captchaSecret || captchaSecret.length < 32) {
+    throw new Error(
+      "CAPTCHA_SECRET is required and must be at least 32 characters long. Boot failed.",
+    );
+  }
   const captchaMaxAgeMs = (config?.getInt("CAPTCHA_MAX_AGE_SECONDS", 600) ?? 600) * 1000;
 
   const repo = new FormsRepository(db);

@@ -13,7 +13,7 @@ async function buildTestApp() {
   const app = fastify();
   const db = createInMemoryDb();
   const repo = new FormsRepository(db);
-  const captchaRegistry = new CaptchaRegistry("test-secret");
+  const captchaRegistry = new CaptchaRegistry("test-captcha-secret-key-32-chars-minimum");
   const hooks = new HookManager();
   const service = new FormsService(repo, captchaRegistry, hooks, stubLogger);
   const controller = new FormsController(service);

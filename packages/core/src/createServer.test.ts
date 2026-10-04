@@ -34,7 +34,12 @@ const stubCache: ICache = {
   quit: async () => {},
 };
 
-const testEnv: Record<string, string> = { LOG_LEVEL: "error" };
+const testEnv: Record<string, string> = {
+  LOG_LEVEL: "error",
+  JWT_SECRET: "test-jwt-secret-key-at-least-32-chars-long",
+  VAULT_SECRET: "test-vault-secret-key-at-least-32-chars-long",
+  CAPTCHA_SECRET: "test-captcha-secret-key-at-least-32-chars-long",
+};
 
 describe("createServer", () => {
   it("returns 404 for unknown routes", async () => {

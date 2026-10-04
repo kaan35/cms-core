@@ -19,10 +19,14 @@ export async function registerVaultPlugin(
   const { db, logger, hooks, config } = services;
   const vaultSecret =
     config?.getOrDefault("VAULT_SECRET", "") ||
-    config?.getOrDefault("JWT_SECRET", "") ||
     process.env["VAULT_SECRET"] ||
-    process.env["JWT_SECRET"] ||
-    "cms-vault-default-key-32b-change!";
+    "";
+
+  if (!vaultSecret || vaultSecret.length < 32) {
+    throw new Error(
+      "VAULT_SECRET is required and must be at least 32 characters long. Boot failed.",
+    );
+  }
 
   const repo = new VaultRepository(db);
   const service = new VaultService(repo, hooks, logger, vaultSecret);

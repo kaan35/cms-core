@@ -139,6 +139,8 @@ async function setupTestApp() {
   const db = makeStubDb();
   const app = await createServer(db, stubCache, {
     JWT_SECRET: "test-secret-key-32-chars-long-min-len",
+    VAULT_SECRET: "test-vault-secret-key-32-chars-long-min-len",
+    CAPTCHA_SECRET: "test-captcha-secret-key-32-chars-long-min-len",
     SETUP_ENABLED: "true",
   });
 

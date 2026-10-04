@@ -48,6 +48,9 @@ export class SessionService implements ISessionService {
     sessionTtlHours = 24,
     slideThresholdMinutes = 15,
   ) {
+    if (!jwtSecret || typeof jwtSecret !== "string" || jwtSecret.length < 32) {
+      throw new Error("JWT_SECRET is required and must be at least 32 characters long");
+    }
     this.sessionsRepo = sessionsRepo;
     this.jwtSecret = jwtSecret;
     this.logger = logger;

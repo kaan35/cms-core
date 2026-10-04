@@ -2,7 +2,6 @@ import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import process from "node:process";
 import type { CaptchaVerifyResult, ICaptchaProvider } from "./captchaProvider.js";
 
-const DEFAULT_SECRET = process.env["CAPTCHA_SECRET"] || "cms-challenge-secret-salt-2026";
 const DEFAULT_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
 
 const SAFE_CHARS = "23456789abcdefghjkmnpqrstuvwxyz";
@@ -15,8 +14,11 @@ export interface ChallengeData {
 
 export function generateChallenge(
   challengeType: "alphanumeric" | "math" = "alphanumeric",
-  secret = DEFAULT_SECRET,
+  secret = process.env["CAPTCHA_SECRET"] || "",
 ): ChallengeData {
+  if (!secret || secret.length < 32) {
+    throw new Error("CAPTCHA_SECRET is required and must be at least 32 characters long");
+  }
   const timestamp = Date.now();
   let question: string;
   let answer: string;
@@ -66,10 +68,17 @@ export function generateChallenge(
 export function verifyChallenge(
   token: string,
   userAnswer: string,
-  secret = DEFAULT_SECRET,
+  secret = process.env["CAPTCHA_SECRET"] || "",
   maxAgeMs = DEFAULT_MAX_AGE_MS,
 ): boolean {
-  if (!token || !userAnswer || typeof token !== "string" || typeof userAnswer !== "string") {
+  if (
+    !token ||
+    !userAnswer ||
+    typeof token !== "string" ||
+    typeof userAnswer !== "string" ||
+    !secret ||
+    secret.length < 32
+  ) {
     return false;
   }
 
@@ -112,8 +121,12 @@ export class ChallengeCaptchaProvider implements ICaptchaProvider {
   private secret: string;
   private maxAgeMs: number;
 
-  constructor(secret = DEFAULT_SECRET, maxAgeMs = DEFAULT_MAX_AGE_MS) {
-    this.secret = secret;
+  constructor(secret?: string, maxAgeMs = DEFAULT_MAX_AGE_MS) {
+    const effectiveSecret = secret || process.env["CAPTCHA_SECRET"] || "";
+    if (!effectiveSecret || effectiveSecret.length < 32) {
+      throw new Error("CAPTCHA_SECRET is required and must be at least 32 characters long");
+    }
+    this.secret = effectiveSecret;
     this.maxAgeMs = maxAgeMs;
   }
 

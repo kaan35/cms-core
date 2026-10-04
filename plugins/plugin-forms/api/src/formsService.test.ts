@@ -8,11 +8,13 @@ import { FORMS_EVENTS } from "./domain/form.rules.js";
 import { FormsService } from "./formsService.js";
 import { FormsRepository } from "./repositories/formsRepository.js";
 
+const TEST_CAPTCHA_SECRET = "test-captcha-secret-key-32-chars-minimum";
+
 describe("FormsService", () => {
   it("submits form successfully with valid challenge captcha and emits form.submitted", async () => {
     const db = createInMemoryDb();
     const repo = new FormsRepository(db);
-    const registry = new CaptchaRegistry("test-secret");
+    const registry = new CaptchaRegistry(TEST_CAPTCHA_SECRET);
     const hooks = new HookManager();
     const service = new FormsService(repo, registry, hooks, stubLogger);
 
@@ -78,7 +80,7 @@ describe("FormsService", () => {
   it("fails when captcha answer is incorrect and runs before field validation", async () => {
     const db = createInMemoryDb();
     const repo = new FormsRepository(db);
-    const registry = new CaptchaRegistry("test-secret");
+    const registry = new CaptchaRegistry(TEST_CAPTCHA_SECRET);
     const hooks = new HookManager();
     const service = new FormsService(repo, registry, hooks, stubLogger);
 
@@ -88,7 +90,7 @@ describe("FormsService", () => {
       captchaProvider: "challenge",
     });
 
-    const challenge = generateChallenge("alphanumeric", "test-secret");
+    const challenge = generateChallenge("alphanumeric", TEST_CAPTCHA_SECRET);
 
     // Send incorrect captcha with invalid fields — captcha failure should be caught first
     await assert.rejects(
@@ -111,7 +113,7 @@ describe("FormsService", () => {
   it("skips captcha entirely when captchaProvider is 'none'", async () => {
     const db = createInMemoryDb();
     const repo = new FormsRepository(db);
-    const registry = new CaptchaRegistry("test-secret");
+    const registry = new CaptchaRegistry(TEST_CAPTCHA_SECRET);
     const hooks = new HookManager();
     const service = new FormsService(repo, registry, hooks, stubLogger);
 
@@ -137,7 +139,7 @@ describe("FormsService", () => {
   it("exports submissions in both xlsx and csv formats with proper headers and filenames", async () => {
     const db = createInMemoryDb();
     const repo = new FormsRepository(db);
-    const registry = new CaptchaRegistry("test-secret");
+    const registry = new CaptchaRegistry(TEST_CAPTCHA_SECRET);
     const hooks = new HookManager();
     const service = new FormsService(repo, registry, hooks, stubLogger);
 

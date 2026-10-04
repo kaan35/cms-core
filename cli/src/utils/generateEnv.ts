@@ -21,6 +21,7 @@ export function generateJwtSecret(): string {
 
 export function generateEnvContent(options: GenerateEnvOptions): string {
   const jwtSecret = generateJwtSecret();
+  const vaultSecret = generateJwtSecret();
   const cmsTag = options.cmsTag ?? "latest";
   const isDev = options.nodeEnv === "development";
   const nodeEnv = isDev ? "development" : "production";
@@ -61,6 +62,7 @@ CLIENT_TARGET=${clientTarget}
 
 # Cryptographic Keys & Session Security
 JWT_SECRET=${jwtSecret}
+VAULT_SECRET=${vaultSecret}
 SESSION_TTL_HOURS=168
 COOKIE_SECURE=${isDev ? "false" : "true"}
 COOKIE_PREFIX=${options.projectName.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}_

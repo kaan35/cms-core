@@ -31,15 +31,21 @@ export class VaultService {
     this.hooks = hooks;
     this.logger = logger;
     if (Buffer.isBuffer(secretKey)) {
+      if (secretKey.length === 0) {
+        throw new Error("VAULT_SECRET buffer must not be empty");
+      }
       this.encryptionKey = secretKey;
-    } else if (typeof secretKey === "string" && secretKey.length > 0) {
-      this.encryptionKey = deriveVaultKey(secretKey);
     } else {
-      const fallback =
-        process.env["VAULT_SECRET"] ||
-        process.env["JWT_SECRET"] ||
-        "cms-vault-default-key-32b-change!";
-      this.encryptionKey = deriveVaultKey(fallback);
+      const secret =
+        typeof secretKey === "string" && secretKey.length > 0
+          ? secretKey
+          : process.env["VAULT_SECRET"];
+      if (!secret || typeof secret !== "string" || secret.length < 32) {
+        throw new Error(
+          "VAULT_SECRET is required and must be at least 32 characters long",
+        );
+      }
+      this.encryptionKey = deriveVaultKey(secret);
     }
   }
 

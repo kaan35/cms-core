@@ -134,14 +134,18 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
       "sh -c 'mkdir -p backups && TS=$(date +%Y%m%d-%H%M%S) && docker compose exec -T mongo mongodump --archive > backups/backup-$TS.archive && cp backups/backup-$TS.archive backups/backup-latest.archive && echo \"✅ Backup saved: backups/backup-$TS.archive (and backups/backup-latest.archive)\"'",
     "db:restore":
       "sh -c 'docker compose exec -T mongo mongorestore --archive < backups/backup-latest.archive && echo \"✅ Database restored from backups/backup-latest.archive\"'",
-    "install:api": "docker compose exec api npm install || docker compose run --rm api npm install",
+    "deps:install:api": "docker compose exec api npm install",
+    "deps:install:admin": "docker compose exec admin npm install",
+    "deps:upgrade:api": "docker compose exec api npm up",
+    "deps:upgrade:admin": "docker compose exec admin npm up",
+    "deps:upgrade": "npm run deps:upgrade:api && npm run deps:upgrade:admin",
   };
 
   if (includeClient) {
     scripts["install:client"] = "npm --prefix client install";
-    scripts["install:deps"] = "npm run install:api && npm run install:client";
+    scripts["install:deps"] = "npm run deps:install:api && npm run deps:install:client";
   } else {
-    scripts["install:deps"] = "npm run install:api";
+    scripts["install:deps"] = "npm run deps:install:api";
   }
 
   const projectPkg = {

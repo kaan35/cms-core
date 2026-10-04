@@ -68,12 +68,20 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
     const rootPkg = JSON.parse(await fs.readFile(path.join(projectDir, "package.json"), "utf-8"));
     assert.equal(rootPkg.scripts.dev, "npm --prefix client run dev");
     assert.equal(rootPkg.scripts["docker:up"], "docker compose up -d");
+    assert.equal(rootPkg.scripts["deps:install:api"], "docker compose exec api npm install");
+    assert.equal(rootPkg.scripts["deps:install:admin"], "docker compose exec admin npm install");
+    assert.equal(rootPkg.scripts["deps:upgrade:api"], "docker compose exec api npm up");
+    assert.equal(rootPkg.scripts["deps:upgrade:admin"], "docker compose exec admin npm up");
     assert.equal(
-      rootPkg.scripts["install:api"],
-      "docker compose exec api npm install || docker compose run --rm api npm install",
+      rootPkg.scripts["deps:upgrade"],
+      "npm run deps:upgrade:api && npm run deps:upgrade:admin",
     );
     assert.equal(rootPkg.scripts["install:client"], "npm --prefix client install");
-    assert.equal(rootPkg.scripts["install:deps"], "npm run install:api && npm run install:client");
+    assert.equal(
+      rootPkg.scripts["install:deps"],
+      "npm run deps:install:api && npm run deps:install:client",
+    );
+    assert.equal(rootPkg.scripts["install:api"], undefined);
     assert.equal(rootPkg.scripts.install, undefined);
 
     // 5. client-template check
@@ -119,12 +127,17 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
 
     // package.json install script checks
     const rootPkg = JSON.parse(await fs.readFile(path.join(projectDir, "package.json"), "utf-8"));
+    assert.equal(rootPkg.scripts["deps:install:api"], "docker compose exec api npm install");
+    assert.equal(rootPkg.scripts["deps:install:admin"], "docker compose exec admin npm install");
+    assert.equal(rootPkg.scripts["deps:upgrade:api"], "docker compose exec api npm up");
+    assert.equal(rootPkg.scripts["deps:upgrade:admin"], "docker compose exec admin npm up");
     assert.equal(
-      rootPkg.scripts["install:api"],
-      "docker compose exec api npm install || docker compose run --rm api npm install",
+      rootPkg.scripts["deps:upgrade"],
+      "npm run deps:upgrade:api && npm run deps:upgrade:admin",
     );
     assert.equal(rootPkg.scripts["install:client"], undefined);
-    assert.equal(rootPkg.scripts["install:deps"], "npm run install:api");
+    assert.equal(rootPkg.scripts["install:deps"], "npm run deps:install:api");
+    assert.equal(rootPkg.scripts["install:api"], undefined);
     assert.equal(rootPkg.scripts.install, undefined);
   });
 

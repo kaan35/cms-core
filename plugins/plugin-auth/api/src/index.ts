@@ -83,10 +83,16 @@ export async function registerAuthPlugin(
   const rolesRepo = new RolesRepository(db);
   const sessionsRepo = new SessionsRepository(db);
 
-  const jwtSecret = config.getOrDefault(
-    "JWT_SECRET",
-    "cms-dev-jwt-secret-min-32-chars-long-please-change-in-prod",
-  );
+  const jwtSecret =
+    config.getOrDefault("JWT_SECRET", "") ||
+    process.env["JWT_SECRET"] ||
+    "";
+
+  if (!jwtSecret || jwtSecret.length < 32) {
+    throw new Error(
+      "JWT_SECRET is required and must be at least 32 characters long. Boot failed.",
+    );
+  }
   const isProduction = config.getOrDefault("NODE_ENV", "development") === "production";
   const saltRounds = config.getInt("BCRYPT_SALT_ROUNDS", 12);
   const passwordMinLength = config.getInt("PASSWORD_MIN_LENGTH", 8);
