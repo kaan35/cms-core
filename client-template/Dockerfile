@@ -1,14 +1,13 @@
-# 1. Base stage
-FROM node:26-alpine AS base
+# Stage 1: Dependencies
+FROM node:26 AS deps
 WORKDIR /app
 
-# 2. Dependencies
-FROM base AS deps
 COPY package*.json ./
 RUN npm install
 
-# 2.1 Dev stage (for development mode)
+# Stage 1.1: Development stage (optional target for local container dev)
 FROM deps AS dev
+WORKDIR /app
 ENV NODE_ENV=development
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
@@ -16,24 +15,26 @@ COPY . .
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
-# 3. Builder
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
+# Stage 2: Builder
+FROM deps AS builder
+WORKDIR /app
 COPY . .
 RUN npm run build
 
-# 4. Runner
-FROM base AS runner
+# Stage 3: Runner (Minimal production image ~150MB)
+FROM node:26-slim AS runner
+WORKDIR /app
+
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-WORKDIR /app
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
+USER node
+
+COPY --chown=node:node --from=builder /app/.next/standalone ./
+COPY --chown=node:node --from=builder /app/.next/static ./.next/static
+COPY --chown=node:node --from=builder /app/public ./public
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]

@@ -9,6 +9,8 @@ services:
       - "${MONGO_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-cms_dev}
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 5s
@@ -41,8 +43,9 @@ services:
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
-    env_file:
-      - .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 5s
@@ -88,8 +91,12 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    env_file:
-      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      API_URL: ${API_URL:-http://api:3001}
+      SITE_URL: ${SITE_URL:-http://localhost:3003}
+      PORT: 3002
+      NEXT_PUBLIC_COOKIE_PREFIX: ${NEXT_PUBLIC_COOKIE_PREFIX:-cms_}
     depends_on:
       api:
         condition: service_healthy
@@ -105,8 +112,12 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    env_file:
-      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      API_URL: ${API_URL:-http://api:3001}
+      SITE_URL: ${SITE_URL:-http://localhost:3003}
+      PORT: 3003
+      NEXT_PUBLIC_COOKIE_PREFIX: ${NEXT_PUBLIC_COOKIE_PREFIX:-cms_}
     depends_on:
       api:
         condition: service_healthy

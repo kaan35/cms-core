@@ -1,35 +1,35 @@
-# 1. Base stage
-FROM node:26 AS base
+# Stage 1: builder
+FROM node:26 AS builder
 WORKDIR /app
 
-# 2. Dependencies stage
-FROM base AS deps
 COPY package*.json ./
 COPY tsconfig*.json ./
 COPY packages/ ./packages/
 COPY plugins/ ./plugins/
 COPY api/package.json ./api/
+
 RUN npm install
 
-# 3. Builder stage
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN npm run build
+COPY api/ ./api/
 
-# 4. Runner stage
-FROM base AS runner
+RUN npm run build
+RUN npm prune --omit=dev
+
+# Stage 2: runner
+FROM node:26-slim AS runner
+WORKDIR /app
+
 ENV NODE_ENV=production
 ENV PORT=3001
 
-WORKDIR /app
+USER node
 
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/plugins ./plugins
-COPY --from=builder /app/api ./api
+COPY --chown=node:node --from=builder /app/package.json ./package.json
+COPY --chown=node:node --from=builder /app/node_modules ./node_modules
+COPY --chown=node:node --from=builder /app/packages ./packages
+COPY --chown=node:node --from=builder /app/plugins ./plugins
+COPY --chown=node:node --from=builder /app/api/dist ./dist
 
 EXPOSE 3001
 
-CMD ["npm", "run", "start", "--workspace=api"]
+CMD ["node", "dist/main.js"]

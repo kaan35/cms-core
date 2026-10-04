@@ -31,8 +31,8 @@ A modular, production-ready headless CMS and application platform built with **F
 | :------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------: |
 | ![Admin Dashboard](docs/images/dashboard-preview.png)<br><sub>System overview and activity metrics</sub> | ![Plugin Manager](docs/images/plugins-preview.png)<br><sub>Runtime plugin toggles and system status</sub> |
 
-|                                           Page Builder                                            |                                           Form Builder                                            |
-| :-----------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
+|                                           Page Builder                                            |                                                   Form Builder                                                   |
+| :-----------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------: |
 | ![Page Builder](docs/images/pages-preview.png)<br><sub>Visual block editor and page layouts</sub> | ![Form Builder](docs/images/forms-preview.png)<br><sub>Form schema designer, submissions, and Excel export</sub> |
 
 |                                                   Blog Posts                                                    |                                               Article Editor                                               |
@@ -166,6 +166,57 @@ npm run dev
 | **Setup Wizard** | [http://localhost:3002/setup](http://localhost:3002/setup) | Create initial Superadmin user        |
 | **REST API**     | [http://localhost:3001](http://localhost:3001)             | Fastify backend API                   |
 | **Swagger UI**   | [http://localhost:3001/docs](http://localhost:3001/docs)   | Interactive OpenAPI documentation     |
+
+---
+
+## 🐳 Docker: Development vs. Production Containers
+
+The platform supports two distinct Docker setups: **Hot-Reload Development** and **Ultra-Slim Multi-Stage Production**.
+
+### Architecture Comparison
+
+| Dimension              | Local Development (`Dockerfile.dev`)                   | Production Deployment (`Dockerfile`)                                    |
+| :--------------------- | :----------------------------------------------------- | :---------------------------------------------------------------------- |
+| **Base Image**         | `node:26` (Full Debian with compilers)                 | **Builder:** `node:26` / **Runner:** `node:26-slim` (Minimal glibc)     |
+| **Typical Image Size** | ~2.8 GB (includes `devDependencies`, compilers, `tsx`) | **~180 MB** (zero dev tooling, minimal standalone runtime)              |
+| **Execution Model**    | Live host volume bind-mounts (`.:/app`) & `tsx watch`  | Standalone compiled artifacts (`node dist/main.js`, Next.js standalone) |
+| **Security Profile**   | Development debugging user                             | **Enforced `USER node` (non-root)**, reduced CVE surface                |
+| **Target Audience**    | Local development, rapid iteration                     | Cloud deployment, Image registry                                        |
+
+### Development Workflow (Hot-Reload)
+
+By default, Docker Compose runs in development mode with live code reloading:
+
+```bash
+# Start all dev services with volume bind-mounts (Fastify API, Next.js Admin, Mongo, Redis, MinIO)
+npm run dev
+# Or: docker compose up -d
+
+# View real-time aggregated logs
+npm run logs
+# Or: docker compose logs -f
+
+# Stop containers
+npm run down
+# Or: docker compose down
+```
+
+### Production Multi-Stage Build & Deployment
+
+To build lightweight, standalone production images with zero development dependencies:
+
+```bash
+# Build all production images concurrently (~180MB each)
+npm run docker:build
+
+# Or build individual production images:
+npm run docker:build:api      # Produces ~180MB cms-api (node dist/main.js)
+npm run docker:build:admin    # Produces ~180MB Next.js standalone cms-admin
+npm run docker:build:client   # Produces standalone client image
+
+# Run full stack in production mode via Docker Compose:
+API_DOCKERFILE=api/Dockerfile ADMIN_DOCKERFILE=admin/Dockerfile docker compose up -d
+```
 
 ---
 

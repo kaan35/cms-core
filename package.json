@@ -27,7 +27,7 @@
     "docker:build:api": "docker build -t kaan/cms-api:${CMS_TAG:-latest} -f api/Dockerfile .",
     "docker:build:admin": "docker build -t kaan/cms-admin:${CMS_TAG:-latest} -f admin/Dockerfile .",
     "docker:build:client": "docker build -t kaan/cms-client:${CMS_TAG:-latest} -f client-template/Dockerfile client-template/",
-    "build": "tsc --build",
+    "build": "tsc --build && npm run build --workspace=api",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "node --import tsx/esm --test 'packages/**/*.test.ts' 'api/**/*.test.ts' 'plugins/**/*.test.ts' 'cli/**/*.test.ts'",
     "lint": "npm run lint --workspaces --if-present",
