@@ -8,7 +8,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=flat&logo=tailwindcss)](https://tailwindcss.com)
 [![Zod](https://img.shields.io/badge/Zod-v4-3E67B1?style=flat&logo=zod)](https://zod.dev)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/Tests-204%20Passing-success?style=flat&logo=node.js)](#-testing--code-quality)
+[![Tests](https://img.shields.io/badge/Tests-209%20Passing-success?style=flat&logo=node.js)](#-testing--code-quality)
 
 A modular, production-ready headless CMS and application platform built with **Fastify 5** and **Next.js 16 (React 19)**. Features are organized into self-contained plugins that can be enabled or disabled at runtime per project without modifying or forking core code.
 
@@ -33,7 +33,7 @@ A modular, production-ready headless CMS and application platform built with **F
 
 |                                           Page Builder                                            |                                           Form Builder                                            |
 | :-----------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------: |
-| ![Page Builder](docs/images/pages-preview.png)<br><sub>Visual block editor and page layouts</sub> | ![Form Builder](docs/images/forms-preview.png)<br><sub>Form schema designer and submissions</sub> |
+| ![Page Builder](docs/images/pages-preview.png)<br><sub>Visual block editor and page layouts</sub> | ![Form Builder](docs/images/forms-preview.png)<br><sub>Form schema designer, submissions, and Excel export</sub> |
 
 |                                                   Blog Posts                                                    |                                               Article Editor                                               |
 | :-------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------: |
@@ -74,7 +74,7 @@ cms/
 │   ├── plugin-pages/    ← Block-based page builder, version snapshots, 301 redirects
 │   ├── plugin-blog/     ← Articles, slugs, author attribution, SEO metadata
 │   ├── plugin-media/    ← S3/MinIO asset storage, MIME validation
-│   ├── plugin-forms/    ← Form builder, challenge captcha, submission inbox
+│   ├── plugin-forms/    ← Form builder, challenge captcha, submission inbox, Excel/CSV export
 │   └── plugin-vault/    ← AES-256-GCM encrypted password manager
 ├── cli/                 ← Project scaffolding CLI (cms new)
 └── projects/            ← Generated projects (gitignored)
@@ -98,6 +98,7 @@ cms/
 - **Client SDK (`@cms/client-sdk`):** Shared TypeScript contracts and fetchers guarantee end-to-end type safety between backend models and the Next.js frontend with zero code duplication.
 - **Type-Safe UI (CVA Pattern):** UI primitives in `@cms/admin-shell` use Class Variance Authority for consistent design tokens, keyboard accessibility, and full autocomplete.
 - **Hybrid SSR & Islands:** Next.js 16 Server Components handle static layout and SEO, while interactive elements (forms, captcha, modals) run as lightweight client islands with SWR cache revalidation.
+- **Zero-Dependency Native Data Export:** `plugin-forms` implements RFC 4180 CSV (with `\uFEFF` UTF-8 BOM for immediate Turkish character decoding in Excel) and ECMA-376 OpenXML (`.xlsx`) using Node.js built-in `node:zlib` without third-party spreadsheet libraries.
 
 ---
 
@@ -208,7 +209,7 @@ npm run db:restore
 ## 🧪 Testing & Code Quality
 
 ```bash
-# Run unit & integration tests
+# Run all automated tests across monorepo (200+ passing)
 npm test
 
 # Run TypeScript typechecks across all workspaces

@@ -95,10 +95,10 @@ export function FormList() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                <TableHead className="w-[40%]">Form Name & Slug</TableHead>
+                <TableHead className="w-[45%]">Form Name & Slug</TableHead>
                 <TableHead className="w-[15%]">Fields</TableHead>
-                <TableHead className="w-[20%]">Protection</TableHead>
-                <TableHead className="w-[25%] text-right">Actions</TableHead>
+                <TableHead className="w-[18%]">Protection</TableHead>
+                <TableHead className="w-[22%] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

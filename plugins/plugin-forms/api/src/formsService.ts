@@ -21,6 +21,13 @@ import {
   type FormSubmissionDoc,
 } from "./domain/form.rules.js";
 import type { FormsRepository } from "./repositories/formsRepository.js";
+import { generateCsv, generateXlsx } from "./utils/exportUtils.js";
+
+export interface ExportSubmissionsResult {
+  filename: string;
+  contentType: string;
+  data: Buffer | string;
+}
 
 export interface SubmitFormResult {
   success: boolean;
@@ -56,24 +63,41 @@ export class FormsService {
     return form;
   }
 
-  async getForm(id: string): Promise<FormDoc> {
+  async getForm(id: string): Promise<FormDoc & { submissionCount: number }> {
     const form = await this.repo.findById(id);
     if (!form) {
       throw new NotFoundError(`Form not found: ${id}`);
     }
-    return form;
+    const submissionCount = await this.repo.countSubmissions(form.id);
+    return {
+      ...form,
+      submissionCount,
+    };
   }
 
-  async getFormBySlug(slug: string): Promise<FormDoc> {
+  async getFormBySlug(slug: string): Promise<FormDoc & { submissionCount: number }> {
     const form = await this.repo.findBySlug(slug);
     if (!form) {
       throw new NotFoundError(`Form not found: ${slug}`);
     }
-    return form;
+    const submissionCount = await this.repo.countSubmissions(form.id);
+    return {
+      ...form,
+      submissionCount,
+    };
   }
 
-  async listForms(): Promise<FormDoc[]> {
-    return this.repo.list();
+  async listForms(): Promise<(FormDoc & { submissionCount: number })[]> {
+    const forms = await this.repo.list();
+    return Promise.all(
+      forms.map(async (form) => {
+        const submissionCount = await this.repo.countSubmissions(form.id);
+        return {
+          ...form,
+          submissionCount,
+        };
+      }),
+    );
   }
 
   async updateForm(id: string, input: unknown): Promise<FormDoc> {
@@ -176,5 +200,52 @@ export class FormsService {
     await this.getForm(formId);
     const { page, limit } = parsePaginationQuery(query);
     return this.repo.listSubmissions(formId, page, limit);
+  }
+
+  async exportSubmissions(
+    formId: string,
+    format: "csv" | "xlsx" = "xlsx",
+  ): Promise<ExportSubmissionsResult> {
+    const form = await this.getForm(formId);
+    const submissions = await this.repo.getAllSubmissions(formId);
+
+    // Determine headers from defined form fields + audit metadata
+    const fieldDefs = form.fields.map((f) => ({
+      key: f.name,
+      label: f.label && f.label.trim().length > 0 ? f.label : f.name,
+    }));
+
+    const headers = [
+      ...fieldDefs.map((f) => f.label),
+      "Submitted At",
+      "IP Address",
+      "User Agent",
+      "Submission ID",
+    ];
+
+    const rows = submissions.map((sub) => [
+      ...fieldDefs.map((f) => sub.data?.[f.key] ?? ""),
+      sub.createdAt,
+      sub.ip ?? "",
+      sub.userAgent ?? "",
+      sub.id,
+    ]);
+
+    const dateSlug = new Date().toISOString().slice(0, 10);
+    const safeSlug = (form.slug || form.id).toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+
+    if (format === "csv") {
+      return {
+        filename: `${safeSlug}-submissions-${dateSlug}.csv`,
+        contentType: "text/csv; charset=utf-8",
+        data: generateCsv(headers, rows),
+      };
+    }
+
+    return {
+      filename: `${safeSlug}-submissions-${dateSlug}.xlsx`,
+      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      data: generateXlsx(headers, rows),
+    };
   }
 }

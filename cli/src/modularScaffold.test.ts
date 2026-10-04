@@ -1,9 +1,9 @@
-import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createNewProject } from "./newProject.js";
+import { after, before, describe, test } from "node:test";
 import { runCli } from "./index.js";
+import { createNewProject } from "./newProject.js";
 
 const BASE_TEST_DIR = path.resolve(process.cwd(), "scratch/test-modular-sandbox");
 

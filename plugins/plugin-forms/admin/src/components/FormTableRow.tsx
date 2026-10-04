@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, TableCell, TableRow } from "@cms/admin-shell";
+import { Badge, Button, cn, TableCell, TableRow } from "@cms/admin-shell";
 import { ClipboardList, Inbox, Pencil, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { FormListItem } from "./formTypes";
@@ -11,6 +11,8 @@ interface FormTableRowProps {
 }
 
 export function FormTableRow({ form, onDeleteClick }: FormTableRowProps) {
+  const count = form.submissionCount ?? 0;
+
   return (
     <TableRow className="text-xs hover:bg-muted/30 transition-colors">
       <TableCell>
@@ -62,8 +64,27 @@ export function FormTableRow({ form, onDeleteClick }: FormTableRowProps) {
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1.5">
           <Link href={`/dashboard/forms/${form.id}/submissions`}>
-            <Button variant="outline" iconStart={<Inbox />}>
-              Submissions
+            <Button
+              variant="outline"
+              size="sm"
+              iconStart={
+                <Inbox
+                  className={cn("size-3.5", count > 0 ? "text-primary" : "text-muted-foreground")}
+                />
+              }
+              className={cn("transition-all", count > 0 && "hover:border-primary/40")}
+            >
+              <span>Submissions</span>
+              <span
+                className={cn(
+                  "ml-1 inline-flex items-center justify-center rounded-full px-2 py-0.2 text-[10px] font-mono font-semibold border",
+                  count > 0
+                    ? "bg-primary/15 text-primary border-primary/30"
+                    : "bg-muted text-muted-foreground border-border",
+                )}
+              >
+                {count}
+              </span>
             </Button>
           </Link>
           <Link href={`/dashboard/forms/${form.id}`}>

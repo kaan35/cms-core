@@ -36,7 +36,7 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
     controller.submit.bind(controller),
   );
 
-  // 2. Submission Listing (Protected — forms:read)
+  // 2. Submission Listing & Export (Protected — forms:read)
   app.get(
     "/forms/:formId/submissions",
     {
@@ -48,6 +48,19 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
       preHandler: [authenticate, checkPermission(FORMS_PERMISSIONS.READ)],
     },
     controller.listSubmissions.bind(controller),
+  );
+
+  app.get(
+    "/forms/:formId/submissions/export",
+    {
+      schema: {
+        tags: ["Forms"],
+        summary: "Export form submissions as CSV or Excel (Admin)",
+        security: [{ cookieAuth: [] }],
+      },
+      preHandler: [authenticate, checkPermission(FORMS_PERMISSIONS.READ)],
+    },
+    controller.exportSubmissions.bind(controller),
   );
 
   // 3. Form Definition (Public — required for website client embeds)

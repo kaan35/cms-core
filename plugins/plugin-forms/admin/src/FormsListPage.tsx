@@ -1,7 +1,7 @@
 "use client";
 
 import { PageHeader, StatCard, useApi } from "@cms/admin-shell";
-import { ClipboardList, ListChecks, ShieldCheck } from "lucide-react";
+import { ClipboardList, Inbox, ListChecks, ShieldCheck } from "lucide-react";
 import * as React from "react";
 import { FormList, type FormListItem } from "./FormList";
 
@@ -16,6 +16,10 @@ export function FormsListPage() {
     if (rawData && "data" in rawData && Array.isArray(rawData.data)) return rawData.data;
     return [];
   }, [rawData]);
+
+  const totalSubmissions = React.useMemo(() => {
+    return forms.reduce((acc, f) => acc + (f.submissionCount || 0), 0);
+  }, [forms]);
 
   const protectedCount = React.useMemo(() => {
     return forms.filter((f) => f.captchaProvider === "challenge").length;
@@ -32,12 +36,18 @@ export function FormsListPage() {
         description="Build custom input forms, configure captcha challenge protection, and review submissions."
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Forms"
           value={forms.length}
           description="Active form definitions"
           icon={ClipboardList}
+        />
+        <StatCard
+          title="Total Submissions"
+          value={totalSubmissions}
+          description="Received form responses"
+          icon={Inbox}
         />
         <StatCard
           title="Protected Forms"

@@ -133,4 +133,49 @@ describe("FormsService", () => {
     const list = await service.listSubmissions(form.id, {});
     assert.equal(list.meta.total, 1);
   });
+
+  it("exports submissions in both xlsx and csv formats with proper headers and filenames", async () => {
+    const db = createInMemoryDb();
+    const repo = new FormsRepository(db);
+    const registry = new CaptchaRegistry("test-secret");
+    const hooks = new HookManager();
+    const service = new FormsService(repo, registry, hooks, stubLogger);
+
+    const form = await service.createForm({
+      title: "Contact Support",
+      slug: "contact-support",
+      fields: [
+        { name: "fullname", label: "Full Name", type: "text", required: true },
+        { name: "department", label: "Department", type: "text", required: false },
+      ],
+      captchaProvider: "none",
+    });
+
+    await service.submitForm(
+      form.id,
+      { fullname: "Ayşe Yılmaz", department: "Destek" },
+      { ip: "192.168.1.1", userAgent: "Mozilla/5.0" },
+    );
+
+    // Test Excel export
+    const xlsxResult = await service.exportSubmissions(form.id, "xlsx");
+    assert.ok(xlsxResult.filename.startsWith("contact-support-submissions-"));
+    assert.ok(xlsxResult.filename.endsWith(".xlsx"));
+    assert.equal(
+      xlsxResult.contentType,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    assert.ok(Buffer.isBuffer(xlsxResult.data));
+    assert.equal((xlsxResult.data as Buffer).readUInt32LE(0), 0x04034b50);
+
+    // Test CSV export
+    const csvResult = await service.exportSubmissions(form.id, "csv");
+    assert.ok(csvResult.filename.startsWith("contact-support-submissions-"));
+    assert.ok(csvResult.filename.endsWith(".csv"));
+    assert.equal(csvResult.contentType, "text/csv; charset=utf-8");
+    assert.ok(typeof csvResult.data === "string");
+    assert.ok(csvResult.data.startsWith("\uFEFF"));
+    assert.ok(csvResult.data.includes("Full Name"));
+    assert.ok(csvResult.data.includes("Ayşe Yılmaz"));
+  });
 });

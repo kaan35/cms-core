@@ -56,4 +56,16 @@ export class FormsController {
     const result = await this.service.listSubmissions(formId, request.query);
     return reply.status(200).send(result);
   }
+
+  async exportSubmissions(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { formId } = request.params as { formId: string };
+    const { format } = (request.query as { format?: "csv" | "xlsx" }) ?? {};
+    const result = await this.service.exportSubmissions(formId, format);
+
+    return reply
+      .header("Content-Type", result.contentType)
+      .header("Content-Disposition", `attachment; filename="${result.filename}"`)
+      .status(200)
+      .send(result.data);
+  }
 }

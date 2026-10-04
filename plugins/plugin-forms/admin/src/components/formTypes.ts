@@ -8,6 +8,7 @@ export interface FormListItem {
   challengeType: "alphanumeric" | "math";
   submitButtonText: string;
   successMessage: string;
+  submissionCount?: number | undefined;
   createdAt: string;
   updatedAt: string;
 }

@@ -143,4 +143,18 @@ export class FormsRepository {
 
     return buildPaginatedResult(items, total, page, limit);
   }
+
+  async getAllSubmissions(formId: string): Promise<FormSubmissionDoc[]> {
+    return this.submissionsCol.find(
+      { formId },
+      {
+        sort: { createdAt: -1 },
+      },
+    );
+  }
+
+  async countSubmissions(formId?: string): Promise<number> {
+    const filter = formId ? { formId } : {};
+    return this.submissionsCol.countDocuments(filter);
+  }
 }

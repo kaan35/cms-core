@@ -119,7 +119,47 @@ describe("plugin-forms routes & workflows", () => {
     assert.equal(submissions.data[0].data["name"], "Alice Smith");
     assert.equal(submissions.data[0].data["email"], "alice@example.com");
 
-    // 6. Public cannot list submissions -> 401 Unauthorized
+    // 6. Admin exports submissions as Excel (.xlsx)
+    const exportXlsxRes = await app.inject({
+      method: "GET",
+      url: `/forms/${form.id}/submissions/export?format=xlsx`,
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "forms:read",
+      },
+    });
+    assert.equal(exportXlsxRes.statusCode, 200);
+    assert.equal(
+      exportXlsxRes.headers["content-type"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    assert.ok(exportXlsxRes.headers["content-disposition"]?.includes("contact-form-submissions-"));
+    // Buffer starts with PK signature
+    assert.equal(exportXlsxRes.rawPayload.readUInt32LE(0), 0x04034b50);
+
+    // 7. Admin exports submissions as CSV (.csv)
+    const exportCsvRes = await app.inject({
+      method: "GET",
+      url: `/forms/${form.id}/submissions/export?format=csv`,
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "forms:read",
+      },
+    });
+    assert.equal(exportCsvRes.statusCode, 200);
+    assert.equal(exportCsvRes.headers["content-type"], "text/csv; charset=utf-8");
+    assert.ok(exportCsvRes.body.startsWith("\uFEFF"));
+    assert.ok(exportCsvRes.body.includes("Alice Smith"));
+    assert.ok(exportCsvRes.body.includes("alice@example.com"));
+
+    // 8. Public cannot export submissions -> 401 Unauthorized
+    const publicExportRes = await app.inject({
+      method: "GET",
+      url: `/forms/${form.id}/submissions/export`,
+    });
+    assert.equal(publicExportRes.statusCode, 401);
+
+    // 9. Public cannot list submissions -> 401 Unauthorized
     const publicListRes = await app.inject({
       method: "GET",
       url: `/forms/${form.id}/submissions`,
