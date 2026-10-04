@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
 import { runCli } from "./index.js";
 import { createNewProject } from "./newProject.js";
 
-const BASE_TEST_DIR = path.resolve(process.cwd(), "scratch/test-modular-sandbox");
+const BASE_TEST_DIR = path.resolve(os.tmpdir(), "cms-modular-test-sandbox");
 
 describe("Modular Scaffolding & Plugin Profiles", { concurrency: 1 }, () => {
   before(async () => {

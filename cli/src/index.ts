@@ -2,8 +2,8 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { createNewProject } from "./newProject.js";
 import { upgradeProject } from "./upgradeProject.js";
-import { CURRENT_CMS_VERSION } from "./utils/pinnedVersions.js";
 import { printHelp } from "./utils/help.js";
+import { CURRENT_CMS_VERSION } from "./utils/pinnedVersions.js";
 import { promptNewProject } from "./utils/prompt.js";
 
 export { createNewProject, upgradeProject };
@@ -155,7 +155,8 @@ export async function runCli(args: string[]): Promise<void> {
       }
       console.log(`\nTo get started:`);
       const relPath = path.relative(process.cwd(), result.projectDir);
-      console.log(`  cd ${relPath}`);
+      const cdPath = relPath.startsWith("..") ? result.projectDir : relPath;
+      console.log(`  cd ${cdPath}`);
       if (result.nodeEnv === "development" && result.includeClient) {
         console.log(`  docker compose up -d api admin  # Start Core CMS & Database`);
         console.log(`  npm run dev                     # Start Client Site with hot-reload`);

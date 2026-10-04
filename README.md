@@ -137,7 +137,7 @@ The Next.js 16 public site features a modular, block-based page rendering engine
 
 ### Prerequisites
 
-- **Node.js:** `>= 22.0.0 LTS` (tested on Node.js 26)
+- **Node.js:** `>= 26.0.0 LTS`
 - **Docker & Docker Compose:** `>= 24.0`
 - **npm:** `>= 10.0`
 

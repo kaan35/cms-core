@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
 import { runCli } from "./index.js";
 import { createNewProject } from "./newProject.js";
 import { upgradeProject } from "./upgradeProject.js";
 
-const BASE_TEST_DIR = path.resolve(process.cwd(), "scratch/test-cli-sandbox");
+const BASE_TEST_DIR = path.resolve(os.tmpdir(), "cms-cli-test-sandbox");
 
 describe("CMS CLI Engine", { concurrency: 1 }, () => {
   before(async () => {
@@ -50,7 +51,10 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
     // Verify container environment isolation (Rule 10 & AppSec)
     const envFileOccurrences = composeContent.match(/env_file:\s*\.env/g) ?? [];
     assert.equal(envFileOccurrences.length, 1, "Only api service should declare env_file: .env");
-    assert.ok(composeContent.includes("API_URL=http://api:3001"), "Admin/client should receive API_URL via environment");
+    assert.ok(
+      composeContent.includes("API_URL=http://api:3001"),
+      "Admin/client should receive API_URL via environment",
+    );
 
     // 2. .env check
     const envContent = await fs.readFile(path.join(projectDir, ".env"), "utf-8");
@@ -124,7 +128,10 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
     // Verify container isolation in custom-app shape (Rule 10 & AppSec)
     const envFileOccurrences = composeContent.match(/env_file:\s*\.env/g) ?? [];
     assert.equal(envFileOccurrences.length, 1, "Only api service should declare env_file: .env");
-    assert.ok(composeContent.includes("API_URL=http://api:3001"), "Admin service should receive API_URL via environment");
+    assert.ok(
+      composeContent.includes("API_URL=http://api:3001"),
+      "Admin service should receive API_URL via environment",
+    );
 
     // client directory should NOT exist
     await assert.rejects(async () => {
