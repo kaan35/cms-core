@@ -41,9 +41,7 @@ export class VaultService {
           ? secretKey
           : process.env["VAULT_SECRET"];
       if (!secret || typeof secret !== "string" || secret.length < 32) {
-        throw new Error(
-          "VAULT_SECRET is required and must be at least 32 characters long",
-        );
+        throw new Error("VAULT_SECRET is required and must be at least 32 characters long");
       }
       this.encryptionKey = deriveVaultKey(secret);
     }

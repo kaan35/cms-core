@@ -1,3 +1,4 @@
+import type { CoreServices } from "@cms/core";
 import { ConfigService, HookManager, stubLogger } from "@cms/core";
 import { createInMemoryDb } from "@cms/db";
 import Fastify from "fastify";
@@ -153,7 +154,7 @@ describe("Vault Plugin API", () => {
       logger: stubLogger,
       hooks,
       config: emptyConfig,
-    } as any;
+    } as unknown as CoreServices;
 
     const originalEnv = process.env["VAULT_SECRET"];
     delete process.env["VAULT_SECRET"];
@@ -173,7 +174,7 @@ describe("Vault Plugin API", () => {
         logger: stubLogger,
         hooks,
         config: validConfig,
-      } as any;
+      } as unknown as CoreServices;
 
       await registerVaultPlugin(app, validServices);
     } finally {

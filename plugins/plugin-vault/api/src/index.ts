@@ -17,10 +17,7 @@ export async function registerVaultPlugin(
   services: CoreServices,
 ): Promise<void> {
   const { db, logger, hooks, config } = services;
-  const vaultSecret =
-    config?.getOrDefault("VAULT_SECRET", "") ||
-    process.env["VAULT_SECRET"] ||
-    "";
+  const vaultSecret = config?.getOrDefault("VAULT_SECRET", "") || process.env["VAULT_SECRET"] || "";
 
   if (!vaultSecret || vaultSecret.length < 32) {
     throw new Error(

@@ -1,7 +1,9 @@
-import type { HookManager, ICollection, IDatabase } from "@cms/core";
+import type { HookManager, ICollection, IDatabase, PluginManifestEntry } from "@cms/core";
 import { createServer } from "@cms/core";
+import { initAuthMigration, registerAuthPlugin } from "@cms/plugin-auth-api";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { initSystemMigration, registerSystemPlugin } from "./index.js";
 
 function makeStubDb(): IDatabase {
   const collections = new Map<string, Map<string, Record<string, unknown>>>();
@@ -137,12 +139,31 @@ const stubCache = {
 
 async function setupTestApp() {
   const db = makeStubDb();
-  const app = await createServer(db, stubCache, {
-    JWT_SECRET: "test-secret-key-32-chars-long-min-len",
-    VAULT_SECRET: "test-vault-secret-key-32-chars-long-min-len",
-    CAPTCHA_SECRET: "test-captcha-secret-key-32-chars-long-min-len",
-    SETUP_ENABLED: "true",
-  });
+  const testManifest: PluginManifestEntry[] = [
+    {
+      name: "plugin-auth",
+      priority: 0,
+      migrations: [initAuthMigration],
+      register: registerAuthPlugin,
+    },
+    {
+      name: "plugin-system",
+      priority: 5,
+      migrations: [initSystemMigration],
+      register: registerSystemPlugin,
+    },
+  ];
+  const app = await createServer(
+    db,
+    stubCache,
+    {
+      JWT_SECRET: "test-secret-key-32-chars-long-min-len",
+      VAULT_SECRET: "test-vault-secret-key-32-chars-long-min-len",
+      CAPTCHA_SECRET: "test-captcha-secret-key-32-chars-long-min-len",
+      SETUP_ENABLED: "true",
+    },
+    testManifest,
+  );
 
   // Setup initial admin account
   const setupRes = await app.inject({

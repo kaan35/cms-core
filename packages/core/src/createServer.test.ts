@@ -205,7 +205,21 @@ describe("createServer", () => {
       warn: () => {},
       error: () => {},
     };
-    const resolved = await resolvePluginManifest(undefined, testLogger);
+    const sampleManifest = [
+      {
+        name: "plugin-auth",
+        priority: 0,
+        migrations: [],
+        register: async () => {},
+      },
+      {
+        name: "plugin-system",
+        priority: 5,
+        migrations: [],
+        register: async () => {},
+      },
+    ];
+    const resolved = await resolvePluginManifest(sampleManifest, testLogger);
     assert.ok(resolved.length >= 2);
     assert.ok(debugLogs.some((l) => l.includes("Resolving available plugin manifests")));
 
