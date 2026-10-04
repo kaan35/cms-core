@@ -1,234 +1,94 @@
-// --- Settings & Common ---
-export interface SettingsDoc {
-  adminTitle?: string;
-  siteTitle?: string;
-  siteDescription?: string;
-  defaultTheme?: "dark" | "light" | "system";
-  brandColor?: string;
-  primaryColor?: string;
-  brandFont?: string;
-  fontFamily?: string;
-  footerText?: string;
-  headerMenu?: Array<{
-    id: string;
-    label: string;
-    url: string;
-    type: "page" | "custom" | "blog";
-    pageId?: string;
-    customLabel?: boolean;
-    external?: boolean;
-    style?: "link" | "button";
-    badge?: string;
-    icon?: string;
-  }>;
-  footerMenu?: Array<{
-    id: string;
-    label: string;
-    url: string;
-    type: "page" | "custom" | "blog";
-    pageId?: string;
-    customLabel?: boolean;
-    external?: boolean;
-  }>;
-}
-
-export interface PaginatedResult<T> {
-  data: T[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-export interface CaptchaChallenge {
-  token: string;
-  num1: number;
-  num2: number;
-  operation: string;
-  prompt: string;
-}
+// --- Core Types ---
+export type { PaginatedResult } from "@cms/core";
 
 // --- Page & Block Types ---
-export interface HeroBlock {
-  type: "hero";
-  title: string;
-  subtitle?: string;
-  mediaId?: string;
-  mediaLayout?: "background" | "featured" | "banner";
-  primaryCta?: { label?: string; url?: string };
-  secondaryCta?: { label?: string; url?: string };
-}
-
-export interface GalleryBlock {
-  type: "gallery";
-  title?: string;
-  images: Array<{ mediaId: string; caption?: string }>;
-  layout?: "grid" | "masonry";
-}
-
-export interface BentoGridBlock {
-  type: "bento_grid";
-  title?: string;
-  subtitle?: string;
-  columns?: "2" | "3" | "4" | number;
-  cards: Array<{
-    icon?: string;
-    title: string;
-    description: string;
-    badge?: string;
-    size?: string;
-  }>;
-}
-
-export interface CodeShowcaseBlock {
-  type: "code_showcase";
-  tabs: Array<{ label: string; language: string; code: string }>;
-}
-
-export interface InteractiveDemoBlock {
-  type: "interactive_demo";
-  widgetType: string;
-  title?: string;
-  description?: string;
-  badge?: string;
-}
-
-export interface TextBlock {
-  type: "text";
-  content: string;
-}
-
-export interface FormBlock {
-  type: "form";
-  formId: string;
-}
-
-export interface BlogPostsBlock {
-  type: "blog_posts";
-  title?: string;
-  subtitle?: string;
-  badge?: string;
-  viewAllLabel?: string;
-  viewAllUrl?: string;
-  readMoreLabel?: string;
-  limit?: number;
-  layout?: "grid" | "list";
-}
-
-export type PageBlock =
-  | HeroBlock
-  | GalleryBlock
-  | BentoGridBlock
-  | CodeShowcaseBlock
-  | InteractiveDemoBlock
-  | TextBlock
-  | FormBlock
-  | BlogPostsBlock;
-
-export type ContentBlock = PageBlock;
-
-export type PageStatus = "draft" | "published";
-export type PageType = "standard" | "home";
-
-export interface PageDoc {
-  [key: string]: unknown;
-  id: string;
-  title: string;
-  slug: string;
-  status: PageStatus;
-  pageType?: PageType;
-  blocks: PageBlock[];
-  metaTitle?: string | undefined;
-  metaDescription?: string | undefined;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type {
+  BentoGridBlock,
+  BlogPostsBlock,
+  CodeShowcaseBlock,
+  CreatePageInput,
+  FormBlock,
+  GalleryBlock,
+  HeroBlock,
+  InteractiveDemoBlock,
+  PageBlock,
+  PageDoc,
+  PageStatus,
+  PageType,
+  PageVersionDoc,
+  TextBlock,
+  UpdatePageInput,
+} from "@cms/plugin-pages-api";
+export type ContentBlock = import("@cms/plugin-pages-api").PageBlock;
 
 // --- Blog Types ---
-export type BlogPostStatus = "draft" | "published";
-
-export interface BlogPostDoc {
-  [key: string]: unknown;
-  id: string;
-  title: string;
-  slug: string;
-  summary: string;
-  content: string;
-  coverMediaId?: string | undefined;
-  status: BlogPostStatus;
-  version: number;
-  metaTitle?: string | undefined;
-  metaDescription?: string | undefined;
-  createdAt: string;
-  updatedAt: string;
-}
+export type {
+  BlogPostDoc,
+  BlogPostStatus,
+  BlogPostVersionDoc,
+  CreateBlogPostInput,
+  UpdateBlogPostInput,
+} from "@cms/plugin-blog-api";
 
 // --- Forms Types ---
-export type FormFieldType = "text" | "email" | "textarea" | "number" | "select" | "checkbox";
-
-export interface FormField {
-  name: string;
-  label: string;
-  type: FormFieldType;
-  required?: boolean;
-  placeholder?: string;
-  options?: string[];
-}
-
-export interface FormDoc {
-  id: string;
-  title: string;
-  slug: string;
-  description?: string | undefined;
-  fields: FormField[];
-  captchaProvider?: "none" | "challenge";
-  challengeType?: "alphanumeric" | "math";
-  submitButtonText?: string;
-  successMessage?: string;
-  createdAt: string;
-  updatedAt: string;
-  [key: string]: unknown;
-}
-
-export interface FormSubmissionDoc {
-  id: string;
-  formId: string;
-  data: Record<string, unknown>;
-  createdAt: string;
-  [key: string]: unknown;
-}
-
-export type FormSubmission = FormSubmissionDoc;
+export type {
+  CaptchaProviderType,
+  CaptchaVerifyResult,
+  ChallengeData,
+  ChallengeType,
+  CreateFormInput,
+  FormDoc,
+  FormField,
+  FormFieldType,
+  FormSubmissionDoc,
+  ICaptchaProvider,
+  UpdateFormInput,
+} from "@cms/plugin-forms-api";
+export type FormFieldSchema = import("@cms/plugin-forms-api").FormField;
+export type FormSubmission = import("@cms/plugin-forms-api").FormSubmissionDoc;
 
 // --- Media Types ---
-export interface MediaDoc {
-  [key: string]: unknown;
-  id: string;
-  filename: string;
-  key: string;
-  url: string;
-  mimeType: string;
-  size: number;
-  uploaderId?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type {
+  AllowedMediaMimeType,
+  IStorageAdapter,
+  MediaDoc,
+  MediaFolderDoc,
+  S3StorageConfig,
+  StorageUploadResult,
+  UpdateMediaInput,
+} from "@cms/plugin-media-api";
+
+// --- Auth Types ---
+export type {
+  AuthResult,
+  CreateRoleInput,
+  CreateUserInput,
+  ISessionInfo,
+  LoginInput,
+  RegisterInput,
+  RoleDoc,
+  SessionDoc,
+  SetupInput,
+  UpdateAuthSettingsInput,
+  UpdateRoleInput,
+  UpdateUserInput,
+  UserDoc,
+} from "@cms/plugin-auth-api";
 
 // --- System & Navigation Types ---
-export type SiteTheme = "dark" | "light" | "system";
+export type {
+  AuditLogDoc,
+  CreateFeatureFlagInput,
+  FeatureFlagDoc,
+  NavigationMenuItem,
+  PluginDoc,
+  SettingsDoc,
+  SiteTheme,
+  SystemSettingsDoc,
+  TogglePluginInput,
+  UpdateFeatureFlagInput,
+  UpdateSettingsInput,
+} from "@cms/plugin-system-api";
 
-export interface NavigationMenuItem {
-  id: string;
-  label: string;
-  url: string;
-  type: "page" | "custom" | "blog";
-  pageId?: string;
-  customLabel?: boolean;
-  external?: boolean;
-  style?: "link" | "button";
-  badge?: string;
-  icon?: string;
-}
+// --- Client-Specific HTTP & Network Helper Types ---
+export type { ApiRequestOptions, ClientConfig, QueryParamValue } from "./api.js";

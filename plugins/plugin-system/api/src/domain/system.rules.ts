@@ -103,6 +103,24 @@ export type CreateFeatureFlagInput = z.infer<typeof CreateFeatureFlagSchema>;
 export type UpdateFeatureFlagInput = z.infer<typeof UpdateFeatureFlagSchema>;
 export type TogglePluginInput = z.infer<typeof TogglePluginSchema>;
 
+export interface SystemSettingsDoc {
+  adminTitle?: string | undefined;
+  siteTitle?: string | undefined;
+  siteDescription?: string | undefined;
+  defaultTheme?: SiteTheme | string | undefined;
+  brandColor?: string | undefined;
+  primaryColor?: string | undefined;
+  brandFont?: string | undefined;
+  fontFamily?: string | undefined;
+  footerText?: string | undefined;
+  headerMenu?: NavigationMenuItem[] | undefined;
+  footerMenu?: NavigationMenuItem[] | undefined;
+  allowRegistration?: boolean | undefined;
+  sessionTimeoutMinutes?: number | undefined;
+}
+
+export type SettingsDoc = SystemSettingsDoc;
+
 // Validation Helpers
 export function validateUpdateSettings(input: unknown): UpdateSettingsInput {
   return validateWithSchema(UpdateSettingsSchema, input, "Invalid system settings payload");

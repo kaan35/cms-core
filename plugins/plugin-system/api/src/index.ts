@@ -29,7 +29,9 @@ export {
 export type {
   CreateFeatureFlagInput,
   NavigationMenuItem,
+  SettingsDoc,
   SiteTheme,
+  SystemSettingsDoc,
   TogglePluginInput,
   UpdateFeatureFlagInput,
   UpdateSettingsInput,

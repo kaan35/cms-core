@@ -15,6 +15,15 @@ export interface MediaDoc {
   updatedAt: string;
 }
 
+export interface MediaFolderDoc {
+  [key: string]: unknown;
+  id: string;
+  name: string;
+  parentId?: string | null | undefined;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class MediaRepository {
   private readonly collection: ICollection<MediaDoc>;
 
