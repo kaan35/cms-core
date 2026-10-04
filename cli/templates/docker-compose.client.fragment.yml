@@ -1,0 +1,14 @@
+  client:
+    container_name: ${PROJECT_NAME}-client
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      target: ${CLIENT_TARGET:-runner}
+    restart: ${RESTART_POLICY:-unless-stopped}
+    ports:
+      - "${CLIENT_PORT:-3000}:3000"
+    environment:
+      - API_URL=http://api:3001
+    depends_on:
+      api:
+        condition: service_healthy

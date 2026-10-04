@@ -47,6 +47,11 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
     assert.ok(composeContent.includes("image: kaan/cms-api:${CMS_TAG:-latest}"));
     assert.ok(composeContent.includes("target: ${CLIENT_TARGET:-runner}"));
 
+    // Verify container environment isolation (Rule 10 & AppSec)
+    const envFileOccurrences = composeContent.match(/env_file:\s*\.env/g) ?? [];
+    assert.equal(envFileOccurrences.length, 1, "Only api service should declare env_file: .env");
+    assert.ok(composeContent.includes("API_URL=http://api:3001"), "Admin/client should receive API_URL via environment");
+
     // 2. .env check
     const envContent = await fs.readFile(path.join(projectDir, ".env"), "utf-8");
     assert.ok(envContent.includes("CMS_TAG=latest"));
@@ -115,6 +120,11 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
     // docker-compose should NOT contain client service
     const composeContent = await fs.readFile(path.join(projectDir, "docker-compose.yml"), "utf-8");
     assert.ok(!composeContent.includes("client:"));
+
+    // Verify container isolation in custom-app shape (Rule 10 & AppSec)
+    const envFileOccurrences = composeContent.match(/env_file:\s*\.env/g) ?? [];
+    assert.equal(envFileOccurrences.length, 1, "Only api service should declare env_file: .env");
+    assert.ok(composeContent.includes("API_URL=http://api:3001"), "Admin service should receive API_URL via environment");
 
     // client directory should NOT exist
     await assert.rejects(async () => {

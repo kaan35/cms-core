@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyDirectory } from "./utils/copyDirectory.js";
-import { generateComposeContent, generateDevComposeContent } from "./utils/generateCompose.js";
+import { copyComposeFiles } from "./utils/generateCompose.js";
 import { generateEnvContent } from "./utils/generateEnv.js";
 import type { PluginProfile } from "./utils/pinnedVersions.js";
 
@@ -80,17 +80,14 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
 
   await fs.mkdir(projectDir, { recursive: true });
 
-  // 2. Write docker-compose.yml and docker-compose.dev.yml dynamically
-  const composeContent = generateComposeContent({
+  // 2. Setup docker-compose.yml and docker-compose.dev.yml from real template files (Rule 10)
+  const templatesDir = getTemplatesDir();
+  await copyComposeFiles({
+    projectDir,
+    templatesDir,
     includeAdmin,
     includeClient,
   });
-  await fs.writeFile(path.join(projectDir, "docker-compose.yml"), composeContent, "utf-8");
-
-  const devComposeContent = generateDevComposeContent({
-    includeAdmin,
-  });
-  await fs.writeFile(path.join(projectDir, "docker-compose.dev.yml"), devComposeContent, "utf-8");
 
   // 3. Write .env file
   const envContent = generateEnvContent({
@@ -110,7 +107,6 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
   // 4. Setup scripts directory and auto-update.sh
   const scriptsDir = path.join(projectDir, "scripts");
   await fs.mkdir(scriptsDir, { recursive: true });
-  const templatesDir = getTemplatesDir();
   const scriptSrc = path.join(templatesDir, "scripts/auto-update.sh");
   const scriptDest = path.join(scriptsDir, "auto-update.sh");
   await fs.copyFile(scriptSrc, scriptDest);

@@ -1,124 +1,87 @@
+import fs from "node:fs";
+import fsPromises from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function getDefaultTemplatesDir(): string {
+  return path.resolve(__dirname, "../../templates");
+}
+
 export interface GenerateComposeOptions {
   includeAdmin?: boolean | undefined;
   includeClient?: boolean | undefined;
+  templatesDir?: string | undefined;
 }
 
 export function generateComposeContent(options: GenerateComposeOptions = {}): string {
   const includeAdmin = options.includeAdmin !== false;
   const includeClient = Boolean(options.includeClient);
+  const templatesDir = options.templatesDir ?? getDefaultTemplatesDir();
 
-  const adminBlock = includeAdmin
-    ? `
-  admin:
-    container_name: \${PROJECT_NAME}-admin
-    image: kaan/cms-admin:\${CMS_TAG:-latest}
-    restart: \${RESTART_POLICY:-unless-stopped}
-    env_file: .env
-    environment:
-      - API_URL=http://api:3001
-    command: \${ADMIN_COMMAND:-sh -c 'if [ "$$NODE_ENV" = "development" ]; then npm run dev --workspace=admin; else npm run start; fi'}
-    ports:
-      - "\${ADMIN_PORT:-3002}:3002"
-    depends_on:
-      api:
-        condition: service_healthy
-`
-    : "";
+  const templatePath = includeAdmin
+    ? path.join(templatesDir, "docker-compose.yml")
+    : path.join(templatesDir, "docker-compose.api-only.yml");
 
-  const clientBlock = includeClient
-    ? `
-  client:
-    container_name: \${PROJECT_NAME}-client
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      target: \${CLIENT_TARGET:-runner}
-    restart: \${RESTART_POLICY:-unless-stopped}
-    ports:
-      - "\${CLIENT_PORT:-3000}:3000"
-    environment:
-      - API_URL=http://api:3001
-    depends_on:
-      api:
-        condition: service_healthy
-`
-    : "";
+  let content = fs.readFileSync(templatePath, "utf-8");
 
-  return `services:
-  api:
-    container_name: \${PROJECT_NAME}-api
-    image: kaan/cms-api:\${CMS_TAG:-latest}
-    restart: \${RESTART_POLICY:-unless-stopped}
-    env_file: .env
-    environment:
-      - PORT=3001
-      - PLUGINS_PROFILE=\${PLUGINS_PROFILE:-full}
-    command: \${API_COMMAND:-sh -c 'if [ "$$NODE_ENV" = "development" ]; then npm run dev --workspace=api; else npm run start --workspace=api; fi'}
-    ports:
-      - "\${API_PORT:-3001}:3001"
-    depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
-      interval: 3s
-      timeout: 3s
-      retries: 10
-      start_period: 3s
-${adminBlock}${clientBlock}
-  mongo:
-    container_name: \${PROJECT_NAME}-mongo
-    image: mongo:8
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_DATABASE: \${MONGO_DB_NAME:-cms}
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  if (includeClient) {
+    const clientFragment = fs.readFileSync(
+      path.join(templatesDir, "docker-compose.client.fragment.yml"),
+      "utf-8",
+    );
+    content = content.replace("\n  mongo:", `\n${clientFragment}\n  mongo:`);
+  }
 
-  redis:
-    container_name: \${PROJECT_NAME}-redis
-    image: redis:8
-    restart: unless-stopped
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  mongo_data:
-  redis_data:
-`;
+  return content;
 }
 
 export function generateDevComposeContent(options: GenerateComposeOptions = {}): string {
   const includeAdmin = options.includeAdmin !== false;
-  const adminDevBlock = includeAdmin
-    ? `
-  admin:
-    working_dir: /app
-    volumes:
-      - ../..:/app
-      - /app/node_modules
-      - /app/admin/.next
-    command: npm run dev --workspace=admin
-`
-    : "";
+  const templatesDir = options.templatesDir ?? getDefaultTemplatesDir();
 
-  return `services:
-  api:
-    volumes:
-      - ../..:/app
-      - /app/node_modules
-    command: npm run dev --workspace=api
-${adminDevBlock}`;
+  const templatePath = includeAdmin
+    ? path.join(templatesDir, "docker-compose.dev.yml")
+    : path.join(templatesDir, "docker-compose.dev.api-only.yml");
+
+  return fs.readFileSync(templatePath, "utf-8");
+}
+
+export interface CopyComposeFilesOptions {
+  projectDir: string;
+  templatesDir: string;
+  includeAdmin?: boolean | undefined;
+  includeClient?: boolean | undefined;
+}
+
+export async function copyComposeFiles(options: CopyComposeFilesOptions): Promise<void> {
+  const includeAdmin = options.includeAdmin !== false;
+  const includeClient = Boolean(options.includeClient);
+
+  const composeTemplate = includeAdmin
+    ? path.join(options.templatesDir, "docker-compose.yml")
+    : path.join(options.templatesDir, "docker-compose.api-only.yml");
+
+  const devComposeTemplate = includeAdmin
+    ? path.join(options.templatesDir, "docker-compose.dev.yml")
+    : path.join(options.templatesDir, "docker-compose.dev.api-only.yml");
+
+  const destCompose = path.join(options.projectDir, "docker-compose.yml");
+  const destDevCompose = path.join(options.projectDir, "docker-compose.dev.yml");
+
+  await fsPromises.copyFile(devComposeTemplate, destDevCompose);
+
+  if (!includeClient) {
+    await fsPromises.copyFile(composeTemplate, destCompose);
+  } else {
+    const baseContent = await fsPromises.readFile(composeTemplate, "utf-8");
+    const clientFragment = await fsPromises.readFile(
+      path.join(options.templatesDir, "docker-compose.client.fragment.yml"),
+      "utf-8",
+    );
+    const content = baseContent.replace("\n  mongo:", `\n${clientFragment}\n  mongo:`);
+    await fsPromises.writeFile(destCompose, content, "utf-8");
+  }
 }
