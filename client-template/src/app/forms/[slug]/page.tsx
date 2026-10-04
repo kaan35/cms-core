@@ -1,6 +1,5 @@
 import { FormBlock } from "@/components/blocks/FormBlock";
-import { api } from "@cms/client-sdk";
-import type { FormDoc } from "@cms/plugin-forms-api";
+import { api, type FormDoc } from "@cms/client-sdk";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 

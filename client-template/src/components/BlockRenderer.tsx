@@ -1,4 +1,4 @@
-import type { PageBlock } from "@cms/plugin-pages-api";
+import type { PageBlock } from "@cms/client-sdk";
 import { BentoGridBlock } from "./blocks/BentoGridBlock";
 import { BlogPostsBlock } from "./blocks/BlogPostsBlock";
 import { CodeShowcaseBlock } from "./blocks/CodeShowcaseBlock";

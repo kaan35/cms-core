@@ -1,7 +1,6 @@
 "use client";
 
-import { api } from "@cms/client-sdk";
-import type { FormDoc } from "@cms/plugin-forms-api";
+import { api, type FormDoc } from "@cms/client-sdk";
 import * as React from "react";
 import { toast } from "sonner";
 

@@ -1,6 +1,5 @@
 import { BlockRenderer } from "@/components/BlockRenderer";
-import { api } from "@cms/client-sdk";
-import type { PageDoc } from "@cms/plugin-pages-api";
+import { api, type PageDoc } from "@cms/client-sdk";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 

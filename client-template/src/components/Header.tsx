@@ -1,5 +1,4 @@
-import { api, extractData, type SettingsDoc } from "@cms/client-sdk";
-import type { PageDoc } from "@cms/plugin-pages-api";
+import { api, extractData, type PageDoc, type SettingsDoc } from "@cms/client-sdk";
 import {
   BookOpen,
   Compass,

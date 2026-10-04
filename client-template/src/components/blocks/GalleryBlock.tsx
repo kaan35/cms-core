@@ -1,5 +1,5 @@
 import { resolveMediaUrl } from "@/lib/utils";
-import type { GalleryBlock as GalleryBlockType } from "@cms/plugin-pages-api";
+import type { GalleryBlock as GalleryBlockType } from "@cms/client-sdk";
 import { ImageIcon } from "lucide-react";
 
 export function GalleryBlock({ data }: { data: GalleryBlockType }) {

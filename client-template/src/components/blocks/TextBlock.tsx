@@ -1,4 +1,4 @@
-import type { TextBlock as TextBlockType } from "@cms/plugin-pages-api";
+import type { TextBlock as TextBlockType } from "@cms/client-sdk";
 
 export function TextBlock({ data }: { data: TextBlockType }) {
   const content = data.content || "";

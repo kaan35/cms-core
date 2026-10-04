@@ -1,6 +1,5 @@
 import { formatDate, resolveMediaUrl } from "@/lib/utils";
-import { api } from "@cms/client-sdk";
-import type { BlogPostDoc } from "@cms/plugin-blog-api";
+import { api, type BlogPostDoc } from "@cms/client-sdk";
 import { ArrowLeft, Calendar, User } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";

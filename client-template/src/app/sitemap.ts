@@ -1,6 +1,4 @@
-import { api, extractData } from "@cms/client-sdk";
-import type { BlogPostDoc } from "@cms/plugin-blog-api";
-import type { PageDoc } from "@cms/plugin-pages-api";
+import { api, extractData, type BlogPostDoc, type PageDoc } from "@cms/client-sdk";
 import type { MetadataRoute } from "next";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

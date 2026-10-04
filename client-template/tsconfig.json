@@ -19,13 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@cms/client-sdk": ["../packages/client-sdk/src/index.ts"],
-      "@cms/plugin-pages-api": ["../packages/client-sdk/src/types.ts"],
-      "@cms/plugin-blog-api": ["../packages/client-sdk/src/types.ts"],
-      "@cms/plugin-forms-api": ["../packages/client-sdk/src/types.ts"],
-      "@cms/plugin-media-api": ["../packages/client-sdk/src/types.ts"],
-      "@cms/plugin-system-api": ["../packages/client-sdk/src/types.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [

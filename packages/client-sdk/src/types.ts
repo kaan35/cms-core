@@ -202,3 +202,33 @@ export interface FormSubmissionDoc {
 }
 
 export type FormSubmission = FormSubmissionDoc;
+
+// --- Media Types ---
+export interface MediaDoc {
+  [key: string]: unknown;
+  id: string;
+  filename: string;
+  key: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  uploaderId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// --- System & Navigation Types ---
+export type SiteTheme = "dark" | "light" | "system";
+
+export interface NavigationMenuItem {
+  id: string;
+  label: string;
+  url: string;
+  type: "page" | "custom" | "blog";
+  pageId?: string;
+  customLabel?: boolean;
+  external?: boolean;
+  style?: "link" | "button";
+  badge?: string;
+  icon?: string;
+}

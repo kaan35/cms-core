@@ -1,5 +1,5 @@
 import { resolveMediaUrl } from "@/lib/utils";
-import type { HeroBlock as HeroBlockType } from "@cms/plugin-pages-api";
+import type { HeroBlock as HeroBlockType } from "@cms/client-sdk";
 import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 

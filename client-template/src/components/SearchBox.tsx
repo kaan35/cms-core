@@ -1,8 +1,7 @@
 "use client";
 
 import { formatDate } from "@/lib/utils";
-import { useApi } from "@cms/client-sdk";
-import type { BlogPostDoc } from "@cms/plugin-blog-api";
+import { useApi, type BlogPostDoc } from "@cms/client-sdk";
 import { ArrowRight, Calendar, Loader2, Search } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
