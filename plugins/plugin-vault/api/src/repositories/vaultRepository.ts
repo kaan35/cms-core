@@ -15,6 +15,16 @@ export class VaultRepository {
 
   async create(input: CreateVaultItemInput): Promise<VaultItemDoc> {
     const now = new Date();
+    const tags =
+      typeof input.tags === "string"
+        ? input.tags
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : Array.isArray(input.tags)
+          ? input.tags
+          : [];
+
     const doc: VaultItemDoc = {
       id: randomUUID(),
       title: input.title,
@@ -23,7 +33,8 @@ export class VaultRepository {
       url: input.url ?? "",
       category: input.category ?? "General",
       notes: input.notes ?? "",
-      tags: input.tags ?? [],
+      tags,
+      passwordChangedAt: now,
       createdAt: now,
       updatedAt: now,
     };
@@ -32,8 +43,53 @@ export class VaultRepository {
     return doc;
   }
 
+  async bulkCreate(items: CreateVaultItemInput[]): Promise<VaultItemDoc[]> {
+    const docs: VaultItemDoc[] = [];
+    const now = new Date();
+    for (const input of items) {
+      const tags =
+        typeof input.tags === "string"
+          ? input.tags
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : Array.isArray(input.tags)
+            ? input.tags
+            : [];
+
+      const doc: VaultItemDoc = {
+        id: randomUUID(),
+        title: input.title,
+        username: input.username ?? "",
+        password: input.password,
+        url: input.url ?? "",
+        category: input.category ?? "General",
+        notes: input.notes ?? "",
+        tags,
+        passwordChangedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await this.col.insertOne(doc);
+      docs.push(doc);
+    }
+    return docs;
+  }
+
+  private normalizeDoc(item: VaultItemDoc): VaultItemDoc {
+    if (!item.passwordChangedAt) {
+      return {
+        ...item,
+        passwordChangedAt: item.updatedAt || item.createdAt || new Date(),
+      };
+    }
+    return item;
+  }
+
   async findById(id: string): Promise<VaultItemDoc | null> {
-    return this.col.findOne({ id });
+    const item = await this.col.findOne({ id });
+    if (!item) return null;
+    return this.normalizeDoc(item);
   }
 
   async list(filterCategory?: string, search?: string): Promise<VaultItemDoc[]> {
@@ -42,11 +98,12 @@ export class VaultRepository {
       filter["category"] = filterCategory;
     }
     const all = await this.col.find(filter, { sort: { createdAt: -1 } });
+    const normalized = all.map((item) => this.normalizeDoc(item));
     if (!search || search.trim() === "") {
-      return all;
+      return normalized;
     }
     const q = search.toLowerCase();
-    return all.filter(
+    return normalized.filter(
       (item) =>
         item.title.toLowerCase().includes(q) ||
         item.username.toLowerCase().includes(q) ||
@@ -63,11 +120,24 @@ export class VaultRepository {
     const updatePayload: Record<string, unknown> = { updatedAt };
     if (input.title !== undefined) updatePayload["title"] = input.title;
     if (input.username !== undefined) updatePayload["username"] = input.username;
-    if (input.password !== undefined) updatePayload["password"] = input.password;
+    if (input.password !== undefined) {
+      updatePayload["password"] = input.password;
+      updatePayload["passwordChangedAt"] = updatedAt;
+    }
     if (input.url !== undefined) updatePayload["url"] = input.url;
     if (input.category !== undefined) updatePayload["category"] = input.category;
     if (input.notes !== undefined) updatePayload["notes"] = input.notes;
-    if (input.tags !== undefined) updatePayload["tags"] = input.tags;
+    if (input.tags !== undefined) {
+      updatePayload["tags"] =
+        typeof input.tags === "string"
+          ? input.tags
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : Array.isArray(input.tags)
+            ? input.tags
+            : [];
+    }
 
     await this.col.updateOne({ id }, { $set: updatePayload });
     return this.findById(id);

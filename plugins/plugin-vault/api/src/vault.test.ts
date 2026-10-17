@@ -9,6 +9,7 @@ import { registerVaultPlugin } from "./index.js";
 import { initVaultMigration } from "./migrations/202601070000_init_vault.js";
 import { VaultRepository } from "./repositories/vaultRepository.js";
 import { VaultService } from "./services/vaultService.js";
+import { parseVaultCsv } from "./utils/vaultExportUtils.js";
 
 const TEST_VAULT_SECRET = "test-vault-secret-key-32-chars-long-min";
 
@@ -218,5 +219,242 @@ describe("Vault Plugin API", () => {
         delete process.env["VAULT_SECRET"];
       }
     }
+  });
+
+  it("tracks passwordChangedAt accurately on create, update, and preserves it when non-password fields change", async () => {
+    const db = createInMemoryDb();
+    await initVaultMigration.up(db);
+    const repo = new VaultRepository(db);
+    const hooks = new HookManager();
+    const service = new VaultService(repo, hooks, stubLogger, TEST_VAULT_SECRET);
+
+    // 1. Create item sets passwordChangedAt
+    const created = await service.create({
+      title: "AWS Console",
+      username: "cloud-admin",
+      password: "initial-password-123",
+      category: "Cloud",
+    });
+
+    const itemInDb = await repo.findById(created.id!);
+    assert.ok(itemInDb);
+    assert.ok(itemInDb.passwordChangedAt instanceof Date);
+    const initialChangedAt = itemInDb.passwordChangedAt;
+
+    // Simulate time passing (e.g., 100 days ago)
+    const hundredDaysAgo = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000);
+    await db
+      .collection<VaultItemDoc>("cms_vault_items")
+      .updateOne({ id: created.id }, { $set: { passwordChangedAt: hundredDaysAgo } });
+
+    const backdatedItem = await repo.findById(created.id!);
+    assert.equal(backdatedItem?.passwordChangedAt?.getTime(), hundredDaysAgo.getTime());
+
+    // 2. Update non-password field (e.g. notes) must PRESERVE passwordChangedAt
+    await service.update(created.id!, {
+      notes: "Updated billing contact",
+    });
+
+    const itemAfterNoteUpdate = await repo.findById(created.id!);
+    assert.equal(
+      itemAfterNoteUpdate?.passwordChangedAt?.getTime(),
+      hundredDaysAgo.getTime(),
+      "passwordChangedAt should NOT be modified when only notes are updated",
+    );
+
+    // 3. Update password MUST update passwordChangedAt to current time
+    await service.update(created.id!, {
+      password: "new-rotated-password-456",
+    });
+
+    const itemAfterPwdUpdate = await repo.findById(created.id!);
+    assert.notEqual(
+      itemAfterPwdUpdate?.passwordChangedAt?.getTime(),
+      hundredDaysAgo.getTime(),
+      "passwordChangedAt MUST be updated when password is changed",
+    );
+    assert.ok(
+      itemAfterPwdUpdate!.passwordChangedAt!.getTime() >= initialChangedAt.getTime(),
+      "New passwordChangedAt must be recent",
+    );
+
+    // 4. Legacy record without passwordChangedAt falls back to updatedAt or createdAt
+    const legacyCreatedAt = new Date("2024-01-01T00:00:00.000Z");
+    await db.collection<VaultItemDoc>("cms_vault_items").insertOne({
+      id: "legacy-vault-item",
+      title: "Old Database",
+      username: "postgres",
+      password: "enc:v1:00112233445566778899aabb:00112233445566778899aabbccddeeff:1234",
+      createdAt: legacyCreatedAt,
+      updatedAt: legacyCreatedAt,
+    });
+
+    const fetchedLegacy = await repo.findById("legacy-vault-item");
+    assert.ok(fetchedLegacy);
+    assert.equal(fetchedLegacy.passwordChangedAt?.toISOString(), legacyCreatedAt.toISOString());
+  });
+
+  it("generates blank template for xlsx and csv with correct headers and sample row", () => {
+    const db = createInMemoryDb();
+    const repo = new VaultRepository(db);
+    const hooks = new HookManager();
+    const service = new VaultService(repo, hooks, stubLogger, TEST_VAULT_SECRET);
+
+    // XLSX template
+    const xlsxTemplate = service.getTemplate("xlsx");
+    assert.equal(
+      xlsxTemplate.mimeType,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    assert.equal(xlsxTemplate.filename, "vault-template.xlsx");
+    assert.ok(Buffer.isBuffer(xlsxTemplate.data));
+    // Verify PK header
+    assert.equal(xlsxTemplate.data[0], 0x50);
+    assert.equal(xlsxTemplate.data[1], 0x4b);
+
+    // CSV template
+    const csvTemplate = service.getTemplate("csv");
+    assert.equal(csvTemplate.mimeType, "text/csv; charset=utf-8");
+    assert.equal(csvTemplate.filename, "vault-template.csv");
+    assert.equal(typeof csvTemplate.data, "string");
+    assert.ok(
+      (csvTemplate.data as string).startsWith(
+        '\uFEFF"Title","Username","Password","URL","Category","Notes"',
+      ),
+    );
+    assert.ok((csvTemplate.data as string).includes("Example Service"));
+  });
+
+  it("exports vault items with decrypted passwords and logs audit event", async () => {
+    const db = createInMemoryDb();
+    await initVaultMigration.up(db);
+    const repo = new VaultRepository(db);
+    const hooks = new HookManager();
+    const service = new VaultService(repo, hooks, stubLogger, TEST_VAULT_SECRET);
+
+    let exportEventFired = false;
+    hooks.on(VAULT_EVENTS.EXPORTED, async () => {
+      exportEventFired = true;
+    });
+
+    await service.create({
+      title: "Stripe Production",
+      username: "billing@company.com",
+      password: "sk_live_secret_stripe_key_123",
+      url: "https://stripe.com",
+      category: "Finance",
+    });
+
+    // 1. Export CSV
+    const csvExport = await service.exportItems("csv", "auditor-user-42");
+    assert.ok(exportEventFired);
+    assert.equal(csvExport.mimeType, "text/csv; charset=utf-8");
+    assert.ok(csvExport.filename.startsWith("vault-export-"));
+    const csvStr = csvExport.data as string;
+    assert.ok(csvStr.includes("Stripe Production"));
+    assert.ok(csvStr.includes("billing@company.com"));
+    assert.ok(
+      csvStr.includes("sk_live_secret_stripe_key_123"),
+      "Password must be decrypted in export",
+    );
+
+    // 2. Export XLSX
+    const xlsxExport = await service.exportItems("xlsx", "auditor-user-42");
+    assert.equal(
+      xlsxExport.mimeType,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    assert.ok(Buffer.isBuffer(xlsxExport.data));
+    assert.equal(xlsxExport.data[0], 0x50);
+  });
+
+  it("imports items from array, encrypts passwords, and reports row validation errors", async () => {
+    const db = createInMemoryDb();
+    await initVaultMigration.up(db);
+    const repo = new VaultRepository(db);
+    const hooks = new HookManager();
+    const service = new VaultService(repo, hooks, stubLogger, TEST_VAULT_SECRET);
+
+    let importEventCount = 0;
+    hooks.on(VAULT_EVENTS.IMPORTED, async (payload) => {
+      importEventCount = (payload as { importedCount: number }).importedCount;
+    });
+
+    const payload = [
+      {
+        title: "Docker Hub",
+        username: "docker-user",
+        password: "docker-secret-password-1",
+        url: "https://hub.docker.com",
+        category: "DevOps",
+        tags: "containers, registry", // string tags should be accepted
+      },
+      {
+        title: "Cloudflare",
+        username: "dns-admin",
+        password: "cf-token-secret-password-2",
+        category: "Infrastructure",
+        tags: ["dns", "security"],
+      },
+      {
+        // Invalid item: missing title and password
+        username: "invalid-entry",
+      },
+    ];
+
+    const result = await service.importItems(payload, "importer-user-99");
+    assert.equal(result.importedCount, 2);
+    assert.equal(result.errors.length, 1);
+    assert.equal(result.errors[0]?.row, 3);
+    assert.equal(importEventCount, 2);
+
+    // Verify imported records are encrypted in database
+    const items = await repo.list();
+    assert.equal(items.length, 2);
+    const dockerItem = items.find((i) => i.title === "Docker Hub");
+    assert.ok(dockerItem);
+    assert.ok(dockerItem.password.startsWith("enc:v1:"));
+    assert.ok(dockerItem.passwordChangedAt instanceof Date);
+    assert.deepEqual(dockerItem.tags, ["containers", "registry"]);
+
+    // Verify password can be revealed
+    const revealed = await service.revealPassword(dockerItem.id!);
+    assert.equal(revealed.password, "docker-secret-password-1");
+  });
+
+  it("parseVaultCsv parses RFC 4180 CSV with delimiters, quotes, newlines, and Turkish characters", () => {
+    // 1. Standard comma CSV with Turkish headers & characters
+    const turkishCsv = `\uFEFF"Başlık","Kullanıcı Adı","Şifre","URL","Kategori","Notlar","Etiketler"
+"E-Devlet Giriş","tc12345678901","DevletŞifresi*2026","https://turkiye.gov.tr","Devlet","Önemli kimlik kartı","resmi,kamu"
+"Banka Hesabı","musteri_no","BankaParolam!99","https://banka.com","Finans","İnternet şubesi","finans,para"`;
+
+    const parsedTurkish = parseVaultCsv(turkishCsv);
+    assert.equal(parsedTurkish.length, 2);
+    assert.equal(parsedTurkish[0]?.["title"], "E-Devlet Giriş");
+    assert.equal(parsedTurkish[0]?.["username"], "tc12345678901");
+    assert.equal(parsedTurkish[0]?.["password"], "DevletŞifresi*2026");
+    assert.equal(parsedTurkish[0]?.["url"], "https://turkiye.gov.tr");
+    assert.equal(parsedTurkish[0]?.["category"], "Devlet");
+    assert.equal(parsedTurkish[0]?.["notes"], "Önemli kimlik kartı");
+    assert.equal(parsedTurkish[0]?.["tags"], "resmi,kamu");
+
+    // 2. Semicolon delimited CSV with quotes & spaces
+    const semicolonCsv = `Title;Username;Password;Category\n"PostgreSQL Cluster";"postgres";"SuperDBPass@2026";"Database"`;
+    const parsedSemi = parseVaultCsv(semicolonCsv);
+    assert.equal(parsedSemi.length, 1);
+    assert.equal(parsedSemi[0]?.["title"], "PostgreSQL Cluster");
+    assert.equal(parsedSemi[0]?.["username"], "postgres");
+    assert.equal(parsedSemi[0]?.["password"], "SuperDBPass@2026");
+    assert.equal(parsedSemi[0]?.["category"], "Database");
+
+    // 3. Quoted cells containing commas, escaped quotes, and newlines
+    const complexCsv = `"Title","Username","Password","Notes"
+"Complex Service","user1","pass123","Line 1, with comma and ""quotes""
+Line 2 after newline"`;
+    const parsedComplex = parseVaultCsv(complexCsv);
+    assert.equal(parsedComplex.length, 1);
+    assert.equal(parsedComplex[0]?.["title"], "Complex Service");
+    assert.ok(parsedComplex[0]?.["notes"]?.includes('with comma and "quotes"'));
+    assert.ok(parsedComplex[0]?.["notes"]?.includes("Line 2 after newline"));
   });
 });

@@ -11,6 +11,8 @@ export const VAULT_EVENTS = {
   UPDATED: "vault.item.updated",
   DELETED: "vault.item.deleted",
   REVEALED: "vault.secret.revealed",
+  EXPORTED: "vault.items.exported",
+  IMPORTED: "vault.items.imported",
 } as const;
 
 export const CreateVaultItemSchema = z.object({
@@ -20,7 +22,19 @@ export const CreateVaultItemSchema = z.object({
   url: z.string().max(255).optional().default(""),
   category: z.string().max(50).optional().default("General"),
   notes: z.string().max(2000).optional().default(""),
-  tags: z.array(z.string().max(30)).optional().default([]),
+  tags: z
+    .union([
+      z.array(z.string().max(30)),
+      z.string().transform((s) =>
+        s
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+      ),
+    ])
+    .optional()
+    .default([]),
+  passwordChangedAt: z.coerce.date().optional(),
 });
 
 export const UpdateVaultItemSchema = CreateVaultItemSchema.partial();
@@ -47,6 +61,7 @@ export interface VaultItemDoc extends Record<string, unknown> {
   category: string;
   notes: string;
   tags: string[];
+  passwordChangedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

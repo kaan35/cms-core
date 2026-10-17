@@ -11,6 +11,7 @@ export { initVaultMigration } from "./migrations/202601070000_init_vault.js";
 export * from "./repositories/vaultRepository.js";
 export * from "./routes.js";
 export * from "./services/vaultService.js";
+export * from "./utils/vaultExportUtils.js";
 
 export async function registerVaultPlugin(
   app: FastifyInstance,

@@ -11,11 +11,14 @@ import {
   Label,
   Textarea,
   api,
+  formatDate,
+  formatDateTime,
+  formatRelativeTime,
   generateSecurePassword,
   toast,
   useSaveShortcut,
 } from "@cms/admin-shell";
-import { Eye, EyeOff, KeyRound, Loader2, Save, Sparkles, X } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Loader2, Save, ShieldAlert, Sparkles, X } from "lucide-react";
 import * as React from "react";
 
 export interface VaultItem {
@@ -26,6 +29,10 @@ export interface VaultItem {
   url: string;
   category: string;
   notes: string;
+  tags?: string[];
+  passwordChangedAt?: string | Date;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 interface VaultItemModalProps {
@@ -33,9 +40,23 @@ interface VaultItemModalProps {
   onOpenChange: (open: boolean) => void;
   item: VaultItem | null;
   onSuccess: () => void;
+  categories?: string[];
 }
 
-export function VaultItemModal({ open, onOpenChange, item, onSuccess }: VaultItemModalProps) {
+export function isPasswordStale(dateVal?: string | Date | null, thresholdDays = 365): boolean {
+  if (!dateVal) return false;
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return false;
+  return Date.now() - d.getTime() > thresholdDays * 24 * 60 * 60 * 1000;
+}
+
+export function VaultItemModal({
+  open,
+  onOpenChange,
+  item,
+  onSuccess,
+  categories = [],
+}: VaultItemModalProps) {
   const [inputData, setInputData] = React.useState({
     title: "",
     username: "",
@@ -184,6 +205,7 @@ export function VaultItemModal({ open, onOpenChange, item, onSuccess }: VaultIte
                 placeholder="e.g. Development, Servers"
                 value={inputData.category}
                 onChange={(e) => setInputData((p) => ({ ...p, category: e.target.value }))}
+                suggestions={categories}
               />
             </div>
           </div>
@@ -250,7 +272,54 @@ export function VaultItemModal({ open, onOpenChange, item, onSuccess }: VaultIte
             />
           </div>
 
-          <DialogFooter className="pt-2">
+          {item && (
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs space-y-2 text-muted-foreground">
+              <div className="flex items-center gap-3">
+                <span className="w-36 shrink-0 font-medium text-foreground">Created:</span>
+                <span className="font-mono text-[11px] text-foreground/90">
+                  {formatDateTime(item.createdAt)}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="w-36 shrink-0 font-medium text-foreground">Last Updated:</span>
+                <span className="font-mono text-[11px] text-foreground/90">
+                  {formatDateTime(item.updatedAt)}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="w-36 shrink-0 font-medium text-foreground">Password Changed:</span>
+                <span className="inline-flex items-center gap-1.5 flex-wrap">
+                  <span className="font-mono text-[11px] text-foreground/90">
+                    {formatDateTime(item.passwordChangedAt || item.updatedAt || item.createdAt)}
+                  </span>
+                  {(() => {
+                    const pwdDate = item.passwordChangedAt || item.updatedAt || item.createdAt;
+                    if (!pwdDate) return null;
+                    if (isPasswordStale(pwdDate)) {
+                      return (
+                        <span
+                          title={`Password last changed on ${formatDate(pwdDate)}`}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                        >
+                          <ShieldAlert className="size-3" />
+                          Changed &gt; 1 year ago
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="text-[10px] font-sans text-muted-foreground">
+                        ({formatRelativeTime(pwdDate)})
+                      </span>
+                    );
+                  })()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-6">
             <Button
               type="button"
               variant="outline"

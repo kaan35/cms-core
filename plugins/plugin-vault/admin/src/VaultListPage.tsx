@@ -3,6 +3,11 @@
 import {
   Button,
   DialogDeleteConfirm,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Input,
   PageHeader,
   Skeleton,
@@ -15,8 +20,19 @@ import {
   toast,
   useApi,
 } from "@cms/admin-shell";
-import { KeyRound, Plus, RefreshCw, Search } from "lucide-react";
+import {
+  ChevronDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  KeyRound,
+  Plus,
+  RefreshCw,
+  Search,
+  Upload,
+} from "lucide-react";
 import * as React from "react";
+import { VaultImportModal } from "./components/VaultImportModal";
 import { VaultItemModal, type VaultItem } from "./components/VaultItemModal";
 import { VaultTableRow } from "./components/VaultTableRow";
 
@@ -28,6 +44,8 @@ export function VaultListPage() {
   const [search, setSearch] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState<string>("all");
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState<"xlsx" | "csv" | null>(null);
   const [editingItem, setEditingItem] = React.useState<VaultItem | null>(null);
   const [deleteCandidate, setDeleteCandidate] = React.useState<VaultItem | null>(null);
   const [revealedPasswords, setRevealedPasswords] = React.useState<Record<string, string>>({});
@@ -38,10 +56,15 @@ export function VaultListPage() {
   const categories = React.useMemo(() => {
     const set = new Set<string>();
     items.forEach((it) => {
-      if (it.category) set.add(it.category);
+      if (it.category) set.add(it.category.trim());
     });
     return ["all", ...Array.from(set)];
   }, [items]);
+
+  const availableCategories = React.useMemo(
+    () => categories.filter((c) => c !== "all"),
+    [categories],
+  );
 
   const filteredItems = React.useMemo(() => {
     return items.filter((it) => {
@@ -104,6 +127,56 @@ export function VaultListPage() {
     }
   };
 
+  const handleExport = async (format: "xlsx" | "csv") => {
+    if (items.length === 0) {
+      toast.error("No vault credentials to export");
+      return;
+    }
+    try {
+      setIsExporting(format);
+      const res = await fetch(`/api/vault/export?format=${format}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error(`Export failed with status: ${res.status}`);
+      }
+
+      const disposition = res.headers.get("Content-Disposition");
+      let filename = "";
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/);
+        if (match?.[1]) filename = match[1];
+      }
+      if (!filename) {
+        filename = `vault-export-${new Date().toISOString().slice(0, 10)}.${format}`;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(
+        format === "xlsx"
+          ? "Excel spreadsheet exported successfully"
+          : "CSV document exported successfully",
+      );
+    } catch {
+      toast.error("Failed to export vault credentials");
+    } finally {
+      setIsExporting(null);
+    }
+  };
+
+  const handleDownloadTemplate = (format: "xlsx" | "csv") => {
+    window.location.href = `/api/vault/template?format=${format}`;
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -118,6 +191,57 @@ export function VaultListPage() {
               iconStart={<RefreshCw className="size-4" />}
               title="Refresh vault"
             />
+
+            <Button
+              variant="outline"
+              onClick={() => setIsImportModalOpen(true)}
+              iconStart={<Upload className="size-4" />}
+            >
+              Import
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                disabled={items.length === 0 || isExporting !== null}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 h-8 text-xs font-medium text-foreground hover:bg-muted transition-all outline-none cursor-pointer disabled:pointer-events-none disabled:opacity-50 shadow-2xs"
+              >
+                <Download className="size-3.5" />
+                <span>{isExporting ? "Exporting..." : "Export"}</span>
+                <ChevronDown className="size-3 opacity-60 ml-0.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  onClick={() => handleExport("xlsx")}
+                  className="flex items-center gap-2 cursor-pointer text-xs"
+                >
+                  <FileSpreadsheet className="size-4 text-emerald-600" />
+                  <span>Excel Spreadsheet (.xlsx)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExport("csv")}
+                  className="flex items-center gap-2 cursor-pointer text-xs"
+                >
+                  <FileText className="size-4 text-sky-600" />
+                  <span>CSV Document (.csv)</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleDownloadTemplate("xlsx")}
+                  className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground"
+                >
+                  <Download className="size-3.5" />
+                  <span>Download Blank Template (.xlsx)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleDownloadTemplate("csv")}
+                  className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground"
+                >
+                  <Download className="size-3.5" />
+                  <span>Download Blank Template (.csv)</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               onClick={() => {
                 setEditingItem(null);
@@ -226,6 +350,13 @@ export function VaultListPage() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         item={editingItem}
+        categories={availableCategories}
+        onSuccess={() => mutate()}
+      />
+
+      <VaultImportModal
+        open={isImportModalOpen}
+        onOpenChange={setIsImportModalOpen}
         onSuccess={() => mutate()}
       />
 

@@ -111,4 +111,60 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
     },
     controller.generatePassword.bind(controller),
   );
+
+  // Download blank template
+  app.get(
+    "/vault/template",
+    {
+      schema: {
+        tags: ["Vault"],
+        summary: "Download blank template for vault credentials import (.xlsx or .csv)",
+        security: [{ cookieAuth: [] }],
+      },
+      preHandler: [authenticate],
+    },
+    controller.template.bind(controller),
+  );
+
+  // Export credentials
+  app.get(
+    "/vault/export",
+    {
+      schema: {
+        tags: ["Vault"],
+        summary: "Export vault credentials to Excel or CSV file (decrypted & audited)",
+        security: [{ cookieAuth: [] }],
+      },
+      preHandler: [authenticate],
+    },
+    controller.export.bind(controller),
+  );
+
+  // Preview credentials before importing
+  app.post(
+    "/vault/preview",
+    {
+      schema: {
+        tags: ["Vault"],
+        summary: "Parse and preview vault credentials from Excel, CSV, or raw text",
+        security: [{ cookieAuth: [] }],
+      },
+      preHandler: [authenticate],
+    },
+    controller.preview.bind(controller),
+  );
+
+  // Import credentials
+  app.post(
+    "/vault/import",
+    {
+      schema: {
+        tags: ["Vault"],
+        summary: "Import vault credentials from JSON array, raw CSV, or base64 file",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
+      preHandler: [authenticate, verifyCsrf],
+    },
+    controller.import.bind(controller),
+  );
 }

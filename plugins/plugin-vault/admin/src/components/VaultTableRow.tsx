@@ -1,8 +1,8 @@
 "use client";
 
-import { Badge, Button, TableCell, TableRow } from "@cms/admin-shell";
-import { Copy, ExternalLink, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
-import type { VaultItem } from "./VaultItemModal";
+import { Badge, Button, TableCell, TableRow, formatDate } from "@cms/admin-shell";
+import { Copy, ExternalLink, Eye, EyeOff, Pencil, ShieldAlert, Trash2 } from "lucide-react";
+import { isPasswordStale, type VaultItem } from "./VaultItemModal";
 
 interface VaultTableRowProps {
   item: VaultItem;
@@ -21,6 +21,9 @@ export function VaultTableRow({
   onEdit,
   onDelete,
 }: VaultTableRowProps) {
+  const pwdDate = item.passwordChangedAt || item.createdAt;
+  const isStale = isPasswordStale(pwdDate);
+
   return (
     <TableRow className="text-xs">
       <TableCell className="font-medium">
@@ -64,6 +67,17 @@ export function VaultTableRow({
             </>
           )}
         </div>
+        {isStale && pwdDate && (
+          <div className="mt-1 flex items-center">
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20"
+              title={`Password last changed on ${formatDate(pwdDate)}`}
+            >
+              <ShieldAlert className="size-3 shrink-0" />
+              Changed &gt; 1 year ago
+            </span>
+          </div>
+        )}
       </TableCell>
       <TableCell>
         {item.url ? (
