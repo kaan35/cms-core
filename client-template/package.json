@@ -29,6 +29,6 @@
     "babel-plugin-react-compiler": "^1",
     "eslint": "^10",
     "tailwindcss": "^4",
-    "typescript": "^6"
+    "typescript": "^7"
   }
 }

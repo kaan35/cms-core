@@ -46,7 +46,7 @@
     "globals": "^17",
     "prettier": "^3",
     "tsx": "^4",
-    "typescript": "^6",
+    "typescript": "^7",
     "typescript-eslint": "^8"
   }
 }

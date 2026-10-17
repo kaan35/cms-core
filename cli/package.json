@@ -17,6 +17,6 @@
     "@cms/eslint-config": "*",
     "@cms/tsconfig": "*",
     "@types/node": "^26",
-    "typescript": "^6"
+    "typescript": "^7"
   }
 }

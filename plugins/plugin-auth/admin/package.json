@@ -20,7 +20,7 @@
     "@types/react-dom": "^19",
     "react": "^19",
     "react-dom": "^19",
-    "typescript": "^6"
+    "typescript": "^7"
   },
   "peerDependencies": {
     "next": "*",
