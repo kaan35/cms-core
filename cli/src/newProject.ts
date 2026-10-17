@@ -90,9 +90,11 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
   });
 
   // 3. Write .env file
+  const cmsCorePath = path.resolve(__dirname, "../..");
   const envContent = generateEnvContent({
     projectName: options.projectName,
     cmsTag: options.cmsTag,
+    cmsCorePath,
     autoUpdate,
     nodeEnv: options.nodeEnv,
     apiPort,

@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "node --env-file-if-exists=.env --env-file-if-exists=../.env --import tsx/esm --watch src/main.ts",
-    "start": "node --env-file-if-exists=.env --env-file-if-exists=../.env --import tsx/esm src/main.ts",
+    "dev": "node --conditions=development --env-file-if-exists=.env --env-file-if-exists=../.env --import tsx/esm --watch src/main.ts",
+    "start": "node --env-file-if-exists=.env --env-file-if-exists=../.env dist/main.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "node --import tsx/esm --test 'src/**/*.test.ts'",
+    "test": "node --conditions=development --import tsx/esm --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

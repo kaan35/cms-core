@@ -145,7 +145,7 @@ The Next.js 16 public site features a modular, block-based page rendering engine
 
 ```bash
 # Clone the repository
-git clone https://github.com/kaan35/cms.git
+git clone https://github.com/kaan35/cms-core.git
 cd cms
 
 # Install dependencies

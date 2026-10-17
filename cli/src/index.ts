@@ -69,7 +69,7 @@ export async function runCli(args: string[]): Promise<void> {
 
     let projectName = positionals[1];
     let targetDir = values.dir as string | undefined;
-    let pluginsProfile = values.profile as "minimal" | "full" | undefined;
+    let pluginsProfile = values.profile as string | undefined;
     let includeAdmin = values["no-admin"] ? false : values.admin ? true : undefined;
     let includeClient = values["no-client"] ? false : values.client ? true : undefined;
     let nodeEnv = (values.env as "production" | "development") || undefined;

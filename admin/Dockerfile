@@ -12,7 +12,7 @@ RUN npm install
 
 COPY admin/ ./admin/
 
-RUN npm run build
+RUN npx tsc --build
 RUN npm run build --workspace=admin
 
 # Stage 2: runner

@@ -1,6 +1,10 @@
 services:
   api:
+    image: !reset null
+    build:
+      context: ${CMS_CORE_PATH:-../..}
+      dockerfile: api/Dockerfile.dev
     volumes:
-      - ../..:/app
+      - ${CMS_CORE_PATH:-../..}:/app
       - /app/node_modules
     command: npm run dev --workspace=api

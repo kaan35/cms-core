@@ -1,7 +1,9 @@
 import Fastify from "fastify";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { resolvePluginManifest } from "../pluginManifest.js";
 import type { ICollection, IDatabase } from "../types/IDatabase.js";
+import type { ILogger } from "../types/ILogger.js";
 import type { CoreServices, PluginManifestEntry } from "../types/plugin.js";
 import { PluginLoader } from "./PluginLoader.js";
 
@@ -36,7 +38,7 @@ function makeDb(pluginEnabled: boolean): IDatabase {
   };
 }
 
-describe("PluginLoader", () => {
+describe("PluginLoader & resolvePluginManifest", () => {
   it("enabled plugin: route responds normally", async () => {
     const app = Fastify({ logger: false });
     const loader = new PluginLoader(makeDb(true), stubLogger, app, stubServices);
@@ -173,5 +175,135 @@ describe("PluginLoader", () => {
 
     assert.deepEqual(order, ["high", "low"]);
     await app.close();
+  });
+
+  it("deactivates previously enabled DB plugins that are not in the resolved manifest without deleting them", async () => {
+    const app = Fastify({ logger: false });
+    const records: Array<Record<string, unknown>> = [
+      { name: "plugin-auth", enabled: true, createdAt: new Date() },
+      { name: "plugin-vault", enabled: true, createdAt: new Date() },
+      { name: "plugin-forms", enabled: true, createdAt: new Date() },
+    ];
+    let deletedCount = 0;
+    const warnings: Array<{ message: string; meta?: Record<string, unknown> | undefined }> = [];
+
+    const db: IDatabase = {
+      connect: async () => {},
+      disconnect: async () => {},
+      isAlive: async () => true,
+      collection: <T extends Record<string, unknown>>(name: string): ICollection<T> =>
+        ({
+          findOne: async (filter: Record<string, unknown>) =>
+            name === "cms_plugins"
+              ? (records.find((r) => r["name"] === filter["name"]) ?? null)
+              : null,
+          find: async () => (name === "cms_plugins" ? [...records] : []),
+          insertOne: async (doc: Record<string, unknown>) => {
+            if (name === "cms_plugins") records.push(doc);
+          },
+          updateOne: async (filter: Record<string, unknown>, update: Record<string, unknown>) => {
+            if (name === "cms_plugins") {
+              const target = records.find((r) => r["name"] === filter["name"]);
+              if (target && update["$set"] && typeof update["$set"] === "object") {
+                Object.assign(target, update["$set"]);
+              }
+            }
+          },
+          deleteOne: async () => {
+            deletedCount++;
+          },
+          countDocuments: async () => records.length,
+          createIndex: async () => {},
+        }) as unknown as ICollection<T>,
+    };
+
+    const warnLogger: ILogger = {
+      debug: () => {},
+      info: () => {},
+      warn: (message: string, meta?: Record<string, unknown>) => {
+        warnings.push({ message, meta });
+      },
+      error: () => {},
+    };
+
+    const loader = new PluginLoader(db, warnLogger, app, stubServices);
+    const manifest: PluginManifestEntry[] = [
+      {
+        name: "plugin-auth",
+        priority: 1,
+        register: async () => {},
+      },
+      {
+        name: "plugin-vault",
+        priority: 10,
+        register: async () => {},
+      },
+    ];
+
+    await loader.loadAll(manifest, []);
+
+    assert.equal(deletedCount, 0, "Should not delete plugin records from DB");
+    assert.equal(records.length, 3, "All 3 records should remain in cms_plugins");
+    const formsRecord = records.find((r) => r["name"] === "plugin-forms");
+    assert.equal(formsRecord?.["enabled"], false, "plugin-forms should be set to enabled: false");
+    assert.ok(formsRecord?.["updatedAt"] instanceof Date, "updatedAt should be set");
+    assert.equal(warnings.length, 1);
+    assert.ok(
+      warnings[0]?.message.includes(
+        "Plugin deactivated because it is not in the resolved manifest: plugin-forms",
+      ),
+    );
+    assert.deepEqual(warnings[0]?.meta, { name: "plugin-forms" });
+
+    await app.close();
+  });
+
+  it("resolvePluginManifest supports minimal, full, comma-separated profiles and throws on unknown plugin name", async () => {
+    const baseManifest: PluginManifestEntry[] = [
+      { name: "plugin-auth", priority: 1, register: async () => {} },
+      { name: "plugin-system", priority: 2, register: async () => {} },
+      { name: "plugin-pages", priority: 10, register: async () => {} },
+      { name: "plugin-blog", priority: 20, register: async () => {} },
+      { name: "plugin-forms", priority: 30, register: async () => {} },
+      { name: "plugin-media", priority: 40, register: async () => {} },
+      { name: "plugin-vault", priority: 50, register: async () => {} },
+    ];
+
+    const minimal = await resolvePluginManifest(baseManifest, stubLogger, "minimal");
+    assert.deepEqual(
+      minimal.map((e) => e.name),
+      ["plugin-auth", "plugin-system"],
+    );
+
+    const full = await resolvePluginManifest(baseManifest, stubLogger, "full");
+    assert.equal(full.length, 7);
+
+    const vaultOnly = await resolvePluginManifest(baseManifest, stubLogger, "vault");
+    assert.deepEqual(
+      vaultOnly.map((e) => e.name),
+      ["plugin-auth", "plugin-system", "plugin-vault"],
+    );
+
+    const pagesAndBlog = await resolvePluginManifest(
+      baseManifest,
+      stubLogger,
+      "pages, plugin-blog",
+    );
+    assert.deepEqual(
+      pagesAndBlog.map((e) => e.name),
+      ["plugin-auth", "plugin-system", "plugin-pages", "plugin-blog"],
+    );
+
+    await assert.rejects(
+      async () => {
+        await resolvePluginManifest(baseManifest, stubLogger, "vaullt,pages");
+      },
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.ok(err.message.includes("Unknown plugin(s) in PLUGINS_PROFILE: plugin-vaullt"));
+        assert.ok(err.message.includes("plugin-vault"));
+        return true;
+      },
+    );
   });
 });

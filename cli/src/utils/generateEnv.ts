@@ -1,9 +1,17 @@
 import crypto from "node:crypto";
-import type { PluginProfile } from "./pinnedVersions.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { DEFAULT_CMS_REGISTRY, type PluginProfile } from "./pinnedVersions.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DEFAULT_CMS_CORE_PATH = path.resolve(__dirname, "../../..");
 
 export interface GenerateEnvOptions {
   projectName: string;
+  cmsRegistry?: string | undefined;
   cmsTag?: string | undefined;
+  cmsCorePath?: string | undefined;
   autoUpdate?: boolean | undefined;
   nodeEnv?: "production" | "development" | undefined;
   apiPort?: number | undefined;
@@ -22,7 +30,9 @@ export function generateJwtSecret(): string {
 export function generateEnvContent(options: GenerateEnvOptions): string {
   const jwtSecret = generateJwtSecret();
   const vaultSecret = generateJwtSecret();
+  const cmsRegistry = options.cmsRegistry ?? DEFAULT_CMS_REGISTRY;
   const cmsTag = options.cmsTag ?? "latest";
+  const cmsCorePath = options.cmsCorePath ?? DEFAULT_CMS_CORE_PATH;
   const isDev = options.nodeEnv === "development";
   const nodeEnv = isDev ? "development" : "production";
   const logLevel = isDev ? "debug" : "info";
@@ -36,6 +46,12 @@ export function generateEnvContent(options: GenerateEnvOptions): string {
   const dbName =
     options.mongoDbName ?? options.projectName.toLowerCase().replace(/[^a-z0-9_]/g, "_");
 
+  const normalizedProjectName =
+    options.projectName
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, "-")
+      .replace(/^[^a-z0-9]+/, "") || "cms";
+
   const origins: string[] = [];
   if (options.includeClient !== false) origins.push(`http://localhost:${clientPort}`);
   if (options.includeAdmin !== false) origins.push(`http://localhost:${adminPort}`);
@@ -47,11 +63,16 @@ export function generateEnvContent(options: GenerateEnvOptions): string {
 # ==============================================================================
 
 # Project Identity
-PROJECT_NAME=${options.projectName.toLowerCase().replace(/[^a-z0-9-]/g, "-")}
+PROJECT_NAME=${normalizedProjectName}
 
-# Core Image Version Tag & Auto-Update Policy
+# Core Image Registry, Version Tag, Core Source Path & Auto-Update Policy
+CMS_REGISTRY=${cmsRegistry}
 CMS_TAG=${cmsTag}
+CMS_CORE_PATH=${cmsCorePath}
 AUTO_UPDATE=${autoUpdate ? "true" : "false"}
+
+# Active Plugins: "full" (all), "minimal" (auth+system only), or comma-separated plugin names:
+# Available plugins: pages, blog, forms, media, vault (auth & system are always enabled)
 PLUGINS_PROFILE=${pluginsProfile}
 
 # Environment Mode (production | development)

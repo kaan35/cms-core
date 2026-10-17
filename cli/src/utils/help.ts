@@ -15,7 +15,7 @@ Commands:
     --dir             Target directory (default: "./projects")
     --admin, --no-admin   Include or exclude Admin Shell (default: included)
     --client, --no-client Include or exclude Next.js Client (default: no-client)
-    --profile         Plugin profile: "minimal" or "full"
+    --profile         Plugins to enable: "full", "minimal", or comma-separated list (pages,blog,forms,media,vault)
     --env             Server mode: "production" (default) or "development"
     --cms-tag         Docker image tag for CMS core (default: "latest")
     --api-port        Host port for API service (default: 3001)

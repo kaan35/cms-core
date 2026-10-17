@@ -43,13 +43,27 @@ describe("Modular Scaffolding & Plugin Profiles", { concurrency: 1 }, () => {
     const composeContent = await fs.readFile(path.join(projectDir, "docker-compose.yml"), "utf-8");
     assert.ok(composeContent.includes("services:"));
     assert.ok(composeContent.includes("api:"));
+    assert.ok(
+      composeContent.includes("image: ${CMS_REGISTRY:-ghcr.io/kaan35}/cms-api:${CMS_TAG:-latest}"),
+    );
+    assert.ok(!composeContent.includes("command:"));
     assert.ok(composeContent.includes("mongo:"));
     assert.ok(composeContent.includes("redis:"));
     assert.ok(!composeContent.includes("admin:"));
     assert.ok(!composeContent.includes("client:"));
 
+    const devComposeContent = await fs.readFile(
+      path.join(projectDir, "docker-compose.dev.yml"),
+      "utf-8",
+    );
+    assert.ok(devComposeContent.includes("image: !reset null"));
+    assert.ok(devComposeContent.includes("context: ${CMS_CORE_PATH:-../..}"));
+    assert.ok(!devComposeContent.includes("admin:"));
+
     // 2. .env check
     const envContent = await fs.readFile(path.join(projectDir, ".env"), "utf-8");
+    assert.ok(envContent.includes("CMS_REGISTRY=ghcr.io/kaan35"));
+    assert.ok(envContent.includes("CMS_CORE_PATH="));
     assert.ok(envContent.includes("PLUGINS_PROFILE=minimal"));
     assert.ok(!envContent.includes("ADMIN_PORT="));
     assert.ok(!envContent.includes("CLIENT_PORT="));
@@ -80,6 +94,7 @@ describe("Modular Scaffolding & Plugin Profiles", { concurrency: 1 }, () => {
     const composeContent = await fs.readFile(path.join(projectDir, "docker-compose.yml"), "utf-8");
     assert.ok(composeContent.includes("admin:"));
     assert.ok(!composeContent.includes("client:"));
+    assert.ok(!composeContent.includes("command:"));
 
     const envContent = await fs.readFile(path.join(projectDir, ".env"), "utf-8");
     assert.ok(envContent.includes("PLUGINS_PROFILE=minimal"));
@@ -88,7 +103,7 @@ describe("Modular Scaffolding & Plugin Profiles", { concurrency: 1 }, () => {
     assert.ok(envContent.includes("CORS_ALLOWED_ORIGINS=http://localhost:6002"));
   });
 
-  test("runCli parses --profile minimal --no-client --admin flags", async () => {
+  test("runCli parses --profile vault and custom comma-separated profiles", async () => {
     const testDir = path.join(BASE_TEST_DIR, "case-runcli-modular");
     await fs.mkdir(testDir, { recursive: true });
 
@@ -98,7 +113,7 @@ describe("Modular Scaffolding & Plugin Profiles", { concurrency: 1 }, () => {
       "--dir",
       testDir,
       "--profile",
-      "minimal",
+      "vault",
       "--admin",
       "--no-client",
       "--api-port",
@@ -109,11 +124,14 @@ describe("Modular Scaffolding & Plugin Profiles", { concurrency: 1 }, () => {
 
     const projectDir = path.join(testDir, "cli-vault");
     const envContent = await fs.readFile(path.join(projectDir, ".env"), "utf-8");
-    assert.ok(envContent.includes("PLUGINS_PROFILE=minimal"));
+    assert.ok(envContent.includes("PLUGINS_PROFILE=vault"));
+    assert.ok(envContent.includes("CMS_REGISTRY=ghcr.io/kaan35"));
+    assert.ok(envContent.includes("CMS_CORE_PATH="));
     assert.ok(envContent.includes("ADMIN_PORT=7002"));
 
     const composeContent = await fs.readFile(path.join(projectDir, "docker-compose.yml"), "utf-8");
     assert.ok(composeContent.includes("admin:"));
     assert.ok(!composeContent.includes("client:"));
+    assert.ok(!composeContent.includes("command:"));
   });
 });

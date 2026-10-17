@@ -151,6 +151,8 @@ export async function promptNewProject(
         pluginsProfile = "minimal";
       } else if (trimmed === "2" || trimmed === "full") {
         pluginsProfile = "full";
+      } else if (trimmed.length > 0) {
+        pluginsProfile = trimmed;
       } else {
         pluginsProfile = defaultChoice === "2" ? "full" : "minimal";
       }

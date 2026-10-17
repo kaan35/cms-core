@@ -45,8 +45,29 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
     const composeContent = await fs.readFile(path.join(projectDir, "docker-compose.yml"), "utf-8");
     assert.ok(composeContent.includes("services:"));
     assert.ok(composeContent.includes("client:"));
-    assert.ok(composeContent.includes("image: kaan/cms-api:${CMS_TAG:-latest}"));
+    assert.ok(
+      composeContent.includes("image: ${CMS_REGISTRY:-ghcr.io/kaan35}/cms-api:${CMS_TAG:-latest}"),
+    );
+    assert.ok(
+      composeContent.includes(
+        "image: ${CMS_REGISTRY:-ghcr.io/kaan35}/cms-admin:${CMS_TAG:-latest}",
+      ),
+    );
+    assert.ok(
+      !composeContent.includes("command:"),
+      "Production docker-compose.yml must not override container CMD",
+    );
     assert.ok(composeContent.includes("target: ${CLIENT_TARGET:-runner}"));
+
+    // 1b. docker-compose.dev.yml check
+    const devComposeContent = await fs.readFile(
+      path.join(projectDir, "docker-compose.dev.yml"),
+      "utf-8",
+    );
+    assert.ok(devComposeContent.includes("image: !reset null"));
+    assert.ok(devComposeContent.includes("context: ${CMS_CORE_PATH:-../..}"));
+    assert.ok(devComposeContent.includes("- ${CMS_CORE_PATH:-../..}:/app"));
+    assert.ok(devComposeContent.includes("- /app/node_modules"));
 
     // Verify container environment isolation (Rule 10 & AppSec)
     const envFileOccurrences = composeContent.match(/env_file:\s*\.env/g) ?? [];
@@ -58,7 +79,14 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
 
     // 2. .env check
     const envContent = await fs.readFile(path.join(projectDir, ".env"), "utf-8");
+    assert.ok(envContent.includes("CMS_REGISTRY=ghcr.io/kaan35"));
     assert.ok(envContent.includes("CMS_TAG=latest"));
+    assert.ok(envContent.includes("CMS_CORE_PATH="));
+    assert.ok(
+      envContent.includes(
+        "# Available plugins: pages, blog, forms, media, vault (auth & system are always enabled)",
+      ),
+    );
     assert.ok(envContent.includes("AUTO_UPDATE=true"));
     assert.ok(envContent.includes("NODE_ENV=production"));
     assert.ok(envContent.includes("RESTART_POLICY=unless-stopped"));

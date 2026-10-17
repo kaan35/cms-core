@@ -23,10 +23,24 @@ export async function resolvePluginManifest(
       (e) => e.name === "plugin-auth" || e.name === "plugin-system",
     );
   } else if (profile && profile !== "full") {
-    const list = profile
+    const requested = profile
       .split(",")
-      .map((s) => (s.trim().startsWith("plugin-") ? s.trim() : `plugin-${s.trim()}`));
-    list.push("plugin-auth", "plugin-system");
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+      .map((s) => (s.startsWith("plugin-") ? s : `plugin-${s}`));
+
+    if (baseManifest.length > 0) {
+      const availableNames = new Set(baseManifest.map((e) => e.name));
+      const unknown = requested.filter((name) => !availableNames.has(name));
+      if (unknown.length > 0) {
+        const validList = Array.from(availableNames).join(", ");
+        throw new Error(
+          `Unknown plugin(s) in PLUGINS_PROFILE: ${unknown.join(", ")}. Available plugins: ${validList}`,
+        );
+      }
+    }
+
+    const list = [...requested, "plugin-auth", "plugin-system"];
     const allowed = new Set(list);
     filteredBase = baseManifest.filter((e) => allowed.has(e.name));
   } else {

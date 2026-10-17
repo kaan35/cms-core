@@ -48,6 +48,21 @@ export class PluginLoader {
       }
     }
 
+    const manifestNames = new Set(manifest.map((e) => e.name));
+    const existingRecords = await pluginsCollection.find();
+    for (const record of existingRecords) {
+      if (!manifestNames.has(record.name) && record.enabled !== false) {
+        await pluginsCollection.updateOne(
+          { name: record.name },
+          { $set: { enabled: false, updatedAt: new Date() } },
+        );
+        this.logger.warn(
+          `Plugin deactivated because it is not in the resolved manifest: ${record.name}`,
+          { name: record.name },
+        );
+      }
+    }
+
     const pluginMigrations = manifest.flatMap((e) => e.migrations ?? []);
     const allMigrations: Migration[] = [...coreMigrations, ...pluginMigrations];
     await runMigrations(this.db, this.logger, allMigrations);

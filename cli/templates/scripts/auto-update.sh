@@ -47,9 +47,10 @@ if [ "$FORCE_UPDATE" -eq 0 ]; then
 	esac
 fi
 
+REGISTRY="${CMS_REGISTRY:-ghcr.io/kaan35}"
 TAG="${CMS_TAG:-latest}"
-API_IMAGE="kaan/cms-api:${TAG}"
-ADMIN_IMAGE="kaan/cms-admin:${TAG}"
+API_IMAGE="${REGISTRY}/cms-api:${TAG}"
+ADMIN_IMAGE="${REGISTRY}/cms-admin:${TAG}"
 
 # 3. Capture current container image IDs
 OLD_API_ID="$(docker compose images -q api 2>/dev/null || true)"
