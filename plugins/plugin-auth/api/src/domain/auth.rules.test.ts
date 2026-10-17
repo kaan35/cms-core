@@ -80,4 +80,20 @@ describe("auth.rules Zod validation", () => {
     assert.equal(res.name, "Updated Name");
     assert.equal(res.email, undefined);
   });
+
+  it("rejects oversized (>72 byte / 50000-char) passwords in setup, register, and login schemas", () => {
+    const hugePassword = "A1" + "x".repeat(50000);
+    assert.throws(
+      () => validateSetup({ email: "admin@test.com", password: hugePassword }),
+      /ValidationError/,
+    );
+    assert.throws(
+      () => validateRegister({ email: "user@test.com", password: hugePassword }),
+      /ValidationError/,
+    );
+    assert.throws(
+      () => validateLogin({ email: "user@test.com", password: hugePassword }),
+      /ValidationError/,
+    );
+  });
 });

@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # 1. Automated GitHub Actions version management (prevents runner runtime deprecations)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # 2. Monorepo root npm dependencies (restricts scanning strictly to root lockfile)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"

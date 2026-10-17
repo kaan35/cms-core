@@ -83,18 +83,52 @@ describe("Vault Plugin API", () => {
     const listAfterDelete = await service.list();
     assert.equal(listAfterDelete.length, 0);
 
-    // 6. Legacy plaintext fallback: verify unencrypted items can still be revealed
+    // 6. Fail-closed decryption: reject unencrypted and tampered records
     await db.collection<VaultItemDoc>("cms_vault_items").insertOne({
-      id: "legacy-item-1",
-      title: "Legacy Server",
+      id: "unencrypted-item-1",
+      title: "Unencrypted Server",
       username: "root",
       password: "legacy-plaintext-password",
       category: "General",
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    const legacyRevealed = await service.revealPassword("legacy-item-1");
-    assert.equal(legacyRevealed.password, "legacy-plaintext-password");
+    await assert.rejects(
+      async () => service.revealPassword("unencrypted-item-1"),
+      /Invalid or unencrypted vault password payload/,
+    );
+
+    // 7. Reject truncated IV or authentication tag length
+    await db.collection<VaultItemDoc>("cms_vault_items").insertOne({
+      id: "truncated-tag-item-1",
+      title: "Truncated Tag Server",
+      username: "root",
+      password: "enc:v1:00112233445566778899aabb:00112233:deadbeef",
+      category: "General",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await assert.rejects(
+      async () => service.revealPassword("truncated-tag-item-1"),
+      /Invalid IV or authentication tag length in vault payload/,
+    );
+
+    // 8. Reject tampered ciphertext / authentication tag
+    const tamperedPayload =
+      rawStored.password.slice(0, -2) + (rawStored.password.endsWith("ff") ? "00" : "ff");
+    await db.collection<VaultItemDoc>("cms_vault_items").insertOne({
+      id: "tampered-item-1",
+      title: "Tampered Server",
+      username: "root",
+      password: tamperedPayload,
+      category: "General",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await assert.rejects(
+      async () => service.revealPassword("tampered-item-1"),
+      /Unsupported state or unable to authenticate data/,
+    );
   });
 
   it("enforces fail-closed secret validation in VaultService", () => {

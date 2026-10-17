@@ -35,6 +35,51 @@ export function validateMediaFileSize(size: number): void {
   }
 }
 
+const PNG_MAGIC_BYTES = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
+const JPEG_MAGIC_BYTES = [0xff, 0xd8, 0xff] as const;
+const RIFF_MAGIC_BYTES = [0x52, 0x49, 0x46, 0x46] as const; // "RIFF"
+const WEBP_MAGIC_BYTES = [0x57, 0x45, 0x42, 0x50] as const; // "WEBP" at offset 8
+
+function matchesSignature(
+  buffer: Buffer | Uint8Array,
+  signature: readonly number[],
+  offset = 0,
+): boolean {
+  if (buffer.length < offset + signature.length) {
+    return false;
+  }
+  for (let i = 0; i < signature.length; i++) {
+    if (buffer[offset + i] !== signature[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Verifies the binary file header (magic bytes) against the declared MIME type so attackers
+// cannot upload HTML/SVG/JS payloads disguised with a spoofed Content-Type: image/png header.
+export function validateMediaMagicBytes(
+  buffer: Buffer | Uint8Array,
+  expectedMimeType: AllowedMediaMimeType,
+): void {
+  let valid = false;
+  if (expectedMimeType === "image/png") {
+    valid = matchesSignature(buffer, PNG_MAGIC_BYTES, 0);
+  } else if (expectedMimeType === "image/jpeg") {
+    valid = matchesSignature(buffer, JPEG_MAGIC_BYTES, 0);
+  } else if (expectedMimeType === "image/webp") {
+    valid =
+      matchesSignature(buffer, RIFF_MAGIC_BYTES, 0) &&
+      matchesSignature(buffer, WEBP_MAGIC_BYTES, 8);
+  }
+
+  if (!valid) {
+    throw new ValidationError(
+      `File binary signature (magic bytes) does not match declared MIME type '${expectedMimeType}'`,
+    );
+  }
+}
+
 export function sanitizeFilename(rawFilename: string): string {
   // Extract basename without any directory path traversal characters
   const base = path.basename(rawFilename.replace(/\\/g, "/"));

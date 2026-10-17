@@ -7,7 +7,7 @@ import {
   UnauthorizedError,
   ValidationError,
 } from "@cms/core";
-import { hashPassword, verifyPassword } from "../domain/password.rules.js";
+import { createDummyPasswordHash, hashPassword, verifyPassword } from "../domain/password.rules.js";
 import type { RolesRepository } from "../repositories/rolesRepository.js";
 import type { SessionsRepository } from "../repositories/sessionsRepository.js";
 import type { UserDoc, UsersRepository } from "../repositories/usersRepository.js";
@@ -34,6 +34,7 @@ export class AuthService {
   private readonly saltRounds: number;
   private readonly passwordMinLength: number;
   private readonly setupEnabled: boolean;
+  private readonly dummyPasswordHash: string;
 
   constructor(
     usersRepo: UsersRepository,
@@ -56,6 +57,7 @@ export class AuthService {
     this.saltRounds = saltRounds;
     this.passwordMinLength = passwordMinLength;
     this.setupEnabled = setupEnabled;
+    this.dummyPasswordHash = createDummyPasswordHash(saltRounds);
   }
 
   private async createAuthResult(
@@ -186,6 +188,8 @@ export class AuthService {
 
     const user = await this.usersRepo.findByEmail(email);
     if (!user) {
+      // Execute a dummy bcrypt comparison at the same cost factor so response latency does not reveal whether the email exists.
+      await verifyPassword(validated.password, this.dummyPasswordHash);
       throw new UnauthorizedError("Invalid email or password");
     }
 

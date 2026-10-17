@@ -1,10 +1,12 @@
 # CMS Core — Modular Headless Platform
 
+[![CI Pipeline](https://github.com/kaan35/cms-core/actions/workflows/ci.yml/badge.svg)](https://github.com/kaan35/cms-core/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/kaan35/cms-core/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/kaan35/cms-core/actions/workflows/github-code-scanning/codeql)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D26.0.0-339933?style=flat&logo=node.js)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-v6-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
-[![Fastify](https://img.shields.io/badge/Fastify-5-000000?style=flat&logo=fastify)](https://fastify.dev)
+[![Fastify](https://img.shields.io/badge/Fastify-v5-000000?style=flat&logo=fastify)](https://fastify.dev)
 [![React](https://img.shields.io/badge/React-v19-61DAFB?style=flat&logo=react)](https://react.dev)
-[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=next.js)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-v16-000000?style=flat&logo=next.js)](https://nextjs.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=flat&logo=tailwindcss)](https://tailwindcss.com)
 [![Zod](https://img.shields.io/badge/Zod-v4-3E67B1?style=flat&logo=zod)](https://zod.dev)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com/)

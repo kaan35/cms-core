@@ -99,7 +99,8 @@ export class SessionService implements ISessionService {
   async validateAndSlideSession(token: string): Promise<AuthUser> {
     let payload: TokenPayload;
     try {
-      payload = jwt.verify(token, this.jwtSecret) as TokenPayload;
+      // Pin allowed signing algorithm to prevent 'alg: none' and algorithm-confusion attacks.
+      payload = jwt.verify(token, this.jwtSecret, { algorithms: ["HS256"] }) as TokenPayload;
     } catch {
       throw new UnauthorizedError("Invalid or expired authentication token");
     }

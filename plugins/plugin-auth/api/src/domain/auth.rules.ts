@@ -1,6 +1,6 @@
 import { validateWithSchema } from "@cms/core";
 import { z } from "zod";
-import { getDefaultPasswordMinLength } from "./password.rules.js";
+import { getDefaultPasswordMinLength, MAX_BCRYPT_PASSWORD_BYTES } from "./password.rules.js";
 
 // 1. Core Field Validations
 export const EmailSchema = z
@@ -16,6 +16,14 @@ export const PasswordSchema = z
     getDefaultPasswordMinLength(),
     `Password must be at least ${getDefaultPasswordMinLength()} characters long`,
   )
+  .max(
+    MAX_BCRYPT_PASSWORD_BYTES,
+    `Password must not exceed ${MAX_BCRYPT_PASSWORD_BYTES} characters`,
+  )
+  .refine(
+    (val) => Buffer.byteLength(val, "utf8") <= MAX_BCRYPT_PASSWORD_BYTES,
+    `Password must not exceed ${MAX_BCRYPT_PASSWORD_BYTES} bytes`,
+  )
   .refine(
     (val) => /[a-zA-Z]/.test(val) && /[0-9]/.test(val),
     "Password must contain both letters and numbers",
@@ -24,7 +32,18 @@ export const PasswordSchema = z
 // 2. Authentication Schemas
 export const LoginSchema = z.object({
   email: EmailSchema,
-  password: z.string().min(1, "Password is required"),
+  // Cap login password length at the schema boundary to prevent multi-kilobyte bcrypt DoS payloads.
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .max(
+      MAX_BCRYPT_PASSWORD_BYTES,
+      `Password must not exceed ${MAX_BCRYPT_PASSWORD_BYTES} characters`,
+    )
+    .refine(
+      (val) => Buffer.byteLength(val, "utf8") <= MAX_BCRYPT_PASSWORD_BYTES,
+      `Password must not exceed ${MAX_BCRYPT_PASSWORD_BYTES} bytes`,
+    ),
 });
 
 export const RegisterSchema = z.object({

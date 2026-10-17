@@ -33,4 +33,16 @@ describe("password.rules", () => {
     assert.equal(await verifyPassword(plain, hash), true);
     assert.equal(await verifyPassword("WrongPass123", hash), false);
   });
+
+  it("rejects passwords exceeding 72 UTF-8 bytes including 50000-char DoS payloads", async () => {
+    const hugePassword = "A1" + "a".repeat(50000);
+    const res = validatePasswordStrength(hugePassword);
+    assert.equal(res.valid, false);
+    assert.match(res.error ?? "", /must not exceed 72 bytes/);
+
+    await assert.rejects(() => hashPassword(hugePassword), /must not exceed 72 bytes/);
+
+    const validHash = await hashPassword("StrongPassword123", 4);
+    assert.equal(await verifyPassword(hugePassword, validHash), false);
+  });
 });

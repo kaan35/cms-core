@@ -4,6 +4,7 @@ import {
   generateStorageKey,
   sanitizeFilename,
   validateMediaFileSize,
+  validateMediaMagicBytes,
   validateMediaMimeType,
 } from "./domain/media.rules.js";
 import type { MediaDoc, MediaRepository } from "./repositories/mediaRepository.js";
@@ -36,8 +37,9 @@ export class MediaService {
     // 1. Validate MIME type
     const validatedMimeType = validateMediaMimeType(params.mimeType);
 
-    // 2. Validate file size
+    // 2. Validate file size and binary magic-bytes signature
     validateMediaFileSize(params.buffer.length);
+    validateMediaMagicBytes(params.buffer, validatedMimeType);
 
     // 3. Sanitize filename & generate key
     const sanitizedFilename = sanitizeFilename(params.filename);

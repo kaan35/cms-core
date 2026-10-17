@@ -147,6 +147,10 @@ export class UserService {
     }
 
     if (validated.password) {
+      const pwdVal = validatePasswordStrength(validated.password);
+      if (!pwdVal.valid) {
+        throw new ValidationError(pwdVal.error ?? "Invalid password");
+      }
       patch.passwordHash = await hashPassword(validated.password, this.saltRounds);
     }
 

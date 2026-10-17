@@ -47,7 +47,9 @@ describe("MediaService", () => {
 
     const service = new MediaService(mediaRepo, storageAdapter, hooks, stubLogger);
 
-    const buffer = Buffer.from("png-image-content");
+    const buffer = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+    ]);
     const mediaDoc = await service.uploadFile({
       filename: "avatar.png",
       buffer,
@@ -63,7 +65,7 @@ describe("MediaService", () => {
     assert.equal(emittedEvents.length, 1);
   });
 
-  it("rejects SVG and invalid formats", async () => {
+  it("rejects SVG, invalid formats, and spoofed MIME types with mismatched magic bytes", async () => {
     const db = createInMemoryDb();
     const mediaRepo = new MediaRepository(db);
     const storageAdapter = new MockStorageAdapter();
@@ -76,6 +78,18 @@ describe("MediaService", () => {
           filename: "icon.svg",
           buffer: Buffer.from("<svg></svg>"),
           mimeType: "image/svg+xml",
+          uploaderId: "user-1",
+        }),
+      ValidationError,
+    );
+
+    // Attacker renames SVG/HTML to .png and spoofs Content-Type: image/png
+    await assert.rejects(
+      () =>
+        service.uploadFile({
+          filename: "evil.png",
+          buffer: Buffer.from("<svg onload=alert(1)></svg>"),
+          mimeType: "image/png",
           uploaderId: "user-1",
         }),
       ValidationError,
@@ -95,9 +109,12 @@ describe("MediaService", () => {
 
     const service = new MediaService(mediaRepo, storageAdapter, hooks, stubLogger);
 
+    const webpBuffer = Buffer.from([
+      0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38,
+    ]);
     const doc = await service.uploadFile({
       filename: "photo.webp",
-      buffer: Buffer.from("webp-data"),
+      buffer: webpBuffer,
       mimeType: "image/webp",
       uploaderId: "admin-1",
     });
