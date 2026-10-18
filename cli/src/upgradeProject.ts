@@ -42,7 +42,7 @@ export async function upgradeProject(options: UpgradeOptions): Promise<UpgradeRe
     };
   }
 
-  // 3. Rewrite CMS_TAG in .env (Rule 34: exact string replacement)
+  // 3. Rewrite CMS_TAG in .env
   let updatedEnv: string;
   if (tagMatch) {
     updatedEnv = envRaw.replace(/^CMS_TAG=.*$/m, `CMS_TAG=${newTag}`);

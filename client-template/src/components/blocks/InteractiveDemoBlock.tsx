@@ -18,8 +18,10 @@ export function InteractiveDemoBlock({ data }: { data: InteractiveDemoBlockData 
   const [hasError, setHasError] = React.useState(false);
 
   const resetChallenge = () => {
-    setNum1(Math.floor(Math.random() * 20) + 1);
-    setNum2(Math.floor(Math.random() * 10) + 1);
+    const randomBuffer = new Uint32Array(2);
+    crypto.getRandomValues(randomBuffer);
+    setNum1((randomBuffer[0] % 20) + 1);
+    setNum2((randomBuffer[1] % 10) + 1);
     setUserInput("");
     setIsVerified(false);
     setHasError(false);

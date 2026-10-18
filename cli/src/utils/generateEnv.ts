@@ -17,6 +17,8 @@ export interface GenerateEnvOptions {
   apiPort?: number | undefined;
   adminPort?: number | undefined;
   clientPort?: number | undefined;
+  mongoPort?: number | undefined;
+  redisPort?: number | undefined;
   mongoDbName?: string | undefined;
   pluginsProfile?: PluginProfile | undefined;
   includeAdmin?: boolean | undefined;
@@ -42,6 +44,8 @@ export function generateEnvContent(options: GenerateEnvOptions): string {
   const apiPort = options.apiPort ?? 3001;
   const adminPort = options.adminPort ?? 3002;
   const clientPort = options.clientPort ?? 3000;
+  const mongoPort = options.mongoPort ?? 27017;
+  const redisPort = options.redisPort ?? 6379;
   const pluginsProfile = options.pluginsProfile ?? "full";
   const dbName =
     options.mongoDbName ?? options.projectName.toLowerCase().replace(/[^a-z0-9_]/g, "_");
@@ -97,7 +101,9 @@ ${options.includeClient ? `CLIENT_PORT=${clientPort}` : "# CLIENT_PORT disabled"
 # Database & Cache
 MONGO_URI=mongodb://mongo:27017
 MONGO_DB_NAME=${dbName}
+MONGO_PORT=${mongoPort}
 REDIS_URL=redis://redis:6379
+REDIS_PORT=${redisPort}
 
 # Network & Origins
 CORS_ALLOWED_ORIGINS=${origins.join(",")}

@@ -23,6 +23,8 @@ export async function runCli(args: string[]): Promise<void> {
       "api-port": { type: "string" },
       "admin-port": { type: "string" },
       "client-port": { type: "string" },
+      "mongo-port": { type: "string" },
+      "db-port": { type: "string" },
       "auto-update": { type: "boolean" },
       "no-auto-update": { type: "boolean" },
       dir: { type: "string" },
@@ -57,6 +59,8 @@ export async function runCli(args: string[]): Promise<void> {
       values["api-port"] ||
       values["admin-port"] ||
       values["client-port"] ||
+      values["mongo-port"] ||
+      values["db-port"] ||
       values.dir ||
       values.env ||
       values["no-auto-update"] ||
@@ -78,6 +82,8 @@ export async function runCli(args: string[]): Promise<void> {
     let clientPort = values["client-port"]
       ? parseInt(values["client-port"] as string, 10)
       : undefined;
+    const rawMongoPort = (values["mongo-port"] || values["db-port"]) as string | undefined;
+    let mongoPort = rawMongoPort ? parseInt(rawMongoPort, 10) : undefined;
     let autoUpdate = values["no-auto-update"] ? false : Boolean(values["auto-update"] ?? true);
 
     if (isInteractive) {
@@ -90,6 +96,7 @@ export async function runCli(args: string[]): Promise<void> {
           apiPort,
           adminPort,
           clientPort,
+          mongoPort,
           autoUpdate,
           includeAdmin,
           includeClient,
@@ -109,6 +116,7 @@ export async function runCli(args: string[]): Promise<void> {
       apiPort = answers.apiPort;
       adminPort = answers.adminPort;
       clientPort = answers.clientPort;
+      mongoPort = answers.mongoPort;
       autoUpdate = answers.autoUpdate;
       includeAdmin = answers.includeAdmin;
       includeClient = answers.includeClient;
@@ -138,6 +146,7 @@ export async function runCli(args: string[]): Promise<void> {
         apiPort,
         adminPort,
         clientPort,
+        mongoPort,
         includeAdmin,
         includeClient,
         pluginsProfile,
@@ -152,6 +161,9 @@ export async function runCli(args: string[]): Promise<void> {
       }
       if (result.ports.client) {
         console.log(`  - Client Site: http://localhost:${result.ports.client}`);
+      }
+      if (result.ports.mongo) {
+        console.log(`  - MongoDB:     mongodb://localhost:${result.ports.mongo}`);
       }
       console.log(`\nTo get started:`);
       const relPath = path.relative(process.cwd(), result.projectDir);

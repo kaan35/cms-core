@@ -69,7 +69,7 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
     assert.ok(devComposeContent.includes("- ${CMS_CORE_PATH:-../..}:/app"));
     assert.ok(devComposeContent.includes("- /app/node_modules"));
 
-    // Verify container environment isolation (Rule 10 & AppSec)
+    // Verify container environment isolation
     const envFileOccurrences = composeContent.match(/env_file:\s*\.env/g) ?? [];
     assert.equal(envFileOccurrences.length, 1, "Only api service should declare env_file: .env");
     assert.ok(
@@ -153,7 +153,7 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
     const composeContent = await fs.readFile(path.join(projectDir, "docker-compose.yml"), "utf-8");
     assert.ok(!composeContent.includes("client:"));
 
-    // Verify container isolation in custom-app shape (Rule 10 & AppSec)
+    // Verify container isolation in custom-app shape
     const envFileOccurrences = composeContent.match(/env_file:\s*\.env/g) ?? [];
     assert.equal(envFileOccurrences.length, 1, "Only api service should declare env_file: .env");
     assert.ok(
@@ -292,5 +292,19 @@ describe("CMS CLI Engine", { concurrency: 1 }, () => {
     assert.ok(envContent.includes("RESTART_POLICY=no"));
     assert.ok(envContent.includes("CLIENT_TARGET=dev"));
     assert.ok(envContent.includes("AUTO_UPDATE=false"));
+  });
+
+  test("supports custom mongoPort and exposes in .env and compose ports", async () => {
+    const testDir = path.join(BASE_TEST_DIR, "case-mongo-port");
+    await fs.mkdir(testDir, { recursive: true });
+
+    await runCli(["new", "cli-db-isolated", "--dir", testDir, "--mongo-port", "27019", "--yes"]);
+
+    const projectDir = path.join(testDir, "cli-db-isolated");
+    const envContent = await fs.readFile(path.join(projectDir, ".env"), "utf-8");
+    assert.ok(envContent.includes("MONGO_PORT=27019"));
+
+    const composeContent = await fs.readFile(path.join(projectDir, "docker-compose.yml"), "utf-8");
+    assert.ok(composeContent.includes('"${MONGO_PORT:-27017}:27017"'));
   });
 });

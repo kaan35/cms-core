@@ -21,6 +21,7 @@ Commands:
     --api-port        Host port for API service (default: 3001)
     --admin-port      Host port for Admin Shell service (default: 3002)
     --client-port     Host port for Next.js Client site (default: 3000)
+    --mongo-port      Host port for MongoDB database (default: 27018)
     --no-auto-update  Disable 1-minute cron auto-update in .env
     -y, --yes         Skip interactive prompts and use defaults
     -i, --interactive Force interactive wizard mode

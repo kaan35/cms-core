@@ -27,6 +27,7 @@ export interface NewProjectOptions {
   apiPort?: number | undefined;
   adminPort?: number | undefined;
   clientPort?: number | undefined;
+  mongoPort?: number | undefined;
   skipInstall?: boolean | undefined;
   includeAdmin?: boolean | undefined;
   includeClient?: boolean | undefined;
@@ -39,7 +40,12 @@ export interface NewProjectResult {
   services: string[];
   autoUpdate: boolean;
   nodeEnv: "production" | "development";
-  ports: { api: number; admin?: number | undefined; client?: number | undefined };
+  ports: {
+    api: number;
+    admin?: number | undefined;
+    client?: number | undefined;
+    mongo?: number | undefined;
+  };
 }
 
 export async function createNewProject(options: NewProjectOptions): Promise<NewProjectResult> {
@@ -51,7 +57,8 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
   const autoUpdate = options.autoUpdate !== false;
   const apiPort = options.apiPort ?? 3001;
   const adminPort = options.adminPort ?? 3002;
-  const clientPort = options.clientPort ?? 3000;
+  const clientPort = options.clientPort ?? 3003;
+  const mongoPort = options.mongoPort ?? 27018;
 
   // 1. Ensure target directory is clean
   try {
@@ -80,7 +87,7 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
 
   await fs.mkdir(projectDir, { recursive: true });
 
-  // 2. Setup docker-compose.yml and docker-compose.dev.yml from real template files (Rule 10)
+  // 2. Setup docker-compose.yml and docker-compose.dev.yml from real template files
   const templatesDir = getTemplatesDir();
   await copyComposeFiles({
     projectDir,
@@ -100,6 +107,7 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
     apiPort,
     adminPort,
     clientPort,
+    mongoPort,
     includeAdmin,
     includeClient,
     pluginsProfile: options.pluginsProfile,
@@ -198,6 +206,7 @@ npm run docker:up
 - **REST API:** [http://localhost:${apiPort}](http://localhost:${apiPort})
 ${includeAdmin ? `- **Admin Panel:** [http://localhost:${adminPort}](http://localhost:${adminPort})` : ""}
 ${includeClient ? `- **Public Website:** [http://localhost:${clientPort}](http://localhost:${clientPort})` : ""}
+- **MongoDB:** \`mongodb://localhost:${mongoPort}\`
 
 ## 1-Minute Auto-Update Setup (Cronjob)
 When \`NODE_ENV=production\` and \`AUTO_UPDATE=true\` in \`.env\`:
@@ -217,6 +226,7 @@ When \`NODE_ENV=production\` and \`AUTO_UPDATE=true\` in \`.env\`:
       api: apiPort,
       admin: includeAdmin ? adminPort : undefined,
       client: includeClient ? clientPort : undefined,
+      mongo: mongoPort,
     },
   };
 }

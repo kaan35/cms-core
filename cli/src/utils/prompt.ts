@@ -11,6 +11,7 @@ export interface PromptNewProjectOptions {
   apiPort?: number | undefined;
   adminPort?: number | undefined;
   clientPort?: number | undefined;
+  mongoPort?: number | undefined;
   autoUpdate?: boolean | undefined;
   includeAdmin?: boolean | undefined;
   includeClient?: boolean | undefined;
@@ -24,6 +25,7 @@ export interface PromptResult {
   apiPort: number;
   adminPort?: number | undefined;
   clientPort?: number | undefined;
+  mongoPort: number;
   autoUpdate: boolean;
   includeAdmin: boolean;
   includeClient: boolean;
@@ -162,6 +164,7 @@ export async function promptNewProject(
     let apiPort = defaults.apiPort ?? 3001;
     let adminPort = includeAdmin ? (defaults.adminPort ?? 3002) : undefined;
     let clientPort = includeClient ? (defaults.clientPort ?? 3000) : undefined;
+    let mongoPort = defaults.mongoPort ?? 27018;
 
     const customizePortsAnswer = await ask(`? Configure custom ports? (y/N) [n]: `);
     if (customizePortsAnswer.toLowerCase().startsWith("y")) {
@@ -185,6 +188,12 @@ export async function promptNewProject(
           const parsed = parseInt(clientInput, 10);
           if (!isNaN(parsed) && parsed > 0 && parsed < 65536) clientPort = parsed;
         }
+      }
+
+      const mongoInput = await ask(`  Host port for MongoDB database (${mongoPort}): `);
+      if (mongoInput) {
+        const parsed = parseInt(mongoInput, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed < 65536) mongoPort = parsed;
       }
     }
 
@@ -214,6 +223,7 @@ export async function promptNewProject(
       apiPort,
       adminPort,
       clientPort,
+      mongoPort,
       autoUpdate,
       includeAdmin,
       includeClient,
