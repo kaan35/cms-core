@@ -38,7 +38,7 @@ export const UpdateBlogPostSchema = z.object({
   metaDescription: z.string().optional(),
 });
 
-// Inferred TypeScript types (Rule 30)
+// Inferred TypeScript types
 export type BlogPostStatus = z.infer<typeof BlogPostStatusSchema>;
 export type CreateBlogPostInput = z.infer<typeof CreateBlogPostSchema>;
 export type UpdateBlogPostInput = z.infer<typeof UpdateBlogPostSchema>;

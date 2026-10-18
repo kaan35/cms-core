@@ -53,10 +53,12 @@ export function getCsrfToken(): string {
     return fromCookie;
   }
 
-  const generated =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2) + Date.now().toString(36);
+  if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
+    throw new Error(
+      "Secure crypto.randomUUID is not available in the current runtime environment.",
+    );
+  }
+  const generated = crypto.randomUUID();
 
   setCsrfToken(generated);
   return generated;

@@ -28,12 +28,48 @@ export function nodeConfig(tsconfigRootDir) {
       },
       rules: {
         "@typescript-eslint/no-explicit-any": "error",
+        "@typescript-eslint/ban-ts-comment": [
+          "error",
+          {
+            "ts-expect-error": "allow-with-description",
+            "ts-ignore": true,
+            "ts-nocheck": true,
+            "ts-check": false,
+            minimumDescriptionLength: 5,
+          },
+        ],
         "no-restricted-syntax": [
           "error",
           {
             selector: "TSParameterProperty",
             message:
-              "Constructor parameter properties are banned (Rule 14). Declare class fields explicitly.",
+              "Constructor parameter properties are disallowed. Declare class fields explicitly.",
+          },
+          {
+            selector: "CallExpression[callee.name='exec']",
+            message:
+              "child_process.exec is disallowed due to shell injection risks. Use execFile or spawn with { shell: false }.",
+          },
+        ],
+        "no-proto": "error",
+        "no-restricted-properties": [
+          "error",
+          {
+            object: "Math",
+            property: "random",
+            message:
+              "Math.random() is disallowed for security reasons. Use crypto.randomUUID(), crypto.randomBytes(), or crypto.getRandomValues().",
+          },
+          {
+            property: "__proto__",
+            message:
+              "Direct __proto__ access is disallowed. Use Object.getPrototypeOf/setPrototypeOf or Map.",
+          },
+        ],
+        "no-console": [
+          "error",
+          {
+            allow: ["warn", "error"],
           },
         ],
         "@typescript-eslint/no-unused-vars": [
@@ -44,6 +80,12 @@ export function nodeConfig(tsconfigRootDir) {
             caughtErrorsIgnorePattern: "^_",
           },
         ],
+      },
+    },
+    {
+      files: ["**/*.test.ts", "**/tests/**"],
+      rules: {
+        "no-console": "off",
       },
     },
   ]);

@@ -33,12 +33,68 @@ export function reactConfig(tsconfigRootDir) {
       },
       rules: {
         "@typescript-eslint/no-explicit-any": "error",
+        "@typescript-eslint/ban-ts-comment": [
+          "error",
+          {
+            "ts-expect-error": "allow-with-description",
+            "ts-ignore": true,
+            "ts-nocheck": true,
+            "ts-check": false,
+            minimumDescriptionLength: 5,
+          },
+        ],
         "no-restricted-syntax": [
           "error",
           {
             selector: "TSParameterProperty",
             message:
-              "Constructor parameter properties are banned (Rule 14). Declare class fields explicitly.",
+              "Constructor parameter properties are disallowed. Declare class fields explicitly.",
+          },
+        ],
+        "no-proto": "error",
+        "no-restricted-properties": [
+          "error",
+          {
+            object: "Math",
+            property: "random",
+            message:
+              "Math.random() is disallowed for security reasons. Use Web Crypto crypto.getRandomValues() or crypto.randomUUID().",
+          },
+          {
+            property: "__proto__",
+            message:
+              "Direct __proto__ access is disallowed. Use Object.getPrototypeOf/setPrototypeOf or Map.",
+          },
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            paths: [
+              {
+                name: "mongodb",
+                message: "Do not import MongoDB in frontend packages.",
+              },
+              {
+                name: "ioredis",
+                message: "Do not import Redis in frontend packages.",
+              },
+              {
+                name: "child_process",
+                message: "Node child_process cannot be used in client code.",
+              },
+              {
+                name: "node:child_process",
+                message: "Node child_process cannot be used in client code.",
+              },
+              {
+                name: "fs",
+                message: "Node fs cannot be used in client code.",
+              },
+              {
+                name: "node:fs",
+                message: "Node fs cannot be used in client code.",
+              },
+            ],
           },
         ],
         "@typescript-eslint/no-unused-vars": [
@@ -49,6 +105,12 @@ export function reactConfig(tsconfigRootDir) {
             caughtErrorsIgnorePattern: "^_",
           },
         ],
+      },
+    },
+    {
+      files: ["**/*.test.ts", "**/*.test.tsx", "**/tests/**"],
+      rules: {
+        "no-console": "off",
       },
     },
   ]);

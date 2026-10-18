@@ -10,8 +10,8 @@ describe("DatabaseService", () => {
     assert.throws(() => db.collection("anything"), /not connected/);
   });
 
-  it("connect() fails fast on unreachable host (serverSelectionTimeoutMS: 5000)", async () => {
-    const db = new DatabaseService("mongodb://localhost:1", "test", stubLogger);
+  it("connect() fails fast on unreachable host", async () => {
+    const db = new DatabaseService("mongodb://localhost:1", "test", stubLogger, 50);
     await assert.rejects(
       () => db.connect(),
       (err: Error) => {

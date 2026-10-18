@@ -1,33 +1,25 @@
-# CMS Core — Modular Headless Platform
+# CMS Core — Modular Headless CMS & Application Platform
 
 [![CI Pipeline](https://github.com/kaan35/cms-core/actions/workflows/ci.yml/badge.svg)](https://github.com/kaan35/cms-core/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/kaan35/cms-core/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/kaan35/cms-core/actions/workflows/github-code-scanning/codeql)
+[![Dependabot Updates](https://github.com/kaan35/cms-core/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/kaan35/cms-core/actions/workflows/dependabot/dependabot-updates)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D26.0.0-339933?style=flat&logo=node.js)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-v6-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
-[![Fastify](https://img.shields.io/badge/Fastify-v5-000000?style=flat&logo=fastify)](https://fastify.dev)
-[![React](https://img.shields.io/badge/React-v19-61DAFB?style=flat&logo=react)](https://react.dev)
-[![Next.js](https://img.shields.io/badge/Next.js-v16-000000?style=flat&logo=next.js)](https://nextjs.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=flat&logo=tailwindcss)](https://tailwindcss.com)
-[![Zod](https://img.shields.io/badge/Zod-v4-3E67B1?style=flat&logo=zod)](https://zod.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+[![Fastify](https://img.shields.io/badge/Fastify-5-000000?style=flat&logo=fastify)](https://fastify.dev)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=next.js)](https://nextjs.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat&logo=tailwindcss)](https://tailwindcss.com)
+[![Zod](https://img.shields.io/badge/Zod-4-3E67B1?style=flat&logo=zod)](https://zod.dev)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/Tests-209%20Passing-success?style=flat&logo=node.js)](#-testing--code-quality)
+[![Tests](https://img.shields.io/badge/Tests-225%20Passing-success?style=flat&logo=node.js)](#-testing--commands)
 
-A modular, production-ready headless CMS and application platform built with **Fastify 5** and **Next.js 16 (React 19)**. Features are organized into self-contained plugins that can be enabled or disabled at runtime per project without modifying or forking core code.
-
----
-
-## 💡 Core Philosophy
-
-- **Minimal Core:** Handles only shared essentials — plugin lifecycle, dependency injection, session authentication, and database adapters.
-- **Isolated 3-Tier Plugins:** Each plugin owns its Fastify API routes, Zod schemas, React admin views, and RBAC permissions. Plugins never import each other directly.
-- **Zero-Fork Runtime Toggles:** Enable or disable features per project via database flags without code changes or forks.
-- **Contract-First Design:** Core services and plugins interact strictly through TypeScript interfaces (`IDatabase`, `ICache`, `ILogger`, `IHookManager`).
+A modular, plugin-based content management and application platform built with **Fastify 5**, **Next.js 16 (React 19)**, **MongoDB 8**, and **Redis 8**. You can run it as a full website with a public frontend or as a private admin panel with only the plugins you need.
 
 ---
 
 ## 📸 Screenshots & Showcase
 
-### 🛡️ Admin Control Plane (`Next.js 16` + `React 19` + `Tailwind CSS v4`)
+### 🛡️ Admin Control Panel (`Next.js 16` + `React 19` + `Tailwind CSS 4`)
 
 |                                                Dashboard                                                 |                                              Plugin Manager                                               |
 | :------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------: |
@@ -61,216 +53,188 @@ A modular, production-ready headless CMS and application platform built with **F
 
 ---
 
+## 🛠️ How to Use
+
+### 1. Run the Monorepo Locally
+
+**Prerequisites:**
+
+- **Node.js:** `>= 26.0.0`
+- **Docker & Docker Compose**
+- **npm:** `>= 10.0`
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/kaan35/cms-core.git
+cd cms-core
+
+# 2. Copy the environment configuration
+cp .env.example .env
+
+# 3. Start all services (MongoDB, Redis, MinIO, Fastify API, Admin Panel, Public Web Client)
+npm run dev
+```
+
+| Service               | URL                                                          | Description                                                  |
+| :-------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
+| **REST API & Health** | [http://localhost:3001/health](http://localhost:3001/health) | Fastify 5 backend API and health check                       |
+| **Swagger UI**        | [http://localhost:3001/docs](http://localhost:3001/docs)     | Interactive OpenAPI documentation generated from Zod schemas |
+| **Admin Panel**       | [http://localhost:3002](http://localhost:3002)               | Manage content, plugins, users, and system settings          |
+| **Setup Wizard**      | [http://localhost:3002/setup](http://localhost:3002/setup)   | First-run screen to create the initial Superadmin account    |
+| **Public Web Client** | [http://localhost:3003](http://localhost:3003)               | Sample Next.js 16 public website powered by the block engine |
+
+---
+
+### 2. Create and Upgrade Projects (`cms new` & `cms upgrade`)
+
+The CLI tool (`cli/bin/cms.js`) scaffolds and upgrades lightweight project folders containing `.env`, `docker-compose.yml`, `package.json`, and an optional `client/` folder without copying `api/` or `admin/` source code:
+
+```bash
+# Private admin panel with Password Vault (no public website)
+node cli/bin/cms.js new ../my-site --profile=vault --no-client --dir=.. --yes
+
+# Full website with Pages, Blog, Forms, Media, and Next.js client/
+node cli/bin/cms.js new ../my-site --profile=pages,blog,forms,media --client --dir=.. --yes
+
+# Interactive setup prompt
+node cli/bin/cms.js new --interactive
+
+# Upgrade an existing project to a specific CMS container version
+node cli/bin/cms.js upgrade latest --dir=../my-site
+```
+
+---
+
+### 3. Selecting Plugins (`PLUGINS_PROFILE`)
+
+You can choose which plugins run in each project through the `PLUGINS_PROFILE` variable in `.env`:
+
+| `PLUGINS_PROFILE`        | Loaded Plugins                                               | Typical Use Case                                                   |
+| :----------------------- | :----------------------------------------------------------- | :----------------------------------------------------------------- |
+| `full` _(default)_       | `auth`, `system`, `media`, `pages`, `blog`, `forms`, `vault` | All built-in plugins enabled                                       |
+| `minimal`                | `auth`, `system`                                             | Core authentication, users, roles, and system settings only        |
+| `vault`                  | `auth`, `system`, `vault`                                    | Private admin panel with the encrypted password manager            |
+| `pages,blog,forms,media` | `auth`, `system`, `pages`, `blog`, `forms`, `media`          | Public website, blog, and contact forms without the password vault |
+
+- **Core Plugins:** `auth` and `system` are always enabled in every project.
+- **Automatic Sidebar Filtering:** Plugins omitted from `PLUGINS_PROFILE` are automatically marked `enabled: false` in the database so they do not appear in the Admin sidebar.
+- **Runtime Toggles:** Installed plugins can also be turned on or off anytime from the Admin UI at `/dashboard/plugins`.
+- **Startup Validation:** If an unknown plugin name is passed in `PLUGINS_PROFILE`, the server stops on startup with a clear error message listing the valid plugin names.
+
+---
+
+### 4. Docker Architecture: Development vs. Production
+
+The platform supports hot-reload development and ultra-slim multi-stage production builds:
+
+| Dimension | Local Development (`Dockerfile.dev`) | Production Deployment (`Dockerfile`) |
+| :--- | :--- | :--- |
+| **Image Size** | ~2.8 GB (includes `devDependencies`, compilers, `tsx`) | **~180 MB** (zero dev tooling, minimal standalone runtime) |
+| **Execution** | Live host volume bind-mounts (`.:/app`) & hot-reload | Standalone compiled artifacts (`node dist/main.js`, Next.js standalone) |
+| **Security** | Development debugging user | **Enforced `USER node` (non-root)**, reduced CVE surface |
+
+```bash
+# Development container workflow
+npm run dev           # Start all services with live reload
+npm run logs          # Follow real-time container logs
+npm run down          # Stop all running containers
+
+# Build lightweight production images (~180MB each)
+npm run docker:build        # Build both API and Admin production images
+npm run docker:build:api    # Build standalone Fastify API image
+npm run docker:build:admin  # Build standalone Next.js 16 Admin image
+```
+
+**Remote Server (VPS) Deployment:**
+To deploy on a remote server, you do not need to clone the repository or copy source code. Copy only your project's `docker-compose.yml` and `.env` file to the server, then run `docker compose pull && docker compose up -d`.
+
+---
+
 ## 🏗️ Architecture & Monorepo Structure
 
 ```text
-cms/
+cms-core/
 ├── packages/
-│   ├── core/            ← Fastify 5 server, HookManager event bus, DI container
-│   ├── db/              ← MongoDB 8 & Redis 8 adapters behind IDatabase / ICache
-│   ├── admin-shell/     ← Shared React components, CVA design tokens, form primitives
-│   └── client-sdk/      ← Public TypeScript types (PageDoc, BlogPostDoc) & fetchers
+│   ├── core/            ← Fastify 5 server, HookManager event bus, PluginLoader, DI container
+│   ├── db/              ← MongoDB 8 & Redis 8 adapters behind IDatabase and ICache interfaces
+│   ├── tsconfig/        ← Shared TypeScript 6 configuration
+│   ├── admin-shell/     ← Shared React 19 UI components, dynamic Sidebar, form inputs
+│   └── client-sdk/      ← Shared TypeScript types and API client for frontend apps
 ├── plugins/
-│   ├── plugin-auth/     ← Authentication, RBAC, sessions, CSRF protection
-│   ├── plugin-system/   ← Audit logs, feature flags, brand settings, plugin toggles
-│   ├── plugin-pages/    ← Block-based page builder, version snapshots, 301 redirects
-│   ├── plugin-blog/     ← Articles, slugs, author attribution, SEO metadata
-│   ├── plugin-media/    ← S3/MinIO asset storage, MIME validation
-│   ├── plugin-forms/    ← Form builder, challenge captcha, submission inbox, Excel/CSV export
-│   └── plugin-vault/    ← AES-256-GCM encrypted password manager
-├── cli/                 ← Project scaffolding CLI (cms new)
-└── projects/            ← Generated projects (gitignored)
+│   ├── plugin-auth/     ← Authentication, RBAC permissions, active sessions, CSRF protection
+│   ├── plugin-system/   ← Audit logs, feature flags, brand settings, runtime plugin toggles
+│   ├── plugin-pages/    ← Block-based page builder, version history, 301 redirects
+│   ├── plugin-blog/     ← Blog articles, slugs, reading time, SEO metadata
+│   ├── plugin-media/    ← S3/MinIO file uploads and binary MIME verification
+│   ├── plugin-forms/    ← Form builder, math/text captcha, submissions, Excel (.xlsx) & CSV export
+│   └── plugin-vault/    ← AES-256-GCM encrypted password and secret manager
+├── api/                 ← Fastify 5 backend entrypoint (Dockerfile & Dockerfile.dev)
+├── admin/               ← Next.js 16 Admin panel entrypoint (Dockerfile & Dockerfile.dev)
+├── client-template/     ← Starter Next.js 16 public website template for --client projects
+└── cli/                 ← Scaffolding and upgrade CLI (cms new, cms upgrade)
 ```
 
 ### Component Ownership
 
-| Layer                                           | Distributed As            | Ownership & Maintenance                                                     |
-| :---------------------------------------------- | :------------------------ | :-------------------------------------------------------------------------- |
-| **Core Packages** (`core`, `db`, `admin-shell`) | Monorepo packages         | **Centrally maintained.** Updated across all projects via version bump.     |
-| **Plugins** (`plugin-*`)                        | Modular 3-tier plugins    | **Centrally maintained.** Opt-in per project at creation or runtime.        |
-| **Backend & Admin Runtime** (`api/`, `admin/`)  | Docker images / bootstrap | **Automated.** Pre-configured Fastify and Next.js admin runtimes.           |
-| **Public Web Frontend** (`client-template/`)    | Starter template          | **Fully customizable.** Where your site design, pages, and components live. |
-
----
-
-## 🧠 Key Technical Decisions
-
-- **Fastify 5 + Zod 4.6:** High throughput with lower memory and CPU overhead compared to Express. All input payloads and environment variables are strictly validated with Zod, automatically powering interactive OpenAPI/Swagger docs at `/docs`.
-- **Event Bus (`HookManager`):** Decoupled inter-plugin communication via publish/subscribe events (e.g. `blog.post.created` triggers audit logging). Plugins have zero circular dependencies and operate independently.
-- **Client SDK (`@cms/client-sdk`):** Shared TypeScript contracts and fetchers guarantee end-to-end type safety between backend models and the Next.js frontend with zero code duplication.
-- **Type-Safe UI (CVA Pattern):** UI primitives in `@cms/admin-shell` use Class Variance Authority for consistent design tokens, keyboard accessibility, and full autocomplete.
-- **Hybrid SSR & Islands:** Next.js 16 Server Components handle static layout and SEO, while interactive elements (forms, captcha, modals) run as lightweight client islands with SWR cache revalidation.
-- **Zero-Dependency Native Data Export:** `plugin-forms` implements RFC 4180 CSV (with `\uFEFF` UTF-8 BOM for immediate Turkish character decoding in Excel) and ECMA-376 OpenXML (`.xlsx`) using Node.js built-in `node:zlib` without third-party spreadsheet libraries.
-
----
-
-## 🛡️ Security Architecture
-
-- **Server-Side `PluginGuard`:** Ingress guard blocks direct API access to disabled plugins (`503 Service Unavailable`).
-- **Session Security:** Cryptographically signed HttpOnly, SameSite cookies with sliding expiration and instant device revocation (`POST /api/auth/sessions/revoke-all`).
-- **Double-Submit CSRF:** All state-changing requests (POST/PUT/DELETE) require a validated `crypto.randomBytes(32)` token.
-- **AES-256-GCM Vault:** Secrets and credentials in `plugin-vault` are encrypted with AES-256-GCM using unique initialization vectors (IV).
-- **Immutable Audit Logs:** Administrative actions (logins, settings changes, plugin toggles, user edits) are recorded permanently in MongoDB.
+| Layer                                                         | Distributed As                                    | Maintenance                                                               |
+| :------------------------------------------------------------ | :------------------------------------------------ | :------------------------------------------------------------------------ |
+| **Core Packages** (`core`, `db`, `admin-shell`, `client-sdk`) | Workspace packages                                | Centrally maintained in the monorepo                                      |
+| **Built-in Plugins** (`plugin-*`)                             | Modular 3-tier plugins (`api`, `admin`, `client`) | Centrally maintained; enabled per project via `PLUGINS_PROFILE`           |
+| **Backend & Admin Runtimes** (`api/`, `admin/`)               | Docker images (`cms-api`, `cms-admin`)            | Pre-configured server and admin containers                                |
+| **Public Website** (`client-template/`)                       | Starter Next.js 16 app                            | Copied into `--client` projects so you can customize your frontend design |
 
 ---
 
 ## 🧱 Web Client Block Engine (`client-template`)
 
-The Next.js 16 public site features a modular, block-based page rendering engine connected through `@cms/client-sdk`:
+Projects created with `--client` include a modular Next.js 16 frontend that renders pages built in the Admin panel:
 
 | Block Type        | Component               | Description                                                                      |
 | :---------------- | :---------------------- | :------------------------------------------------------------------------------- |
-| **Hero Block**    | `HeroBlock.tsx`         | Full-width or split hero with badge, headline, CTA buttons, and background glow. |
-| **Bento Grid**    | `BentoGridBlock.tsx`    | Modern asymmetric card grid with responsive columns and Lucide icons.            |
-| **Rich Text**     | `TextBlock.tsx`         | Typography-optimized prose for markdown articles and legal documents.            |
-| **Media Gallery** | `GalleryBlock.tsx`      | Responsive image and asset showcase with lightbox previews.                      |
-| **Blog Feed**     | `BlogPostsBlock.tsx`    | Dynamic feed showing latest published articles, reading times, and tags.         |
-| **Dynamic Form**  | `FormBlock.tsx`         | Embeds forms built in Admin with live validation and native challenge captcha.   |
-| **Code Showcase** | `CodeShowcaseBlock.tsx` | Syntax-highlighted code snippets with one-click copy.                            |
+| **Hero Block**    | `HeroBlock.tsx`         | Full-width or split hero banner with headline, badge, and call-to-action buttons |
+| **Bento Grid**    | `BentoGridBlock.tsx`    | Responsive card grid with configurable desktop columns and icons                 |
+| **Rich Text**     | `TextBlock.tsx`         | Formatted text block for articles and documentation pages                        |
+| **Media Gallery** | `GalleryBlock.tsx`      | Image gallery with lightbox preview                                              |
+| **Blog Feed**     | `BlogPostsBlock.tsx`    | Displays recent published blog posts with tags and reading time                  |
+| **Dynamic Form**  | `FormBlock.tsx`         | Renders forms created in Admin with validation and captcha protection            |
+| **Code Showcase** | `CodeShowcaseBlock.tsx` | Syntax-highlighted code block with a copy button                                 |
 
-**Frontend Highlights:**
-
-- **Brand Token Sync:** Primary theme color (`--primary`) and Google Fonts configured in the Admin apply dynamically to the public site.
-- **Native Challenge Captcha:** Lightweight math and character challenges protect forms without third-party tracking scripts or external cookies.
+- **Brand Color Sync:** Theme colors and typography configured in the Admin panel apply automatically to the public website.
+- **Built-in Captcha:** Public forms use a self-contained math and text challenge captcha without external tracking scripts.
 
 ---
 
-## ⚡ Quick Start
+## 🛡️ Security Architecture
 
-### Prerequisites
+The platform is designed around strict fail-closed and standard OWASP Top 10 web security guidelines:
 
-- **Node.js:** `>= 26.0.0 LTS`
-- **Docker & Docker Compose:** `>= 24.0`
-- **npm:** `>= 10.0`
-
-### 1. Setup & Run Locally
-
-```bash
-# Clone the repository
-git clone https://github.com/kaan35/cms-core.git
-cd cms
-
-# Install dependencies
-npm install
-
-# Configure environment variables
-cp .env.example .env
-
-# Start all services with Docker (MongoDB, Redis, Fastify API, Admin Shell)
-npm run dev
-```
-
-### 2. Access Endpoints
-
-| Service          | URL                                                        | Notes                                 |
-| :--------------- | :--------------------------------------------------------- | :------------------------------------ |
-| **Admin Panel**  | [http://localhost:3002](http://localhost:3002)             | Manage content, plugins, and settings |
-| **Setup Wizard** | [http://localhost:3002/setup](http://localhost:3002/setup) | Create initial Superadmin user        |
-| **REST API**     | [http://localhost:3001](http://localhost:3001)             | Fastify backend API                   |
-| **Swagger UI**   | [http://localhost:3001/docs](http://localhost:3001/docs)   | Interactive OpenAPI documentation     |
+- **Authentication & Passwords:** Passwords are hashed with `bcrypt` (enforcing a 72-byte input limit) and login requests run a dummy check when an email is not found to prevent timing-based user enumeration.
+- **Sessions & Access Control:** Uses `HttpOnly`, `SameSite` cookies and `HS256` JWTs with role-based permissions (`checkPermission`) and one-click session revocation (`POST /api/auth/sessions/revoke-all`). The initial `/setup` route locks permanently after the first admin is created.
+- **CSRF & Input Validation:** State-changing requests require a Double-Submit CSRF token verified in constant time. All request bodies, queries, and parameters are validated with Zod schemas before reaching MongoDB.
+- **Password Vault Encryption:** Secrets stored in `plugin-vault` are encrypted at rest with `AES-256-GCM` using a unique 12-byte IV per item and a key derived via Node.js built-in `Argon2id`.
+- **Server-Side Ingress Guard (`PluginGuard`):** Ingress middleware blocks direct API access to disabled plugins with an immediate fail-closed `503 Service Unavailable`.
+- **Container Hardening (Non-Root User):** Production Dockerfiles enforce `USER node` (non-root) to minimize the host attack surface and prevent container breakout vulnerabilities.
+- **Zero-Dependency Native Data Engine:** Excel (`.xlsx`) and RFC 4180 CSV export with UTF-8 BOM are generated natively using Node.js built-in `node:zlib` without third-party spreadsheet dependencies.
+- **File Uploads & Logging:** `plugin-media` verifies binary file signatures (PNG, JPEG, WebP magic bytes), enforces a 10 MB limit, renames files to UUIDs, and blocks SVG/XML uploads. Sensitive fields (`password`, `token`, `secret`, `cookie`) are automatically redacted in logs.
 
 ---
 
-## 🐳 Docker: Development vs. Production Containers
-
-The platform supports two distinct Docker setups: **Hot-Reload Development** and **Ultra-Slim Multi-Stage Production**.
-
-### Architecture Comparison
-
-| Dimension              | Local Development (`Dockerfile.dev`)                   | Production Deployment (`Dockerfile`)                                    |
-| :--------------------- | :----------------------------------------------------- | :---------------------------------------------------------------------- |
-| **Base Image**         | `node:26` (Full Debian with compilers)                 | **Builder:** `node:26` / **Runner:** `node:26-slim` (Minimal glibc)     |
-| **Typical Image Size** | ~2.8 GB (includes `devDependencies`, compilers, `tsx`) | **~180 MB** (zero dev tooling, minimal standalone runtime)              |
-| **Execution Model**    | Live host volume bind-mounts (`.:/app`) & `tsx watch`  | Standalone compiled artifacts (`node dist/main.js`, Next.js standalone) |
-| **Security Profile**   | Development debugging user                             | **Enforced `USER node` (non-root)**, reduced CVE surface                |
-| **Target Audience**    | Local development, rapid iteration                     | Cloud deployment, Image registry                                        |
-
-### Development Workflow (Hot-Reload)
-
-By default, Docker Compose runs in development mode with live code reloading:
+## 🧪 Testing & Commands
 
 ```bash
-# Start all dev services with volume bind-mounts (Fastify API, Next.js Admin, Mongo, Redis, MinIO)
-npm run dev
-# Or: docker compose up -d
+# Run build, typecheck, lint, and all tests in one command
+npm run ci
 
-# View real-time aggregated logs
-npm run logs
-# Or: docker compose logs -f
-
-# Stop containers
-npm run down
-# Or: docker compose down
+# Or run individual steps:
+npm test            # Run all unit and integration tests (225 passing, ~5.5s)
+npm run typecheck   # Dynamic parallel typecheck across all 22 workspaces (~4s)
+npm run lint        # Run ESLint across all workspaces (~5s)
+npm run build       # Compile packages to dist/
+npm run db:backup   # Save timestamped MongoDB archive to backups/
+npm run db:restore  # Restore database from backups/backup-latest.archive
 ```
 
-### Production Multi-Stage Build & Deployment
+### ⚡ Dynamic Monorepo Tooling
 
-To build lightweight, standalone production images with zero development dependencies:
-
-```bash
-# Build all production images concurrently (~180MB each)
-npm run docker:build
-
-# Or build individual production images:
-npm run docker:build:api      # Produces ~180MB cms-api (node dist/main.js)
-npm run docker:build:admin    # Produces ~180MB Next.js standalone cms-admin
-npm run docker:build:client   # Produces standalone client image
-
-# Run full stack in production mode via Docker Compose:
-API_DOCKERFILE=api/Dockerfile ADMIN_DOCKERFILE=admin/Dockerfile docker compose up -d
-```
-
----
-
-## 🚀 Scaffolding Projects with the CLI
-
-The built-in CLI (`cli/bin/cms.js`) creates independent, production-ready projects in the `projects/` directory:
-
-```bash
-# Interactive setup wizard
-node cli/bin/cms.js new my-site --interactive
-
-# Or create a marketing site with public frontend
-node cli/bin/cms.js new my-site --profile full --client --yes
-
-# Or create a standalone internal tool (Admin-only, e.g. Vault / CRM)
-node cli/bin/cms.js new my-tool --profile minimal --no-client --yes
-```
-
-### Scaffolded Project Commands
-
-Each generated project has its own self-contained workflow:
-
-```bash
-cd projects/my-site
-
-# Start in development mode (hot-reloads with local monorepo source)
-npm run dev
-
-# Start production containers
-docker compose up -d
-
-# Take a timestamped MongoDB backup
-npm run db:backup
-
-# Restore database from backup
-npm run db:restore
-```
-
----
-
-## 🧪 Testing & Code Quality
-
-```bash
-# Run all automated tests across monorepo (200+ passing)
-npm test
-
-# Run TypeScript typechecks across all workspaces
-npm run typecheck
-
-# Run linter across workspaces
-npm run lint
-
-# Compile all packages
-npm run build
-```
+- **Parallel Typechecking (`scripts/typecheck.mjs`):** Replaces slow sequential `npm --workspaces` execution (~32s) with an optimized parallel runner (~4s). It checks all composite library packages in a single pass via `tsc -b --noEmit` while simultaneously compiling standalone applications (`api`, `admin`, `client-template`, `cli`) concurrently across CPU cores. Workspaces are discovered dynamically at runtime from `package.json`, requiring zero configuration updates when adding or removing plugins.
+- **Fail-Closed Verification:** Captures process exit codes across all concurrent compilation targets to ensure zero silent failures in CI/CD pipelines.
