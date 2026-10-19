@@ -49,11 +49,17 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
   React.useEffect(() => {
     if (userData && !isNew) {
       const initialPerms = computeInitialPermissions(userData, rolesData);
+      const userRole =
+        userData.role ||
+        userData.roles?.[0]?.name ||
+        rolesData.find((r) => userData.roleIds?.includes(r.id))?.name ||
+        (userData.permissions?.includes("*") ? "admin" : "user");
+
       setInputData({
         email: userData.email || "",
         name: userData.name || "",
         password: "",
-        role: userData.role || "user",
+        role: userRole,
         permissions: initialPerms,
       });
     }
@@ -115,6 +121,12 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
 
     setIsSubmitting(true);
 
+    const finalPermissions =
+      inputData.permissions.length === ALL_FLAT_PERMISSIONS.length ? ["*"] : inputData.permissions;
+
+    const targetRole = rolesData.find((r) => r.name === inputData.role || r.id === inputData.role);
+    const roleId = targetRole ? targetRole.id : inputData.role;
+
     try {
       if (isNew) {
         await api.post("/users", {
@@ -122,7 +134,8 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
           name: inputData.name || undefined,
           password: inputData.password,
           role: inputData.role,
-          permissions: inputData.permissions,
+          roleIds: [roleId],
+          permissions: finalPermissions,
         });
         toast.success("User created successfully!");
         router.push("/dashboard/users");
@@ -131,7 +144,8 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
           email: inputData.email,
           name: inputData.name,
           role: inputData.role,
-          permissions: inputData.permissions,
+          roleIds: [roleId],
+          permissions: finalPermissions,
         };
         if (inputData.password && inputData.password.trim().length > 0) {
           payload["password"] = inputData.password;

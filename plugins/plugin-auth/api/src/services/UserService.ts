@@ -1,6 +1,11 @@
 import type { IHookManager, ILogger } from "@cms/core";
-import { ConflictError, NotFoundError, ValidationError, buildPaginatedResult } from "@cms/core";
-import { EVENTS } from "@cms/core";
+import {
+  ConflictError,
+  EVENTS,
+  NotFoundError,
+  ValidationError,
+  buildPaginatedResult,
+} from "@cms/core";
 import {
   type CreateUserInput,
   type UpdateUserInput,
@@ -38,14 +43,22 @@ export class UserService {
 
   async listUsers(page = 1, limit = 20) {
     const { items, total } = await this.usersRepo.findPaginated(page, limit);
-    const sanitized = items.map((u) => ({
-      id: u.id,
-      email: u.email,
-      name: u.name,
-      roleIds: u.roleIds,
-      permissions: u.permissions || [],
-      createdAt: u.createdAt,
-    }));
+    const allRoles = await this.rolesRepo.findAll();
+    const roleMap = new Map(allRoles.map((r) => [r.id, r.name]));
+
+    const sanitized = items.map((u) => {
+      const roleNames = (u.roleIds || []).map((id) => roleMap.get(id)).filter(Boolean) as string[];
+      const role = roleNames[0] || (u.permissions?.includes("*") ? "admin" : "user");
+      return {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role,
+        roleIds: u.roleIds,
+        permissions: u.permissions || [],
+        createdAt: u.createdAt,
+      };
+    });
     return buildPaginatedResult(sanitized, total, page, limit);
   }
 
@@ -55,10 +68,13 @@ export class UserService {
       throw new NotFoundError("User not found");
     }
     const roles = await this.rolesRepo.findByIds(user.roleIds || []);
+    const roleNames = roles.map((r) => r.name);
+    const primaryRole = roleNames[0] || (user.permissions?.includes("*") ? "admin" : "user");
     return {
       id: user.id,
       email: user.email,
       name: user.name,
+      role: primaryRole,
       roleIds: user.roleIds,
       roles: roles.map((r) => ({ id: r.id, name: r.name })),
       permissions: user.permissions || [],
@@ -89,12 +105,27 @@ export class UserService {
       throw new ConflictError("A user with this email address already exists");
     }
 
+    let roleIds = validated.roleIds || [];
+    if (roleIds.length > 0) {
+      const roles = await this.rolesRepo.findByIds(roleIds);
+      if (roles.length !== roleIds.length) {
+        throw new ValidationError("One or more assigned role IDs do not exist");
+      }
+      roleIds = roles.map((r) => r.id);
+    } else if (validated.role) {
+      const matched = await this.rolesRepo.findByName(validated.role);
+      if (matched) {
+        roleIds = [matched.id];
+      }
+    }
+
     const passwordHash = await hashPassword(validated.password, this.saltRounds);
     const user = await this.usersRepo.create({
       email,
       passwordHash,
       name: validated.name,
-      roleIds: validated.roleIds || [],
+      roleIds,
+      permissions: validated.permissions,
     });
 
     await this.hooks.emit(EVENTS.AUTH.USER_CREATED, {
@@ -106,7 +137,9 @@ export class UserService {
       id: user.id,
       email: user.email,
       name: user.name,
+      role: validated.role || "user",
       roleIds: user.roleIds,
+      permissions: user.permissions || [],
       createdAt: user.createdAt,
     };
   }
@@ -142,8 +175,24 @@ export class UserService {
         if (roles.length !== validated.roleIds.length) {
           throw new ValidationError("One or more assigned role IDs do not exist");
         }
+        patch.roleIds = roles.map((r) => r.id);
+      } else {
+        patch.roleIds = [];
       }
-      patch.roleIds = validated.roleIds;
+    } else if (validated.role !== undefined) {
+      const matched = await this.rolesRepo.findByName(validated.role);
+      if (matched) {
+        patch.roleIds = [matched.id];
+      } else {
+        const byId = await this.rolesRepo.findById(validated.role);
+        if (byId) {
+          patch.roleIds = [byId.id];
+        }
+      }
+    }
+
+    if (validated.permissions !== undefined) {
+      patch.permissions = validated.permissions;
     }
 
     if (validated.password) {
@@ -166,11 +215,18 @@ export class UserService {
 
     await this.hooks.emit(EVENTS.AUTH.USER_UPDATED, { userId: id, actorId });
 
+    const roles = await this.rolesRepo.findByIds(updated.roleIds || []);
+    const roleNames = roles.map((r) => r.name);
+    const primaryRole = roleNames[0] || (updated.permissions?.includes("*") ? "admin" : "user");
+
     return {
       id: updated.id,
       email: updated.email,
       name: updated.name,
+      role: primaryRole,
       roleIds: updated.roleIds,
+      roles: roles.map((r) => ({ id: r.id, name: r.name })),
+      permissions: updated.permissions || [],
       createdAt: updated.createdAt,
     };
   }

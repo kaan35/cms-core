@@ -1,8 +1,8 @@
 "use client";
 
 import { Button, Checkbox } from "@cms/admin-shell";
-import { Shield } from "lucide-react";
-import { ALL_PERMISSIONS } from "../../constants/permissions";
+import { Shield, ShieldCheck } from "lucide-react";
+import { ALL_FLAT_PERMISSIONS, ALL_PERMISSIONS } from "../../constants/permissions";
 
 interface PermissionMatrixCardProps {
   permissions: string[];
@@ -15,6 +15,9 @@ export function PermissionMatrixCard({
   onTogglePermission,
   onGroupSelectAll,
 }: PermissionMatrixCardProps) {
+  const isAllSelected =
+    permissions.length === ALL_FLAT_PERMISSIONS.length || permissions.includes("*");
+
   return (
     <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-4">
       <div className="flex items-center justify-between pb-3 border-b border-border/60">
@@ -27,9 +30,16 @@ export function PermissionMatrixCard({
             Select specific capabilities granted to this user
           </p>
         </div>
-        <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-md">
-          {permissions.length} selected
-        </span>
+        {isAllSelected ? (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md">
+            <ShieldCheck className="size-3.5" />
+            All Permissions ({ALL_FLAT_PERMISSIONS.length}/{ALL_FLAT_PERMISSIONS.length})
+          </span>
+        ) : (
+          <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-md">
+            {permissions.length} of {ALL_FLAT_PERMISSIONS.length} selected
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -5,7 +5,10 @@ import {
   Badge,
   Button,
   DialogDeleteConfirm,
+  InputSearchField,
+  PageHeader,
   Skeleton,
+  StatCard,
   Table,
   TableBody,
   TableCell,
@@ -13,13 +16,15 @@ import {
   TableHeader,
   TableRow,
   toast,
+  Tooltip,
   useApi,
 } from "@cms/admin-shell";
-import { Lock, Pencil, RefreshCw, Shield, ShieldPlus, Trash2 } from "lucide-react";
+import { Lock, Pencil, RefreshCw, Shield, ShieldCheck, ShieldPlus, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 import { useRouter } from "next/navigation";
 import * as React from "react";
+import { ALL_FLAT_PERMISSIONS } from "../constants/permissions";
 
 interface RoleItem {
   id: string;
@@ -43,6 +48,8 @@ export function RoleList() {
 
   const { data: rawData, isLoading, mutate } = useApi<{ roles: RoleItem[] } | RoleItem[]>("/roles");
 
+  const [search, setSearch] = React.useState("");
+
   const rawObj = rawData as { roles?: RoleItem[]; data?: RoleItem[]; items?: RoleItem[] } | null;
   const roles: RoleItem[] = Array.isArray(rawData)
     ? rawData
@@ -53,6 +60,30 @@ export function RoleList() {
         : Array.isArray(rawObj?.items)
           ? rawObj.items
           : [];
+
+  const [roleTypeFilter, setRoleTypeFilter] = React.useState<"all" | "system" | "custom">("all");
+
+  const systemCount = React.useMemo(() => {
+    return roles.filter((r) => r.isSystem).length;
+  }, [roles]);
+
+  const customCount = React.useMemo(() => {
+    return roles.filter((r) => !r.isSystem).length;
+  }, [roles]);
+
+  const filteredRoles = React.useMemo(() => {
+    return roles.filter((r) => {
+      if (roleTypeFilter === "system" && !r.isSystem) return false;
+      if (roleTypeFilter === "custom" && r.isSystem) return false;
+
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        r.name.toLowerCase().includes(q) ||
+        (r.description && r.description.toLowerCase().includes(q))
+      );
+    });
+  }, [roles, search, roleTypeFilter]);
 
   const handleConfirmDelete = async () => {
     if (!deleteModal.target) return;
@@ -78,106 +109,211 @@ export function RoleList() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Role Templates</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Pre-defined permission profiles to assign to team members
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => mutate()} iconStart={<RefreshCw />}>
-            Refresh
-          </Button>
-          <Button onClick={handleCreate} iconStart={<ShieldPlus />}>
-            New Role
-          </Button>
-        </div>
+    <div className="space-y-6 pb-16 animate-in fade-in duration-300">
+      {/* Unified PageHeader */}
+      <PageHeader
+        title="Role Templates"
+        description="Pre-defined permission profiles to assign to team members"
+        icon={Shield}
+      />
+
+      {/* KPI Metric Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          title="Total Roles"
+          value={roles.length}
+          description="Configured role templates"
+          icon={Shield}
+        />
+        <StatCard
+          title="System Roles"
+          value={systemCount}
+          description="Protected built-in profiles"
+          icon={Lock}
+        />
+        <StatCard
+          title="Custom Roles"
+          value={customCount}
+          description="User-defined permission sets"
+          icon={ShieldCheck}
+        />
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs">
-        {isLoading ? (
-          <div className="p-4 space-y-3">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
-        ) : roles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
-              <Shield className="size-6 opacity-80" />
+      {/* Table Section */}
+      <div className="space-y-4">
+        {/* Unified Search & Action Toolbar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col sm:flex-row flex-1 sm:items-center gap-3">
+            <InputSearchField
+              placeholder="Filter roles by name or description..."
+              value={search}
+              onSearchChange={setSearch}
+              containerClassName="w-full sm:max-w-sm"
+              className="bg-card w-full"
+            />
+
+            <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setRoleTypeFilter("all")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  roleTypeFilter === "all"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoleTypeFilter("system")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  roleTypeFilter === "system"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                System
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoleTypeFilter("custom")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  roleTypeFilter === "custom"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Custom
+              </button>
             </div>
-            <h3 className="text-sm font-semibold text-foreground">No roles configured</h3>
-            <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
-              Create and manage customized access control roles and permissions.
-            </p>
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                <TableHead className="w-[30%]">Role Name</TableHead>
-                <TableHead className="w-[35%]">Description</TableHead>
-                <TableHead className="w-[20%]">Policies</TableHead>
-                <TableHead className="w-[15%] text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roles.map((r) => (
-                <TableRow key={r.id} className="text-xs">
-                  <TableCell>
-                    <div className="flex items-center gap-2 font-medium text-foreground">
-                      <Link
-                        href={`/dashboard/roles/${r.id}`}
-                        className="hover:text-primary transition-colors font-semibold"
-                      >
-                        {r.name}
-                      </Link>
-                      {r.isSystem && (
-                        <Badge variant="secondary" className="text-[10px] gap-1 py-0 h-4">
-                          <Lock className="size-2.5" /> System
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Tooltip content="Refresh roles">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => mutate()}
+                iconStart={<RefreshCw />}
+              />
+            </Tooltip>
+            <Button onClick={handleCreate} iconStart={<ShieldPlus />} className="w-full sm:w-auto">
+              New Role
+            </Button>
+          </div>
+        </div>
+
+        {/* Table Card */}
+        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
+          {isLoading ? (
+            <div className="p-4 space-y-3">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : filteredRoles.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
+                <Shield className="size-6 opacity-80" />
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">No roles found</h3>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+                {search
+                  ? "No roles match your search filter."
+                  : "Create and manage customized access control roles and permissions."}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                  <TableHead className="font-semibold">Role Name</TableHead>
+                  <TableHead className="font-semibold">Description</TableHead>
+                  <TableHead className="w-40 font-semibold">Policies</TableHead>
+                  <TableHead className="w-24 text-right font-semibold">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRoles.map((r) => (
+                  <TableRow key={r.id} className="text-xs hover:bg-muted/30 transition-colors">
+                    <TableCell>
+                      <div className="flex items-center gap-3 font-medium text-foreground">
+                        <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                          {r.isSystem ? <Lock className="size-4" /> : <Shield className="size-4" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/dashboard/roles/${r.id}`}
+                              className="hover:text-primary transition-colors font-semibold"
+                            >
+                              {r.name === "admin"
+                                ? "Administrator"
+                                : r.name === "editor"
+                                  ? "Editor"
+                                  : r.name === "user"
+                                    ? "User"
+                                    : r.name}
+                            </Link>
+                            {r.isSystem && (
+                              <Badge variant="secondary" className="text-[10px] gap-1 py-0 h-4">
+                                <Lock className="size-2.5" /> System
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-mono text-muted-foreground/80 block">
+                            {r.name}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-[11px]">
+                      {r.description || "—"}
+                    </TableCell>
+                    <TableCell>
+                      {r.permissions?.includes("*") ||
+                      r.permissions?.length === ALL_FLAT_PERMISSIONS.length ? (
+                        <Badge
+                          variant="default"
+                          className="text-[11px] font-medium gap-1 bg-primary/15 text-primary border-primary/20 hover:bg-primary/20"
+                        >
+                          <ShieldCheck className="size-3" />
+                          All Permissions ({ALL_FLAT_PERMISSIONS.length})
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[11px]">
+                          {r.permissions?.length || 0}{" "}
+                          {r.permissions?.length === 1 ? "permission" : "permissions"}
                         </Badge>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-[11px]">
-                    {r.description || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-[11px]">
-                      {r.permissions?.length || 0} permissions
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleEdit(r)}
-                        title="Edit Role"
-                      >
-                        <Pencil className="size-4 text-muted-foreground hover:text-foreground" />
-                      </Button>
-                      {!r.isSystem && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => setDeleteModal({ target: r, isDeleting: false })}
-                          title="Delete Role"
-                          className="hover:text-destructive"
-                        >
-                          <Trash2 className="size-4 text-muted-foreground" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Tooltip content="Edit Role Template">
+                          <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(r)}>
+                            <Pencil className="size-4 text-muted-foreground hover:text-foreground" />
+                          </Button>
+                        </Tooltip>
+                        {!r.isSystem && (
+                          <Tooltip content="Delete Role">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setDeleteModal({ target: r, isDeleting: false })}
+                              className="hover:text-destructive"
+                            >
+                              <Trash2 className="size-4 text-muted-foreground" />
+                            </Button>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
       </div>
 
       <DialogDeleteConfirm

@@ -91,15 +91,18 @@ export function RoleEditor({ id }: { id: string }) {
       return;
     }
 
+    const finalPermissions =
+      inputData.permissions.length === ALL_FLAT_PERMISSIONS.length ? ["*"] : inputData.permissions;
+
     setFormState({ isSubmitting: true });
     try {
       if (isNew) {
-        await api.post("/roles", inputData);
+        await api.post("/roles", { ...inputData, permissions: finalPermissions });
         toast.success("Role template created successfully!");
         router.push("/dashboard/roles");
       } else {
         const targetId = role?.id || role?._id || id;
-        await api.put(`/roles/${targetId}`, inputData);
+        await api.put(`/roles/${targetId}`, { ...inputData, permissions: finalPermissions });
         toast.success("Role template updated successfully!");
         mutate();
       }
@@ -177,6 +180,8 @@ export function RoleEditor({ id }: { id: string }) {
             placeholder="e.g. content_moderator"
             className="text-xs"
             required
+            disabled={role?.isSystem}
+            hint={role?.isSystem ? "System role identifiers cannot be renamed" : undefined}
           />
 
           <InputField

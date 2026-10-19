@@ -58,6 +58,7 @@ export class RolesRepository {
     data: {
       name?: string | undefined;
       description?: string | undefined;
+      isSystem?: boolean | undefined;
       permissions?: string[] | undefined;
     },
   ): Promise<RoleDoc | null> {
@@ -68,6 +69,7 @@ export class RolesRepository {
       ...existing,
       name: data.name ?? existing.name,
       description: data.description ?? existing.description,
+      isSystem: data.isSystem !== undefined ? data.isSystem : existing.isSystem,
       permissions: data.permissions ?? existing.permissions,
       updatedAt: new Date(),
     };

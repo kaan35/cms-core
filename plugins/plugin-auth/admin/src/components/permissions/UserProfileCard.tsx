@@ -30,15 +30,24 @@ export function UserProfileCard({
   onRoleChange,
 }: UserProfileCardProps) {
   const roleOptions = React.useMemo(() => {
-    const base = [
+    if (rolesData && rolesData.length > 0) {
+      return rolesData.map((r) => {
+        const label =
+          r.name === "admin"
+            ? "Administrator"
+            : r.name === "editor"
+              ? "Editor"
+              : r.name === "user"
+                ? "User"
+                : r.name.charAt(0).toUpperCase() + r.name.slice(1);
+        return { value: r.name, label };
+      });
+    }
+    return [
       { value: "admin", label: "Administrator" },
       { value: "editor", label: "Editor" },
       { value: "user", label: "User" },
     ];
-    const custom = (rolesData || [])
-      .filter((r) => !["admin", "editor", "user"].includes(r.name))
-      .map((r) => ({ value: r.name, label: r.name }));
-    return [...base, ...custom];
   }, [rolesData]);
 
   return (

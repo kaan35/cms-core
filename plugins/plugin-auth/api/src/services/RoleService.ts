@@ -1,6 +1,5 @@
 import type { IHookManager, ILogger } from "@cms/core";
-import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@cms/core";
-import { EVENTS } from "@cms/core";
+import { ConflictError, EVENTS, ForbiddenError, NotFoundError, ValidationError } from "@cms/core";
 import {
   type CreateRoleInput,
   type UpdateRoleInput,
@@ -81,8 +80,12 @@ export class RoleService {
         ? (input as UpdateRoleInput)
         : validateUpdateRole(input);
 
-    if (role.name === ADMIN_ROLE_NAME && validated.name && validated.name !== ADMIN_ROLE_NAME) {
-      throw new ForbiddenError("The admin role cannot be renamed");
+    if (
+      (role.isSystem || role.name === ADMIN_ROLE_NAME) &&
+      validated.name &&
+      validated.name !== role.name
+    ) {
+      throw new ForbiddenError(`The system role "${role.name}" cannot be renamed`);
     }
 
     if (validated.name && validated.name !== role.name) {
@@ -112,8 +115,8 @@ export class RoleService {
       throw new NotFoundError("Role not found");
     }
 
-    if (role.name === ADMIN_ROLE_NAME) {
-      throw new ForbiddenError("The admin role cannot be deleted");
+    if (role.isSystem || role.name === ADMIN_ROLE_NAME) {
+      throw new ForbiddenError(`The system role "${role.name}" cannot be deleted`);
     }
 
     const usersWithRole = await this.usersRepo.findByRoleId(id);

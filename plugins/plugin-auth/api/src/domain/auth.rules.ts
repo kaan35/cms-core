@@ -48,42 +48,46 @@ export const LoginSchema = z.object({
 
 export const RegisterSchema = z.object({
   email: EmailSchema,
-  password: PasswordSchema,
   name: z.string().trim().optional(),
+  password: PasswordSchema,
 });
 
 export const SetupSchema = z.object({
   email: EmailSchema,
-  password: PasswordSchema,
   name: z.string().trim().optional(),
+  password: PasswordSchema,
   siteTitle: z.string().trim().optional(),
 });
 
 // 3. User Management Schemas
 export const CreateUserSchema = z.object({
   email: EmailSchema,
-  password: PasswordSchema,
   name: z.string().trim().optional(),
+  password: PasswordSchema,
+  permissions: z.array(z.string()).optional(),
+  role: z.string().trim().optional(),
   roleIds: z.array(z.string()).default([]),
 });
 
 export const UpdateUserSchema = z.object({
-  name: z.string().trim().optional(),
   email: EmailSchema.optional(),
-  roleIds: z.array(z.string()).optional(),
+  name: z.string().trim().optional(),
   password: PasswordSchema.optional(),
+  permissions: z.array(z.string()).optional(),
+  role: z.string().trim().optional(),
+  roleIds: z.array(z.string()).optional(),
 });
 
 // 4. Role Management Schemas
 export const CreateRoleSchema = z.object({
-  name: z.string().trim().min(1, "Role name is required"),
   description: z.string().trim().optional(),
+  name: z.string().trim().min(1, "Role name is required"),
   permissions: z.array(z.string()).min(1, "Role must have at least one permission"),
 });
 
 export const UpdateRoleSchema = z.object({
-  name: z.string().trim().min(1, "Role name cannot be empty").optional(),
   description: z.string().trim().optional(),
+  name: z.string().trim().min(1, "Role name cannot be empty").optional(),
   permissions: z.array(z.string()).min(1, "Role must have at least one permission").optional(),
 });
 

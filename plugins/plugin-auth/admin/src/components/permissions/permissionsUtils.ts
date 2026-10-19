@@ -5,12 +5,16 @@ export interface UserDetailResponse {
   email?: string;
   name?: string;
   role?: string;
+  roleIds?: string[];
+  roles?: Array<{ id: string; name: string }>;
   permissions?: string[];
   user?: {
     id: string;
     email: string;
     name?: string;
-    role: string;
+    role?: string;
+    roleIds?: string[];
+    roles?: Array<{ id: string; name: string }>;
     permissions?: string[];
   };
 }
