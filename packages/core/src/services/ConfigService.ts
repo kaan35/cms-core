@@ -25,10 +25,17 @@ export class ConfigService implements IConfigService {
     return value === "true" || value === "1";
   }
 
-  getInt(key: string, defaultValue: number): number {
+  getInt(key: string, defaultValue?: number): number {
     const value = this.env[key];
-    if (value === undefined || value === "") return defaultValue;
+    if (value === undefined || value === "") {
+      if (defaultValue !== undefined) return defaultValue;
+      throw new Error(`Missing required environment variable: ${key}`);
+    }
     const parsed = parseInt(value, 10);
-    return Number.isNaN(parsed) ? defaultValue : parsed;
+    if (Number.isNaN(parsed)) {
+      if (defaultValue !== undefined) return defaultValue;
+      throw new Error(`Invalid integer environment variable: ${key}`);
+    }
+    return parsed;
   }
 }

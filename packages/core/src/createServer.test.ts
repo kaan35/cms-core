@@ -32,6 +32,9 @@ const stubCache: ICache = {
   del: async () => {},
   isAlive: async () => true,
   quit: async () => {},
+  getJson: async () => null,
+  setJson: async () => {},
+  getOrSet: async (_k, factory) => factory(),
 };
 
 const testEnv: Record<string, string> = {
@@ -39,6 +42,7 @@ const testEnv: Record<string, string> = {
   JWT_SECRET: "test-jwt-secret-key-at-least-32-chars-long",
   VAULT_SECRET: "test-vault-secret-key-at-least-32-chars-long",
   CAPTCHA_SECRET: "test-captcha-secret-key-at-least-32-chars-long",
+  CACHE_SETTINGS_TTL_SECONDS: "86400",
 };
 
 describe("createServer", () => {

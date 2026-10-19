@@ -67,4 +67,75 @@ describe("SettingsService", () => {
     await svc.set("some.key", "second");
     assert.equal(data["some.key"], "second");
   });
+
+  it("uses cache.getOrSet and invalidates on set()", async () => {
+    const { db } = makeDb({ "site.name": "Old Name" });
+    const cacheMap = new Map<string, unknown>();
+    let delCalled = false;
+
+    const mockCache: import("../types/ICache.js").ICache = {
+      get: async () => null,
+      set: async () => {},
+      del: async (k) => {
+        delCalled = true;
+        cacheMap.delete(k);
+      },
+      isAlive: async () => true,
+      quit: async () => {},
+      getJson: async () => null,
+      setJson: async () => {},
+      getOrSet: async (key, factory) => {
+        if (cacheMap.has(key)) return cacheMap.get(key) as never;
+        const fresh = await factory();
+        cacheMap.set(key, fresh);
+        return fresh as never;
+      },
+    };
+
+    const mockConfig: import("../types/services.js").IConfigService = {
+      get: (k) => (k === "CACHE_SETTINGS_TTL_SECONDS" ? "86400" : ""),
+      getOrDefault: (_k, def) => def,
+      getBoolean: () => false,
+      getInt: (k, def) => (k === "CACHE_SETTINGS_TTL_SECONDS" ? 86400 : (def ?? 0)),
+    };
+
+    const svc = new SettingsService(db, stubLogger, mockCache, mockConfig);
+    const val1 = await svc.get("site.name", "Default");
+    assert.equal(val1, "Old Name");
+    assert.equal(cacheMap.get("setting:site.name"), "Old Name");
+
+    await svc.set("site.name", "New Name");
+    assert.equal(delCalled, true);
+    assert.equal(cacheMap.has("setting:site.name"), false);
+  });
+
+  it("throws when cache is enabled and CACHE_SETTINGS_TTL_SECONDS is missing from config", () => {
+    const { db } = makeDb();
+    const mockCache: import("../types/ICache.js").ICache = {
+      get: async () => null,
+      set: async () => {},
+      del: async () => {},
+      isAlive: async () => true,
+      quit: async () => {},
+      getJson: async () => null,
+      setJson: async () => {},
+      getOrSet: async (_k, factory) => factory(),
+    };
+    const emptyConfig: import("../types/services.js").IConfigService = {
+      get: (k) => {
+        throw new Error(`Missing required environment variable: ${k}`);
+      },
+      getOrDefault: (_k, def) => def,
+      getBoolean: () => false,
+      getInt: (k, def) => {
+        if (def !== undefined) return def;
+        throw new Error(`Missing required environment variable: ${k}`);
+      },
+    };
+
+    assert.throws(
+      () => new SettingsService(db, stubLogger, mockCache, emptyConfig),
+      /Missing required environment variable: CACHE_SETTINGS_TTL_SECONDS/,
+    );
+  });
 });

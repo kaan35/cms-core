@@ -74,5 +74,18 @@ describe("ConfigService", () => {
       const cfg = new ConfigService({});
       assert.equal(cfg.getInt("PORT", 8080), 8080);
     });
+
+    it("throws when missing and no default provided", () => {
+      const cfg = new ConfigService({});
+      assert.throws(
+        () => cfg.getInt("REQUIRED_PORT"),
+        /Missing required environment variable: REQUIRED_PORT/,
+      );
+    });
+
+    it("throws when invalid integer and no default provided", () => {
+      const cfg = new ConfigService({ BAD_PORT: "not_a_number" });
+      assert.throws(() => cfg.getInt("BAD_PORT"), /Invalid integer environment variable: BAD_PORT/);
+    });
   });
 });

@@ -10,11 +10,12 @@ export interface IConfigService {
   get(key: string): string;
   getOrDefault(key: string, defaultValue: string): string;
   getBoolean(key: string, defaultValue?: boolean): boolean;
-  getInt(key: string, defaultValue: number): number;
+  getInt(key: string, defaultValue?: number): number;
 }
 
 export interface ISettingsService {
   get<T>(key: string, defaultValue: T): Promise<T>;
+  getMany<T extends Record<string, unknown>>(defaults: T): Promise<T>;
   set(key: string, value: unknown): Promise<void>;
 }
 

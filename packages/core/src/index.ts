@@ -38,6 +38,13 @@ export {
   searchPaginated,
 } from "./slugUtils.js";
 export { decorateTestAuth } from "./testUtils.js";
+export {
+  createDateSearchFormatters,
+  formatDate,
+  formatDateTime,
+  matchesDateSearch,
+} from "./utils/date.js";
+export type { DateFormatOptions } from "./utils/date.js";
 export { buildPaginatedResult, parsePaginationQuery } from "./utils/pagination.js";
 export type { PaginatedResult } from "./utils/pagination.js";
 export { validateWithSchema } from "./utils/validation.js";

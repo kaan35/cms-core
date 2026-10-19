@@ -41,6 +41,9 @@ export const EVENTS = {
     DELETED: "vault.item.deleted",
     REVEALED: "vault.secret.revealed",
   },
+  MCP: {
+    TOOL_EXECUTED: "mcp.tool_executed",
+  },
 } as const;
 
 export type EventKey =
@@ -50,4 +53,5 @@ export type EventKey =
   | (typeof EVENTS.PAGE)[keyof typeof EVENTS.PAGE]
   | (typeof EVENTS.BLOG)[keyof typeof EVENTS.BLOG]
   | (typeof EVENTS.FORMS)[keyof typeof EVENTS.FORMS]
-  | (typeof EVENTS.VAULT)[keyof typeof EVENTS.VAULT];
+  | (typeof EVENTS.VAULT)[keyof typeof EVENTS.VAULT]
+  | (typeof EVENTS.MCP)[keyof typeof EVENTS.MCP];

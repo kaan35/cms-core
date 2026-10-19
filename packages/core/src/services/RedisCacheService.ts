@@ -50,4 +50,36 @@ export class RedisCacheService implements ICache {
     await this.client.quit();
     this.logger.info("Redis connection closed");
   }
+
+  async getJson<T>(key: string): Promise<T | null> {
+    try {
+      const raw = await this.get(key);
+      if (raw === null) return null;
+      return JSON.parse(raw) as T;
+    } catch (err) {
+      this.logger.warn("Redis getJson parse error", { key, error: String(err) });
+      return null;
+    }
+  }
+
+  async setJson(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
+    try {
+      const serialized = JSON.stringify(value);
+      await this.set(key, serialized, ttlSeconds);
+    } catch (err) {
+      this.logger.warn("Redis setJson error", { key, error: String(err) });
+    }
+  }
+
+  async getOrSet<T>(key: string, factory: () => Promise<T>, ttlSeconds?: number): Promise<T> {
+    const cached = await this.getJson<T>(key);
+    if (cached !== null) {
+      return cached;
+    }
+    const fresh = await factory();
+    if (fresh !== undefined) {
+      await this.setJson(key, fresh, ttlSeconds);
+    }
+    return fresh;
+  }
 }

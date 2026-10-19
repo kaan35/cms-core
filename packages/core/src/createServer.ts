@@ -31,11 +31,12 @@ export async function createServer(
 
   const hooks = new HookManager();
   const redirects = new RedirectsService(db, logger);
-  const settings = new SettingsService(db, logger);
+  const settings = new SettingsService(db, logger, cache, config);
 
   const app = Fastify({
     trustProxy: true,
     logger: false,
+    forceCloseConnections: true,
   });
 
   await app.register(helmet, { contentSecurityPolicy: false });
@@ -230,11 +231,26 @@ export async function createServer(
 
   const shutdown = async (): Promise<void> => {
     logger.info("Graceful shutdown initiated");
-    await app.close();
-    await db.disconnect();
-    await cache.quit();
-    logger.info("Graceful shutdown complete");
-    process.exit(0);
+    const forceExitTimeout = setTimeout(() => {
+      logger.warn("Graceful shutdown timed out (2500ms), forcing process exit");
+      process.exit(0);
+    }, 2500);
+    forceExitTimeout.unref();
+
+    try {
+      await Promise.race([
+        Promise.all([app.close(), db.disconnect(), cache.quit()]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Shutdown timeout")), 2000)),
+      ]);
+      logger.info("Graceful shutdown complete");
+    } catch (err) {
+      logger.warn("Error or timeout during graceful shutdown, proceeding to exit", {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      clearTimeout(forceExitTimeout);
+      process.exit(0);
+    }
   };
 
   process.on("SIGTERM", () => void shutdown());
