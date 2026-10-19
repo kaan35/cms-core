@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, formatDate, TableCell, TableRow } from "@cms/admin-shell";
+import { Button, formatDate, StatusBadge, TableCell, TableRow, Tooltip } from "@cms/admin-shell";
 import { FileText, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { BlogPostListItem } from "./blogTypes";
@@ -16,11 +16,11 @@ export function BlogPostTableRow({ post, onDeleteClick }: BlogPostTableRowProps)
       <TableCell>
         <div className="flex items-start gap-3">
           {post.coverMediaId ? (
-            <div className="size-10 rounded-lg overflow-hidden border border-border/80 shrink-0 bg-muted">
+            <div className="size-9 rounded-xl overflow-hidden border border-border/80 shrink-0 bg-muted">
               <img src={post.coverMediaId} alt="" className="size-full object-cover" />
             </div>
           ) : (
-            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5">
               <FileText className="size-4" />
             </div>
           )}
@@ -47,23 +47,7 @@ export function BlogPostTableRow({ post, onDeleteClick }: BlogPostTableRowProps)
       </TableCell>
 
       <TableCell>
-        {post.status === "published" ? (
-          <Badge
-            variant="outline"
-            className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[11px] gap-1 py-0.5"
-          >
-            <span className="size-1.5 rounded-full bg-emerald-500" />
-            Published
-          </Badge>
-        ) : (
-          <Badge
-            variant="outline"
-            className="bg-muted text-muted-foreground border-border text-[11px] gap-1 py-0.5"
-          >
-            <span className="size-1.5 rounded-full bg-muted-foreground" />
-            Draft
-          </Badge>
-        )}
+        <StatusBadge status={post.status} />
       </TableCell>
 
       <TableCell className="text-[11px] text-muted-foreground">
@@ -72,20 +56,23 @@ export function BlogPostTableRow({ post, onDeleteClick }: BlogPostTableRowProps)
 
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
-          <Link href={`/dashboard/blog/${post.id}`}>
-            <Button variant="ghost" size="icon-xs" title="Edit Article">
-              <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+          <Tooltip content="Edit Article">
+            <Link href={`/dashboard/blog/${post.id}`}>
+              <Button variant="ghost" size="icon-xs">
+                <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+              </Button>
+            </Link>
+          </Tooltip>
+          <Tooltip content="Delete Article">
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => onDeleteClick(post)}
+              className="hover:text-destructive"
+            >
+              <Trash2 className="size-3.5 text-muted-foreground" />
             </Button>
-          </Link>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => onDeleteClick(post)}
-            title="Delete Article"
-            className="hover:text-destructive"
-          >
-            <Trash2 className="size-3.5 text-muted-foreground" />
-          </Button>
+          </Tooltip>
         </div>
       </TableCell>
     </TableRow>

@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -206,7 +207,7 @@ export function VaultImportModal({ open, onOpenChange, onSuccess }: VaultImportM
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-2 min-h-0">
+        <DialogBody className="space-y-4">
           <Tabs
             value={activeTab}
             onValueChange={(val) => {
@@ -373,7 +374,7 @@ export function VaultImportModal({ open, onOpenChange, onSuccess }: VaultImportM
               </div>
             </div>
           )}
-        </div>
+        </DialogBody>
 
         <DialogFooter className="sm:justify-between">
           <Button

@@ -29,10 +29,11 @@ export function MediaPage() {
   }, [mediaList]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16 animate-in fade-in duration-300">
       <PageHeader
         title="Media Library"
         description="Upload, organize, and manage your image assets and files across all pages and articles."
+        icon={Files}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -3,6 +3,7 @@
 import {
   Button,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDeleteConfirm,
   DialogDescription,
@@ -56,7 +57,7 @@ export function MediaDetailModal({
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4 py-2">
+              <DialogBody className="space-y-4">
                 <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted/60 flex items-center justify-center">
                   {previewItem.mimeType.startsWith("image/") ? (
                     <img
@@ -104,7 +105,7 @@ export function MediaDetailModal({
                     </a>
                   </div>
                 </div>
-              </div>
+              </DialogBody>
 
               <DialogFooter className="gap-2 sm:justify-between">
                 <Button

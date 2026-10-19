@@ -86,7 +86,7 @@ export function PageList() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageListToolbar
         search={search}
         onSearchChange={setSearch}
@@ -96,11 +96,11 @@ export function PageList() {
       />
 
       {/* Pages Table */}
-      <div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
+      <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
         {isLoading ? (
           <Table>
-            <TableHeader className="bg-muted/40">
-              <TableRow>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
                 <TableHead className="font-semibold">Page Title</TableHead>
                 <TableHead className="font-semibold">URL Slug</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
@@ -148,8 +148,8 @@ export function PageList() {
           </div>
         ) : (
           <Table>
-            <TableHeader className="bg-muted/40">
-              <TableRow>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
                 <TableHead className="font-semibold">Page Title</TableHead>
                 <TableHead className="font-semibold">URL Slug</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>

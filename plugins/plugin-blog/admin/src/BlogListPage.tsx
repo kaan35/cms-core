@@ -29,10 +29,11 @@ export function BlogListPage() {
   }, [posts]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16 animate-in fade-in duration-300">
       <PageHeader
         title="Blog & Articles"
         description="Draft, edit, version, and publish content articles, technical posts, and news."
+        icon={BookOpen}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

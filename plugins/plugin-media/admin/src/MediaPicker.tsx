@@ -3,6 +3,7 @@
 import {
   Button,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -106,17 +107,17 @@ export function MediaPicker({
 
       {/* Picker Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-3xl max-w-3xl max-h-[85vh] flex flex-col p-6">
-          <DialogHeader className="shrink-0 pb-2">
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
             <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription className="text-xs">
               Choose an image from your library or upload a new file.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto pt-2 pb-1 pr-1">
+          <DialogBody className="space-y-4">
             <MediaLibrary selectable selectedId={value || undefined} onSelect={handleSelect} />
-          </div>
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>

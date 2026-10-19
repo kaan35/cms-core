@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, cn, TableCell, TableRow } from "@cms/admin-shell";
+import { Badge, Button, cn, TableCell, TableRow, Tooltip } from "@cms/admin-shell";
 import { ClipboardList, Inbox, Pencil, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { FormListItem } from "./formTypes";
@@ -17,7 +17,7 @@ export function FormTableRow({ form, onDeleteClick }: FormTableRowProps) {
     <TableRow className="text-xs hover:bg-muted/30 transition-colors">
       <TableCell>
         <div className="flex items-start gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0 mt-0.5">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5">
             <ClipboardList className="size-4" />
           </div>
           <div className="min-w-0">
@@ -87,16 +87,19 @@ export function FormTableRow({ form, onDeleteClick }: FormTableRowProps) {
               </span>
             </Button>
           </Link>
-          <Link href={`/dashboard/forms/${form.id}`}>
-            <Button variant="ghost" size="icon" title="Edit Form" iconStart={<Pencil />} />
-          </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onDeleteClick(form)}
-            title="Delete Form"
-            iconStart={<Trash2 className="text-destructive" />}
-          />
+          <Tooltip content="Edit Form">
+            <Link href={`/dashboard/forms/${form.id}`}>
+              <Button variant="ghost" size="icon" iconStart={<Pencil />} />
+            </Link>
+          </Tooltip>
+          <Tooltip content="Delete Form">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDeleteClick(form)}
+              iconStart={<Trash2 className="text-destructive" />}
+            />
+          </Tooltip>
         </div>
       </TableCell>
     </TableRow>

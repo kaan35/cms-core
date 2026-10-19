@@ -8,32 +8,37 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Input,
+  InputSearchField,
   PageHeader,
   Skeleton,
+  StatCard,
   Table,
   TableBody,
+  TableCell,
   TableHead,
   TableHeader,
   TableRow,
   api,
   toast,
+  Tooltip,
   useApi,
 } from "@cms/admin-shell";
 import {
   ChevronDown,
+  Clock,
   Download,
   FileSpreadsheet,
   FileText,
+  FolderLock,
   KeyRound,
+  Loader2,
   Plus,
   RefreshCw,
-  Search,
   Upload,
 } from "lucide-react";
 import * as React from "react";
 import { VaultImportModal } from "./components/VaultImportModal";
-import { VaultItemModal, type VaultItem } from "./components/VaultItemModal";
+import { VaultItemModal, isPasswordStale, type VaultItem } from "./components/VaultItemModal";
 import { VaultTableRow } from "./components/VaultTableRow";
 
 interface VaultApiResponse {
@@ -43,6 +48,7 @@ interface VaultApiResponse {
 export function VaultListPage() {
   const [search, setSearch] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState<string>("all");
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "stale">("all");
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState<"xlsx" | "csv" | null>(null);
@@ -66,18 +72,33 @@ export function VaultListPage() {
     [categories],
   );
 
+  const staleCount = React.useMemo(() => {
+    return items.filter((it) => isPasswordStale(it.passwordChangedAt || it.createdAt)).length;
+  }, [items]);
+
+  const recentCount = React.useMemo(() => {
+    return items.filter((it) => !isPasswordStale(it.passwordChangedAt || it.createdAt)).length;
+  }, [items]);
+
   const filteredItems = React.useMemo(() => {
     return items.filter((it) => {
       const matchesCategory = selectedCategory === "all" || it.category === selectedCategory;
+      const isStale = isPasswordStale(it.passwordChangedAt || it.createdAt);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && !isStale) ||
+        (statusFilter === "stale" && isStale);
+      if (!matchesCategory || !matchesStatus) return false;
+
       const q = search.toLowerCase();
       const matchesSearch =
         !search ||
         it.title.toLowerCase().includes(q) ||
         it.username.toLowerCase().includes(q) ||
         it.url?.toLowerCase().includes(q);
-      return matchesCategory && matchesSearch;
+      return matchesSearch;
     });
-  }, [items, selectedCategory, search]);
+  }, [items, selectedCategory, statusFilter, search]);
 
   const handleReveal = async (id: string) => {
     if (revealedPasswords[id]) {
@@ -178,19 +199,128 @@ export function VaultListPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16 animate-in fade-in duration-300">
+      {/* Unified PageHeader */}
       <PageHeader
         title="Password Vault"
         description="Secure encrypted credentials, secret keys and website accounts"
-        action={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => mutate()}
-              iconStart={<RefreshCw className="size-4" />}
-              title="Refresh vault"
+        icon={KeyRound}
+      />
+
+      {/* KPI Metric Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          title="Total Credentials"
+          value={items.length}
+          description="Stored encrypted credentials"
+          icon={KeyRound}
+        />
+        <StatCard
+          title="Categories"
+          value={availableCategories.length}
+          description="Account groupings"
+          icon={FolderLock}
+        />
+        <StatCard
+          title="Recently Changed"
+          value={recentCount}
+          description={
+            staleCount > 0 ? `${staleCount} require rotation` : "All passwords up to date"
+          }
+          icon={Clock}
+        />
+      </div>
+
+      {/* Table Section */}
+      <div className="space-y-4">
+        {/* Unified Search & Action Toolbar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col sm:flex-row flex-1 sm:items-center gap-3">
+            <InputSearchField
+              placeholder="Filter credentials by title, username, or URL..."
+              value={search}
+              onSearchChange={setSearch}
+              containerClassName="w-full sm:max-w-sm"
+              className="bg-card w-full"
             />
+
+            <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  statusFilter === "all"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("active")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  statusFilter === "active"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Active
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("stale")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  statusFilter === "stale"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Stale
+              </button>
+            </div>
+
+            {availableCategories.length > 0 && (
+              <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto overflow-x-auto max-w-full">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("all")}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors capitalize shrink-0 ${
+                    selectedCategory === "all"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  All Categories
+                </button>
+                {availableCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors capitalize shrink-0 ${
+                      selectedCategory === cat
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Tooltip content="Refresh vault">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => mutate()}
+                iconStart={<RefreshCw />}
+                disabled={isLoading}
+              />
+            </Tooltip>
 
             <Button
               variant="outline"
@@ -203,41 +333,93 @@ export function VaultListPage() {
             <DropdownMenu>
               <DropdownMenuTrigger
                 disabled={items.length === 0 || isExporting !== null}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 h-8 text-xs font-medium text-foreground hover:bg-muted transition-all outline-none cursor-pointer disabled:pointer-events-none disabled:opacity-50 shadow-2xs"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-card px-3 h-8 text-xs font-medium text-foreground hover:bg-muted transition-all outline-none cursor-pointer disabled:pointer-events-none disabled:opacity-50 shadow-2xs"
               >
-                <Download className="size-3.5" />
+                {isExporting !== null ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Download className="size-3.5" />
+                )}
                 <span>{isExporting ? "Exporting..." : "Export"}</span>
                 <ChevronDown className="size-3 opacity-60 ml-0.5" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent
+                align="end"
+                className="w-72 p-1.5 rounded-xl border border-border/80 shadow-xl space-y-1"
+              >
+                <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  Export Vault Records
+                </div>
                 <DropdownMenuItem
                   onClick={() => handleExport("xlsx")}
-                  className="flex items-center gap-2 cursor-pointer text-xs"
+                  className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/70 transition-colors"
                 >
-                  <FileSpreadsheet className="size-4 text-emerald-600" />
-                  <span>Excel Spreadsheet (.xlsx)</span>
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                    <FileSpreadsheet className="size-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium text-xs text-foreground">
+                      Excel Spreadsheet (.xlsx)
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Formatted OpenXML workbook
+                    </span>
+                  </div>
                 </DropdownMenuItem>
+
                 <DropdownMenuItem
                   onClick={() => handleExport("csv")}
-                  className="flex items-center gap-2 cursor-pointer text-xs"
+                  className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/70 transition-colors"
                 >
-                  <FileText className="size-4 text-sky-600" />
-                  <span>CSV Document (.csv)</span>
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-500 border border-sky-500/20">
+                    <FileText className="size-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium text-xs text-foreground">CSV Document (.csv)</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      UTF-8 BOM for Microsoft Excel
+                    </span>
+                  </div>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+
+                <DropdownMenuSeparator className="my-1 border-border/60" />
+
+                <div className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  Blank Import Templates
+                </div>
+
                 <DropdownMenuItem
                   onClick={() => handleDownloadTemplate("xlsx")}
-                  className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground"
+                  className="cursor-pointer flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/70 transition-colors"
                 >
-                  <Download className="size-3.5" />
-                  <span>Download Blank Template (.xlsx)</span>
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground border border-border/80">
+                    <Download className="size-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium text-xs text-foreground">
+                      Blank Template (.xlsx)
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Formatted Excel template for import
+                    </span>
+                  </div>
                 </DropdownMenuItem>
+
                 <DropdownMenuItem
                   onClick={() => handleDownloadTemplate("csv")}
-                  className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground"
+                  className="cursor-pointer flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/70 transition-colors"
                 >
-                  <Download className="size-3.5" />
-                  <span>Download Blank Template (.csv)</span>
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground border border-border/80">
+                    <Download className="size-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium text-xs text-foreground">
+                      Blank Template (.csv)
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      RFC 4180 CSV with sample headers
+                    </span>
+                  </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -248,102 +430,108 @@ export function VaultListPage() {
                 setIsModalOpen(true);
               }}
               iconStart={<Plus className="size-4" />}
+              className="w-full sm:w-auto"
             >
               New Credential
             </Button>
           </div>
-        }
-      />
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search accounts..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
         </div>
 
-        <div className="flex flex-wrap gap-1">
-          {categories.map((cat) => (
-            <Button
-              key={cat}
-              variant={selectedCategory === cat ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory(cat)}
-              className="capitalize text-xs"
-            >
-              {cat}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs">
-        {isLoading ? (
-          <div className="p-4 space-y-3">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
-          </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
-              <KeyRound className="size-6 opacity-80" />
-            </div>
-            <h3 className="text-sm font-semibold text-foreground">
-              {search ? "No credentials found" : "No credentials stored yet"}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
-              {search
-                ? "No credentials match your search filter."
-                : "Securely store your first website login, database secret, or server credential."}
-            </p>
-            {!search && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditingItem(null);
-                  setIsModalOpen(true);
-                }}
-                iconStart={<Plus className="size-3.5" />}
-                className="mt-4 text-xs"
-              >
-                Add Credential
-              </Button>
-            )}
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                <TableHead>Account / Title</TableHead>
-                <TableHead>Username / Email</TableHead>
-                <TableHead>Password</TableHead>
-                <TableHead>URL</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredItems.map((item) => (
-                <VaultTableRow
-                  key={item.id}
-                  item={item}
-                  revealedPassword={item.id ? revealedPasswords[item.id] : undefined}
-                  onReveal={handleReveal}
-                  onCopy={handleCopy}
-                  onEdit={(it) => {
-                    setEditingItem(it);
+        {/* Table Card */}
+        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
+          {isLoading ? (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                  <TableHead className="font-semibold">Account / Title</TableHead>
+                  <TableHead className="font-semibold">Username / Email</TableHead>
+                  <TableHead className="font-semibold">Password</TableHead>
+                  <TableHead className="font-semibold">URL</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-36" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-8 w-16 ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : filteredItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
+                <KeyRound className="size-6 opacity-80" />
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">
+                {search || selectedCategory !== "all" || statusFilter !== "all"
+                  ? "No credentials found"
+                  : "No credentials stored yet"}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+                {search || selectedCategory !== "all" || statusFilter !== "all"
+                  ? "No credentials match your search or filter criteria."
+                  : "Securely store your first website login, database secret, or server credential."}
+              </p>
+              {!search && selectedCategory === "all" && statusFilter === "all" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditingItem(null);
                     setIsModalOpen(true);
                   }}
-                  onDelete={setDeleteCandidate}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        )}
+                  iconStart={<Plus className="size-3.5" />}
+                  className="mt-4 text-xs"
+                >
+                  Add Credential
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                  <TableHead className="font-semibold">Account / Title</TableHead>
+                  <TableHead className="font-semibold">Username / Email</TableHead>
+                  <TableHead className="font-semibold">Password</TableHead>
+                  <TableHead className="font-semibold">URL</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredItems.map((item) => (
+                  <VaultTableRow
+                    key={item.id}
+                    item={item}
+                    revealedPassword={item.id ? revealedPasswords[item.id] : undefined}
+                    onReveal={handleReveal}
+                    onCopy={handleCopy}
+                    onEdit={(it) => {
+                      setEditingItem(it);
+                      setIsModalOpen(true);
+                    }}
+                    onDelete={setDeleteCandidate}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
       </div>
 
       <VaultItemModal

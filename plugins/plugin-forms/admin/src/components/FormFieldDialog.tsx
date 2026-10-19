@@ -3,6 +3,7 @@
 import {
   Button,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -49,7 +50,7 @@ export function FormFieldDialog({
 }: FormFieldDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl bg-card border-border/80 shadow-2xl p-6">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Field" : "Add Form Field"}</DialogTitle>
           <DialogDescription className="text-xs">
@@ -57,7 +58,7 @@ export function FormFieldDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <DialogBody className="space-y-4">
           <InputField
             label="Field Label"
             placeholder="e.g. Phone Number"
@@ -122,9 +123,9 @@ export function FormFieldDialog({
             onCheckedChange={(checked) => onFieldChange((prev) => ({ ...prev, required: checked }))}
             className="p-3 bg-muted/20 border-border/80"
           />
-        </div>
+        </DialogBody>
 
-        <DialogFooter className="border-t border-border/60 pt-3">
+        <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

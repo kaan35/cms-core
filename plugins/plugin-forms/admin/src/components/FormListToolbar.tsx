@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, InputSearchField } from "@cms/admin-shell";
+import { Button, InputSearchField, Tooltip } from "@cms/admin-shell";
 import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
@@ -17,18 +17,14 @@ export function FormListToolbar({ search, onSearchChange, onRefresh }: FormListT
         placeholder="Search forms by title or slug..."
         value={search}
         onSearchChange={onSearchChange}
-        containerClassName="w-full sm:max-w-xs flex-1"
-        className="h-8 text-xs w-full"
+        containerClassName="w-full sm:max-w-sm"
+        className="bg-card w-full"
       />
 
       <div className="flex items-center gap-2 w-full sm:w-auto">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={onRefresh}
-          title="Refresh forms list"
-          iconStart={<RefreshCw />}
-        />
+        <Tooltip content="Refresh forms">
+          <Button variant="outline" size="icon" onClick={onRefresh} iconStart={<RefreshCw />} />
+        </Tooltip>
 
         <Link href="/dashboard/forms/new" className="flex-1 sm:flex-none">
           <Button iconStart={<Plus />} className="w-full sm:w-auto">

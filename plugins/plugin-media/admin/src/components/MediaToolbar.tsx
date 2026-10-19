@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn, InputSearchField } from "@cms/admin-shell";
+import { Button, cn, InputSearchField, Tooltip } from "@cms/admin-shell";
 import { Grid, List as ListIcon, RefreshCw, UploadCloud } from "lucide-react";
 
 interface MediaToolbarProps {
@@ -107,7 +107,9 @@ export function MediaToolbar({
           </button>
         </div>
 
-        <Button variant="outline" size="icon" onClick={onRefresh} iconStart={<RefreshCw />} />
+        <Tooltip content="Refresh media">
+          <Button variant="outline" size="icon" onClick={onRefresh} iconStart={<RefreshCw />} />
+        </Tooltip>
 
         <Button
           onClick={onUploadClick}

@@ -109,10 +109,10 @@ export function BlogPostList() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                <TableHead className="w-[45%]">Post Details</TableHead>
-                <TableHead className="w-[18%]">Status</TableHead>
-                <TableHead className="w-[17%]">Last Modified</TableHead>
-                <TableHead className="w-[20%] text-right">Actions</TableHead>
+                <TableHead className="font-semibold">Post Details</TableHead>
+                <TableHead className="w-32 font-semibold">Status</TableHead>
+                <TableHead className="w-44 font-semibold">Last Modified</TableHead>
+                <TableHead className="w-24 text-right font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

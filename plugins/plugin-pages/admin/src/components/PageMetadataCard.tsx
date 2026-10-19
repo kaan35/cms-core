@@ -1,6 +1,12 @@
 "use client";
 
-import { Badge, InputField, InputSelectField, InputTextareaField } from "@cms/admin-shell";
+import {
+  Badge,
+  InputField,
+  InputSelectField,
+  InputTextareaField,
+  StatusBadge,
+} from "@cms/admin-shell";
 import * as React from "react";
 import type { PageEditorState } from "./usePageEditor";
 
@@ -27,12 +33,7 @@ export function PageMetadataCard({
               Root Home Page
             </Badge>
           )}
-          <Badge
-            variant={inputData.status === "published" ? "default" : "secondary"}
-            className="text-[10px] capitalize"
-          >
-            {inputData.status}
-          </Badge>
+          <StatusBadge status={inputData.status} />
         </div>
       </div>
 

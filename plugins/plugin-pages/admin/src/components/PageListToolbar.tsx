@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, InputSearchField } from "@cms/admin-shell";
+import { Button, InputSearchField, Tooltip } from "@cms/admin-shell";
 import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
@@ -68,7 +68,9 @@ export function PageListToolbar({
       </div>
 
       <div className="flex items-center gap-2 w-full sm:w-auto">
-        <Button variant="outline" size="icon" onClick={onRefresh} iconStart={<RefreshCw />} />
+        <Tooltip content="Refresh pages">
+          <Button variant="outline" size="icon" onClick={onRefresh} iconStart={<RefreshCw />} />
+        </Tooltip>
 
         <Link href="/dashboard/pages/new" className="flex-1 sm:flex-none">
           <Button iconStart={<Plus />} className="w-full sm:w-auto">

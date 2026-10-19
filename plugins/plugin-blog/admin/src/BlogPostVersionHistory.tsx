@@ -78,8 +78,8 @@ export function BlogPostVersionHistory({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-6">
-        <DialogHeader className="shrink-0 pb-3 border-b border-border/60">
+      <DialogContent className="sm:max-w-3xl">
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Clock className="size-4 text-primary" />
             Article Version History
@@ -89,7 +89,7 @@ export function BlogPostVersionHistory({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 gap-4 pt-3">
+        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 gap-4 p-5 overflow-hidden">
           {/* Version List Sidebar */}
           <div className="md:col-span-5 overflow-y-auto space-y-2 pr-1 border-r border-border/60">
             {isLoading ? (

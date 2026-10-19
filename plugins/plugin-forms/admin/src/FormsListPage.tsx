@@ -30,10 +30,11 @@ export function FormsListPage() {
   }, [forms]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16 animate-in fade-in duration-300">
       <PageHeader
         title="Forms & Submissions"
         description="Build custom input forms, configure captcha challenge protection, and review submissions."
+        icon={ClipboardList}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

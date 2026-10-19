@@ -3,6 +3,7 @@
 import {
   Button,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -176,150 +177,154 @@ export function VaultItemModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-1">
-            <Label htmlFor="vault-title">Title *</Label>
-            <Input
-              id="vault-title"
-              placeholder="e.g. GitHub Account, AWS Production"
-              value={inputData.title}
-              onChange={(e) => setInputData((p) => ({ ...p, title: e.target.value }))}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <DialogBody className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="vault-username">Username / Email</Label>
+              <Label htmlFor="vault-title">Title *</Label>
               <Input
-                id="vault-username"
-                placeholder="user@example.com"
-                value={inputData.username}
-                onChange={(e) => setInputData((p) => ({ ...p, username: e.target.value }))}
+                id="vault-title"
+                placeholder="e.g. GitHub Account, AWS Production"
+                value={inputData.title}
+                onChange={(e) => setInputData((p) => ({ ...p, title: e.target.value }))}
+                required
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="vault-username">Username / Email</Label>
+                <Input
+                  id="vault-username"
+                  placeholder="user@example.com"
+                  value={inputData.username}
+                  onChange={(e) => setInputData((p) => ({ ...p, username: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="vault-category">Category</Label>
+                <Input
+                  id="vault-category"
+                  placeholder="e.g. Development, Servers"
+                  value={inputData.category}
+                  onChange={(e) => setInputData((p) => ({ ...p, category: e.target.value }))}
+                  suggestions={categories}
+                />
+              </div>
+            </div>
+
             <div className="space-y-1">
-              <Label htmlFor="vault-category">Category</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="vault-password">
+                  {item ? "Password (leave blank or reveal to edit)" : "Password *"}
+                </Label>
+                <button
+                  type="button"
+                  onClick={handleGeneratePassword}
+                  className="flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer"
+                >
+                  <Sparkles className="h-3 w-3" /> Generate Secure
+                </button>
+              </div>
+              <div className="relative">
+                <Input
+                  id="vault-password"
+                  type={formState.showPassword ? "text" : "password"}
+                  placeholder="••••••••••••"
+                  value={inputData.password}
+                  onChange={(e) => setInputData((p) => ({ ...p, password: e.target.value }))}
+                  maxLength={500}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={handleTogglePassword}
+                  disabled={formState.isRevealing}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-50"
+                  title={formState.showPassword ? "Hide password" : "Show password"}
+                >
+                  {formState.isRevealing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : formState.showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="vault-url">Website URL</Label>
               <Input
-                id="vault-category"
-                placeholder="e.g. Development, Servers"
-                value={inputData.category}
-                onChange={(e) => setInputData((p) => ({ ...p, category: e.target.value }))}
-                suggestions={categories}
+                id="vault-url"
+                placeholder="https://..."
+                value={inputData.url}
+                onChange={(e) => setInputData((p) => ({ ...p, url: e.target.value }))}
               />
             </div>
-          </div>
 
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="vault-password">
-                {item ? "Password (leave blank or reveal to edit)" : "Password *"}
-              </Label>
-              <button
-                type="button"
-                onClick={handleGeneratePassword}
-                className="flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer"
-              >
-                <Sparkles className="h-3 w-3" /> Generate Secure
-              </button>
-            </div>
-            <div className="relative">
-              <Input
-                id="vault-password"
-                type={formState.showPassword ? "text" : "password"}
-                placeholder="••••••••••••"
-                value={inputData.password}
-                onChange={(e) => setInputData((p) => ({ ...p, password: e.target.value }))}
-                maxLength={500}
-                className="pr-10"
+            <div className="space-y-1">
+              <Label htmlFor="vault-notes">Notes</Label>
+              <Textarea
+                id="vault-notes"
+                placeholder="Additional security notes, 2FA backup codes, etc."
+                rows={3}
+                value={inputData.notes}
+                onChange={(e) => setInputData((p) => ({ ...p, notes: e.target.value }))}
               />
-              <button
-                type="button"
-                onClick={handleTogglePassword}
-                disabled={formState.isRevealing}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-50"
-                title={formState.showPassword ? "Hide password" : "Show password"}
-              >
-                {formState.isRevealing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : formState.showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
             </div>
-          </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="vault-url">Website URL</Label>
-            <Input
-              id="vault-url"
-              placeholder="https://..."
-              value={inputData.url}
-              onChange={(e) => setInputData((p) => ({ ...p, url: e.target.value }))}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="vault-notes">Notes</Label>
-            <Textarea
-              id="vault-notes"
-              placeholder="Additional security notes, 2FA backup codes, etc."
-              rows={3}
-              value={inputData.notes}
-              onChange={(e) => setInputData((p) => ({ ...p, notes: e.target.value }))}
-            />
-          </div>
-
-          {item && (
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs space-y-2 text-muted-foreground">
-              <div className="flex items-center gap-3">
-                <span className="w-36 shrink-0 font-medium text-foreground">Created:</span>
-                <span className="font-mono text-[11px] text-foreground/90">
-                  {formatDateTime(item.createdAt)}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="w-36 shrink-0 font-medium text-foreground">Last Updated:</span>
-                <span className="font-mono text-[11px] text-foreground/90">
-                  {formatDateTime(item.updatedAt)}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="w-36 shrink-0 font-medium text-foreground">Password Changed:</span>
-                <span className="inline-flex items-center gap-1.5 flex-wrap">
+            {item && (
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs space-y-2 text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span className="w-36 shrink-0 font-medium text-foreground">Created:</span>
                   <span className="font-mono text-[11px] text-foreground/90">
-                    {formatDateTime(item.passwordChangedAt || item.updatedAt || item.createdAt)}
+                    {formatDateTime(item.createdAt)}
                   </span>
-                  {(() => {
-                    const pwdDate = item.passwordChangedAt || item.updatedAt || item.createdAt;
-                    if (!pwdDate) return null;
-                    if (isPasswordStale(pwdDate)) {
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="w-36 shrink-0 font-medium text-foreground">Last Updated:</span>
+                  <span className="font-mono text-[11px] text-foreground/90">
+                    {formatDateTime(item.updatedAt)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="w-36 shrink-0 font-medium text-foreground">
+                    Password Changed:
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono text-[11px] text-foreground/90">
+                      {formatDateTime(item.passwordChangedAt || item.updatedAt || item.createdAt)}
+                    </span>
+                    {(() => {
+                      const pwdDate = item.passwordChangedAt || item.updatedAt || item.createdAt;
+                      if (!pwdDate) return null;
+                      if (isPasswordStale(pwdDate)) {
+                        return (
+                          <span
+                            title={`Password last changed on ${formatDate(pwdDate)}`}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                          >
+                            <ShieldAlert className="size-3" />
+                            Changed &gt; 1 year ago
+                          </span>
+                        );
+                      }
                       return (
-                        <span
-                          title={`Password last changed on ${formatDate(pwdDate)}`}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                        >
-                          <ShieldAlert className="size-3" />
-                          Changed &gt; 1 year ago
+                        <span className="text-[10px] font-sans text-muted-foreground">
+                          ({formatRelativeTime(pwdDate)})
                         </span>
                       );
-                    }
-                    return (
-                      <span className="text-[10px] font-sans text-muted-foreground">
-                        ({formatRelativeTime(pwdDate)})
-                      </span>
-                    );
-                  })()}
-                </span>
+                    })()}
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </DialogBody>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"

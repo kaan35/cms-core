@@ -29,10 +29,11 @@ export function PagesListPage() {
   }, [pages]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16 animate-in fade-in duration-300">
       <PageHeader
         title="Pages Management"
         description="Design, compose, and manage dynamic landing pages, marketing pages, and content routes."
+        icon={FileText}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

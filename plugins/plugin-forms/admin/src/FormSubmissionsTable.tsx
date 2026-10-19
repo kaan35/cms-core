@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -24,6 +25,7 @@ import {
   TableHeader,
   TableRow,
   toast,
+  Tooltip,
   useApi,
 } from "@cms/admin-shell";
 import {
@@ -212,15 +214,16 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
   return (
     <div className="space-y-4">
       {/* Action bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col sm:flex-row flex-1 sm:items-center gap-3">
           <InputSearchField
             value={search}
             onSearchChange={setSearch}
-            placeholder="Search submissions (name, email, text)..."
-            className="w-full sm:w-72"
+            placeholder="Search submissions by text or email..."
+            containerClassName="w-full sm:max-w-sm"
+            className="bg-card w-full"
           />
-          <Badge variant="outline" className="text-xs shrink-0 py-1 px-2.5">
+          <Badge variant="outline" className="text-xs shrink-0 py-1 px-2.5 self-start sm:self-auto">
             {search ? (
               <span>
                 {filteredSubmissions.length} of {totalCount}
@@ -233,15 +236,20 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
           </Badge>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" onClick={() => mutate()} iconStart={<RefreshCw />}>
-            Refresh
-          </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Tooltip content="Refresh submissions">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => mutate()}
+              iconStart={<RefreshCw />}
+            />
+          </Tooltip>
 
           <DropdownMenu>
             <DropdownMenuTrigger
               disabled={totalCount === 0 || isExporting !== null}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 h-8 text-xs font-medium text-foreground hover:bg-muted transition-all outline-none cursor-pointer disabled:pointer-events-none disabled:opacity-50 shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-card px-3 h-8 text-xs font-medium text-foreground hover:bg-muted transition-all outline-none cursor-pointer disabled:pointer-events-none disabled:opacity-50 shadow-2xs"
             >
               {isExporting !== null ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -436,10 +444,10 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
         open={selectedSubmission !== null}
         onOpenChange={(open) => !open && setSelectedSubmission(null)}
       >
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-xl">
           {selectedSubmission && (
-            <div className="space-y-5">
-              <DialogHeader className="pr-10">
+            <>
+              <DialogHeader className="pr-12">
                 <div className="flex items-center gap-3">
                   <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0 font-semibold text-sm">
                     <User className="size-5" />
@@ -455,111 +463,116 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
                 </div>
               </DialogHeader>
 
-              {/* Submitted Fields */}
-              <div className="space-y-3">
-                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Form Response Data
-                </h4>
+              <DialogBody className="space-y-5">
+                {/* Submitted Fields */}
+                <div className="space-y-3">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Form Response Data
+                  </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {Object.entries(selectedSubmission.data || {}).map(([key, val]) => {
-                    const label = key.replace(/[_-]/g, " ");
-                    const isLongText =
-                      typeof val === "string" && (val.length > 50 || val.includes("\n"));
-                    const isEmail = typeof val === "string" && val.includes("@");
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Object.entries(selectedSubmission.data || {}).map(([key, val]) => {
+                      const label = key.replace(/[_-]/g, " ");
+                      const isLongText =
+                        typeof val === "string" && (val.length > 50 || val.includes("\n"));
+                      const isEmail = typeof val === "string" && val.includes("@");
 
-                    if (isLongText) {
+                      if (isLongText) {
+                        return (
+                          <div
+                            key={key}
+                            className="sm:col-span-2 rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-1.5"
+                          >
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                              {label}
+                            </span>
+                            <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed select-text">
+                              {String(val)}
+                            </p>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div
                           key={key}
-                          className="sm:col-span-2 rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-1.5"
+                          className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-1"
                         >
                           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
                             {label}
                           </span>
-                          <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed select-text">
-                            {String(val)}
-                          </p>
+                          <div>
+                            {val === null || val === undefined ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : typeof val === "boolean" ? (
+                              <Badge
+                                variant={val ? "secondary" : "outline"}
+                                className="text-[11px]"
+                              >
+                                {val ? "Yes" : "No"}
+                              </Badge>
+                            ) : isEmail ? (
+                              <a
+                                href={`mailto:${String(val)}`}
+                                className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1.5 break-all"
+                              >
+                                <Mail className="size-3.5 shrink-0" />
+                                <span>{String(val)}</span>
+                              </a>
+                            ) : (
+                              <span className="text-xs font-medium text-foreground select-text wrap-break-word">
+                                {String(val)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
-                    }
-
-                    return (
-                      <div
-                        key={key}
-                        className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-1"
-                      >
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
-                          {label}
-                        </span>
-                        <div>
-                          {val === null || val === undefined ? (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          ) : typeof val === "boolean" ? (
-                            <Badge variant={val ? "secondary" : "outline"} className="text-[11px]">
-                              {val ? "Yes" : "No"}
-                            </Badge>
-                          ) : isEmail ? (
-                            <a
-                              href={`mailto:${String(val)}`}
-                              className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1.5 break-all"
-                            >
-                              <Mail className="size-3.5 shrink-0" />
-                              <span>{String(val)}</span>
-                            </a>
-                          ) : (
-                            <span className="text-xs font-medium text-foreground select-text break-words">
-                              {String(val)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Technical Audit Metadata */}
-              <div className="space-y-2 pt-2 border-t border-border/60">
-                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Audit & Origin
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="rounded-lg bg-muted/20 border border-border/50 p-2.5 space-y-0.5">
-                    <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">
-                      IP Address
-                    </span>
-                    <span className="font-mono text-xs text-foreground font-medium block">
-                      {cleanIp(selectedSubmission.ip)}
-                    </span>
-                  </div>
-                  <div className="rounded-lg bg-muted/20 border border-border/50 p-2.5 space-y-0.5">
-                    <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">
-                      Submission ID
-                    </span>
-                    <span
-                      className="font-mono text-[11px] text-muted-foreground block truncate select-all"
-                      title={selectedSubmission.id}
-                    >
-                      {selectedSubmission.id}
-                    </span>
-                  </div>
-                  {selectedSubmission.userAgent && (
-                    <div className="sm:col-span-2 rounded-lg bg-muted/20 border border-border/50 p-2.5 space-y-1">
-                      <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider flex items-center gap-1.5">
-                        <Globe className="size-3 text-muted-foreground" />
-                        <span>User Agent</span>
+                {/* Technical Audit Metadata */}
+                <div className="space-y-2 pt-2 border-t border-border/60">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Audit & Origin
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-lg bg-muted/20 border border-border/50 p-2.5 space-y-0.5">
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">
+                        IP Address
                       </span>
-                      <p className="font-mono text-[11px] text-muted-foreground leading-relaxed break-all select-text">
-                        {selectedSubmission.userAgent}
-                      </p>
+                      <span className="font-mono text-xs text-foreground font-medium block">
+                        {cleanIp(selectedSubmission.ip)}
+                      </span>
                     </div>
-                  )}
+                    <div className="rounded-lg bg-muted/20 border border-border/50 p-2.5 space-y-0.5">
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">
+                        Submission ID
+                      </span>
+                      <span
+                        className="font-mono text-[11px] text-muted-foreground block truncate select-all"
+                        title={selectedSubmission.id}
+                      >
+                        {selectedSubmission.id}
+                      </span>
+                    </div>
+                    {selectedSubmission.userAgent && (
+                      <div className="sm:col-span-2 rounded-lg bg-muted/20 border border-border/50 p-2.5 space-y-1">
+                        <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider flex items-center gap-1.5">
+                          <Globe className="size-3 text-muted-foreground" />
+                          <span>User Agent</span>
+                        </span>
+                        <p className="font-mono text-[11px] text-muted-foreground leading-relaxed break-all select-text">
+                          {selectedSubmission.userAgent}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </DialogBody>
 
               {/* Footer */}
-              <DialogFooter className="pt-3 border-t border-border/60 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5">
+              <DialogFooter className="sm:justify-between">
                 <div>
                   {selectedEmail && (
                     <a
@@ -583,7 +596,7 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
                   <DialogClose render={<Button variant="default" size="sm" />}>Close</DialogClose>
                 </div>
               </DialogFooter>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
