@@ -53,7 +53,10 @@ export function InputSearchField({
         value={value}
         onChange={handleChange}
         placeholder={placeholder}
-        className={cn("pl-9 pr-8 text-xs", className)}
+        className={cn(
+          "pl-9 pr-8 text-xs [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
+          className,
+        )}
         {...props}
       />
       {value && (
