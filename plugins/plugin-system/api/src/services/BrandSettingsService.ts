@@ -32,97 +32,96 @@ export class BrandSettingsService {
     allowRegistration: boolean;
     sessionTimeoutMinutes: number;
   }> {
-    const siteTitle = await this.settingsService.get<string>("system.site.title", "CMS Core");
-    const adminTitle = await this.settingsService.get<string>("system.admin.title", siteTitle);
-    const siteDescription = await this.settingsService.get<string>(
-      "system.site.description",
-      "Headless CMS Engine",
-    );
-    const brandColor = await this.settingsService.get<string>("system.brand.color", "#3b82f6");
-    const brandFont = await this.settingsService.get<string>("system.brand.font", "Inter");
-    const defaultTheme = await this.settingsService.get<string>("system.brand.theme", "dark");
-    const footerText = await this.settingsService.get<string>("system.site.footerText", "");
-    const headerMenu = await this.settingsService.get<NavigationMenuItem[]>(
-      "system.navigation.header",
-      [
+    const s = await this.settingsService.getMany({
+      "system.site.title": "CMS Core",
+      "system.admin.title": "",
+      "system.site.description": "Headless CMS Engine",
+      "system.brand.color": "#3b82f6",
+      "system.brand.font": "Inter",
+      "system.brand.theme": "dark",
+      "system.site.footerText": "",
+      "system.navigation.header": [
         { id: "default-home", label: "Home", url: "/", type: "custom", external: false },
         { id: "default-blog", label: "Blog", url: "/blog", type: "blog", external: false },
-      ],
-    );
-    const footerMenu = await this.settingsService.get<NavigationMenuItem[]>(
-      "system.navigation.footer",
-      [],
-    );
-    const allowRegistration = await this.settingsService.get<boolean>(
-      "system.auth.allowRegistration",
-      true,
-    );
-    const sessionTimeoutMinutes = await this.settingsService.get<number>(
-      "system.auth.sessionTimeoutMinutes",
-      1440,
-    );
+      ] as NavigationMenuItem[],
+      "system.navigation.footer": [] as NavigationMenuItem[],
+      "system.auth.allowRegistration": true,
+      "system.auth.sessionTimeoutMinutes": 1440,
+    });
+
+    const siteTitle = s["system.site.title"];
+    const adminTitle = s["system.admin.title"] || siteTitle || "CMS Core";
 
     return {
-      adminTitle: adminTitle || siteTitle || "CMS Core",
+      adminTitle,
       siteTitle,
-      siteDescription,
-      brandColor,
-      brandFont,
-      primaryColor: brandColor,
-      fontFamily: brandFont,
-      defaultTheme,
-      footerText,
-      headerMenu,
-      footerMenu,
-      allowRegistration,
-      sessionTimeoutMinutes,
+      siteDescription: s["system.site.description"],
+      brandColor: s["system.brand.color"],
+      brandFont: s["system.brand.font"],
+      primaryColor: s["system.brand.color"],
+      fontFamily: s["system.brand.font"],
+      defaultTheme: s["system.brand.theme"],
+      footerText: s["system.site.footerText"],
+      headerMenu: s["system.navigation.header"],
+      footerMenu: s["system.navigation.footer"],
+      allowRegistration: s["system.auth.allowRegistration"],
+      sessionTimeoutMinutes: s["system.auth.sessionTimeoutMinutes"],
     };
   }
 
   async updateSettings(input: unknown | UpdateSettingsInput, actorId?: string) {
     const validated = validateUpdateSettings(input);
+    const updates: Promise<void>[] = [];
 
     if (validated.adminTitle !== undefined) {
-      await this.settingsService.set("system.admin.title", validated.adminTitle);
+      updates.push(this.settingsService.set("system.admin.title", validated.adminTitle));
     }
     if (validated.siteTitle !== undefined) {
-      await this.settingsService.set("system.site.title", validated.siteTitle);
+      updates.push(this.settingsService.set("system.site.title", validated.siteTitle));
     }
     if (validated.siteDescription !== undefined) {
-      await this.settingsService.set("system.site.description", validated.siteDescription);
+      updates.push(this.settingsService.set("system.site.description", validated.siteDescription));
     }
     if (validated.brandColor !== undefined) {
-      await this.settingsService.set("system.brand.color", validated.brandColor);
+      updates.push(this.settingsService.set("system.brand.color", validated.brandColor));
     }
     if (validated.primaryColor !== undefined) {
-      await this.settingsService.set("system.brand.color", validated.primaryColor);
+      updates.push(this.settingsService.set("system.brand.color", validated.primaryColor));
     }
     if (validated.brandFont !== undefined) {
-      await this.settingsService.set("system.brand.font", validated.brandFont);
+      updates.push(this.settingsService.set("system.brand.font", validated.brandFont));
     }
     if (validated.fontFamily !== undefined) {
-      await this.settingsService.set("system.brand.font", validated.fontFamily);
+      updates.push(this.settingsService.set("system.brand.font", validated.fontFamily));
     }
     if (validated.defaultTheme !== undefined) {
-      await this.settingsService.set("system.brand.theme", validated.defaultTheme);
+      updates.push(this.settingsService.set("system.brand.theme", validated.defaultTheme));
     }
     if (validated.footerText !== undefined) {
-      await this.settingsService.set("system.site.footerText", validated.footerText);
+      updates.push(this.settingsService.set("system.site.footerText", validated.footerText));
     }
     if (validated.headerMenu !== undefined) {
-      await this.settingsService.set("system.navigation.header", validated.headerMenu);
+      updates.push(this.settingsService.set("system.navigation.header", validated.headerMenu));
     }
     if (validated.footerMenu !== undefined) {
-      await this.settingsService.set("system.navigation.footer", validated.footerMenu);
+      updates.push(this.settingsService.set("system.navigation.footer", validated.footerMenu));
     }
     if (validated.allowRegistration !== undefined) {
-      await this.settingsService.set("system.auth.allowRegistration", validated.allowRegistration);
+      updates.push(
+        this.settingsService.set("system.auth.allowRegistration", validated.allowRegistration),
+      );
     }
     if (validated.sessionTimeoutMinutes !== undefined) {
-      await this.settingsService.set(
-        "system.auth.sessionTimeoutMinutes",
-        validated.sessionTimeoutMinutes,
+      updates.push(
+        this.settingsService.set(
+          "system.auth.sessionTimeoutMinutes",
+          validated.sessionTimeoutMinutes,
+        ),
       );
+    }
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
     }
 
     const current = await this.getSettings();

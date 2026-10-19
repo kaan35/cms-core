@@ -1,4 +1,4 @@
-import type { HookManager, ICollection, IDatabase, PluginManifestEntry } from "@cms/core";
+import type { HookManager, ICache, ICollection, IDatabase, PluginManifestEntry } from "@cms/core";
 import { createServer } from "@cms/core";
 import { initAuthMigration, registerAuthPlugin } from "@cms/plugin-auth-api";
 import assert from "node:assert/strict";
@@ -41,9 +41,14 @@ function makeStubDb(): IDatabase {
           if (Object.keys(filter).length > 0) {
             docs = docs.filter((doc) => {
               for (const [k, v] of Object.entries(filter)) {
-                if (k === "id" && typeof v === "object" && v !== null && "$in" in v) {
-                  const ids = (v as { $in: string[] })["$in"];
-                  if (!ids.includes(doc["id"] as string)) return false;
+                if (
+                  v &&
+                  typeof v === "object" &&
+                  "$in" in v &&
+                  Array.isArray((v as { $in: unknown[] }).$in)
+                ) {
+                  const ids = (v as { $in: unknown[] })["$in"];
+                  if (!ids.includes(doc[k])) return false;
                 } else if (doc[k] !== v) {
                   return false;
                 }
@@ -129,12 +134,15 @@ function makeStubDb(): IDatabase {
   return db;
 }
 
-const stubCache = {
+const stubCache: ICache = {
   get: async () => null,
   set: async () => {},
   del: async () => {},
   isAlive: async () => true,
   quit: async () => {},
+  getJson: async () => null,
+  setJson: async () => {},
+  getOrSet: async <T>(_k: string, factory: () => Promise<T>): Promise<T> => factory(),
 };
 
 async function setupTestApp() {
@@ -161,6 +169,7 @@ async function setupTestApp() {
       VAULT_SECRET: "test-vault-secret-key-32-chars-long-min-len",
       CAPTCHA_SECRET: "test-captcha-secret-key-32-chars-long-min-len",
       SETUP_ENABLED: "true",
+      CACHE_SETTINGS_TTL_SECONDS: "86400",
     },
     testManifest,
   );

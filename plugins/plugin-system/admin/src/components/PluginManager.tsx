@@ -1,10 +1,14 @@
 "use client";
 
+import * as React from "react";
 import {
   api,
   Badge,
   Button,
+  InputSearchField,
+  PageHeader,
   Skeleton,
+  StatCard,
   Switch,
   Table,
   TableBody,
@@ -13,9 +17,10 @@ import {
   TableHeader,
   TableRow,
   toast,
+  Tooltip,
   useApi,
 } from "@cms/admin-shell";
-import { Plug, RefreshCw } from "lucide-react";
+import { Blocks, CheckCircle2, Plug, Puzzle, RefreshCw } from "lucide-react";
 
 interface PluginApiItem {
   id?: string;
@@ -72,6 +77,12 @@ const PLUGIN_METADATA: Record<
     version: "0.1.0",
     isCore: false,
   },
+  "plugin-mcp": {
+    label: "Model Context Protocol (MCP)",
+    description: "Streamable HTTP & stdio tools for AI assistants (Cursor, Claude, Copilot)",
+    version: "0.1.0",
+    isCore: false,
+  },
 };
 
 const DEFAULT_PLUGINS: PluginApiItem[] = [
@@ -82,6 +93,7 @@ const DEFAULT_PLUGINS: PluginApiItem[] = [
   { name: "plugin-blog", enabled: true },
   { name: "plugin-forms", enabled: true },
   { name: "plugin-vault", enabled: true },
+  { name: "plugin-mcp", enabled: true },
 ];
 
 export function PluginManager() {
@@ -114,6 +126,27 @@ export function PluginManager() {
     };
   });
 
+  const [search, setSearch] = React.useState("");
+
+  const enabledCount = React.useMemo(() => {
+    return plugins.filter((p) => p.enabled).length;
+  }, [plugins]);
+
+  const coreCount = React.useMemo(() => {
+    return plugins.filter((p) => p.isCore).length;
+  }, [plugins]);
+
+  const filteredPlugins = React.useMemo(() => {
+    if (!search.trim()) return plugins;
+    const q = search.toLowerCase();
+    return plugins.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.key.toLowerCase().includes(q),
+    );
+  }, [plugins, search]);
+
   const handleToggle = async (
     pluginKey: string,
     pluginLabel: string,
@@ -134,83 +167,126 @@ export function PluginManager() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Plugins & Modules</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Enable or disable modular CMS capabilities dynamically
-          </p>
-        </div>
-        <Button variant="outline" onClick={() => mutate()} iconStart={<RefreshCw />}>
-          Refresh
-        </Button>
+      {/* Unified PageHeader */}
+      <PageHeader
+        title="Plugins & Modules"
+        description="Enable or disable modular CMS capabilities dynamically"
+      />
+
+      {/* KPI Metric Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          title="Total Plugins"
+          value={plugins.length}
+          description="Registered system capabilities"
+          icon={Puzzle}
+        />
+        <StatCard
+          title="Active Modules"
+          value={enabledCount}
+          description="Currently enabled and mounted"
+          icon={CheckCircle2}
+        />
+        <StatCard
+          title="Core Plugins"
+          value={coreCount}
+          description="Essential platform modules"
+          icon={Blocks}
+        />
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs">
-        {isLoading ? (
-          <div className="p-4 space-y-3">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
+      {/* Table Section */}
+      <div className="space-y-4">
+        {/* Unified Search Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <InputSearchField
+            placeholder="Search plugins by name or description..."
+            value={search}
+            onSearchChange={setSearch}
+            containerClassName="w-full sm:max-w-sm"
+            className="bg-card w-full"
+          />
+          <div className="flex items-center gap-2">
+            <Tooltip content="Refresh plugins">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => mutate()}
+                iconStart={<RefreshCw />}
+                disabled={isLoading}
+              />
+            </Tooltip>
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                <TableHead className="w-[35%]">Plugin</TableHead>
-                <TableHead className="w-[40%]">Description</TableHead>
-                <TableHead className="w-[15%]">Version</TableHead>
-                <TableHead className="w-[10%] text-right">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {plugins.map((p, idx) => (
-                <TableRow key={p.key || p.rawName || `plugin-${idx}`} className="text-xs">
-                  <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
-                        <Plug className="size-3.5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-foreground">{p.name}</span>
-                          {p.isCore && (
-                            <Badge variant="secondary" className="text-[10px] py-0 h-4">
-                              Core
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-[11px] font-mono text-muted-foreground">
-                          {p.rawName}
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
+        </div>
 
-                  <TableCell className="text-muted-foreground text-[11px]">
-                    {p.description}
-                  </TableCell>
-
-                  <TableCell className="font-mono text-[11px] text-muted-foreground">
-                    v{p.version}
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Switch
-                        checked={p.enabled}
-                        disabled={p.isCore}
-                        onCheckedChange={(val) => handleToggle(p.rawName, p.name, p.isCore, val)}
-                      />
-                    </div>
-                  </TableCell>
+        {/* Table Card */}
+        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
+          {isLoading ? (
+            <div className="p-4 space-y-3">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                  <TableHead className="w-[35%] font-semibold">Plugin</TableHead>
+                  <TableHead className="w-[40%] font-semibold">Description</TableHead>
+                  <TableHead className="w-[15%] font-semibold">Version</TableHead>
+                  <TableHead className="w-[10%] text-right font-semibold">Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+              </TableHeader>
+              <TableBody>
+                {filteredPlugins.map((p, idx) => (
+                  <TableRow
+                    key={p.key || p.rawName || `plugin-${idx}`}
+                    className="text-xs hover:bg-muted/30 transition-colors"
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                          <Plug className="size-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-foreground">{p.name}</span>
+                            {p.isCore && (
+                              <Badge variant="secondary" className="text-[10px] py-0 h-4">
+                                Core
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-[11px] font-mono text-muted-foreground">
+                            {p.rawName}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground text-[11px]">
+                      {p.description}
+                    </TableCell>
+
+                    <TableCell className="font-mono text-[11px] text-muted-foreground">
+                      v{p.version}
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Switch
+                          checked={p.enabled}
+                          disabled={p.isCore}
+                          onCheckedChange={(val) => handleToggle(p.rawName, p.name, p.isCore, val)}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
       </div>
     </div>
   );

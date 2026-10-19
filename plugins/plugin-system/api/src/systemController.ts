@@ -76,8 +76,11 @@ export class SystemController {
   }
 
   async listAuditLogs(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { page, limit } = parsePaginationQuery(request.query as Record<string, unknown>);
-    const paginated = await this.systemService.listAuditLogs(page, limit);
+    const query = (request.query || {}) as Record<string, unknown>;
+    const { page, limit } = parsePaginationQuery(query);
+    const search = typeof query["search"] === "string" ? query["search"] : undefined;
+    const tz = typeof query["tz"] === "string" ? query["tz"] : undefined;
+    const paginated = await this.systemService.listAuditLogs(page, limit, search, tz);
     return reply.send(paginated);
   }
 

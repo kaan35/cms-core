@@ -142,6 +142,51 @@ describe("SystemService", () => {
     assert.equal(logs.data[0]?.event, "user.created");
   });
 
+  it("searches audit logs by resolved token name and user email", async () => {
+    const { service, db, auditLogRepo } = await setup();
+
+    // Seed token in cms_api_tokens
+    const tokensCol = db.collection<{ id: string; name: string; tokenPrefix?: string }>(
+      "cms_api_tokens",
+    );
+    await tokensCol.insertOne({ id: "tok-uuid-1", name: "Test 1", tokenPrefix: "cms_tok_...e710" });
+
+    // Seed user in cms_users
+    const usersCol = db.collection<{ id: string; email: string }>("cms_users");
+    await usersCol.insertOne({ id: "user-uuid-1", email: "admin@test.com" });
+
+    // Create raw audit records
+    await auditLogRepo.create({
+      event: "mcp.tool_executed",
+      actorId: "user-uuid-1",
+      actorType: "agent",
+      tokenId: "api-token:tok-uuid-1",
+      data: { tool: "get_form_submissions" },
+    });
+
+    await auditLogRepo.create({
+      event: "user.updated",
+      actorId: "user-uuid-1",
+      actorType: "user",
+    });
+
+    // 1. Search by token name: "test 1"
+    const tokenSearchResults = await service.listAuditLogs(1, 10, "test 1");
+    assert.equal(tokenSearchResults.data.length, 1);
+    assert.equal(tokenSearchResults.data[0]?.event, "mcp.tool_executed");
+    assert.equal(tokenSearchResults.meta.total, 1);
+
+    // 2. Search by user email: "admin@test.com"
+    const userSearchResults = await service.listAuditLogs(1, 10, "admin@test.com");
+    assert.equal(userSearchResults.data.length, 2);
+    assert.equal(userSearchResults.meta.total, 2);
+
+    // 3. Search non-existent
+    const emptyResults = await service.listAuditLogs(1, 10, "nonexistent");
+    assert.equal(emptyResults.data.length, 0);
+    assert.equal(emptyResults.meta.total, 0);
+  });
+
   it("getStats returns counts for pages, posts, forms, users, and plugins", async () => {
     const { service, db } = await setup();
 

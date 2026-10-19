@@ -1,6 +1,10 @@
 import type { IDatabase, IHookManager, ILogger, ISettingsService, PluginLoader } from "@cms/core";
 import { EVENTS, NotFoundError, buildPaginatedResult } from "@cms/core";
-import type { AuditLogDoc, AuditLogRepository } from "../repositories/auditLogRepository.js";
+import type {
+  AuditLogDoc,
+  AuditLogRepository,
+  AuditLogSearchContext,
+} from "../repositories/auditLogRepository.js";
 import type {
   FeatureFlagDoc,
   FeatureFlagsRepository,
@@ -85,31 +89,8 @@ export class SystemService {
     return this.featureFlagService.getFeatureFlag(key);
   }
 
-  async createFeatureFlag(input: unknown, actorId?: string): Promise<FeatureFlagDoc>;
-  async createFeatureFlag(
-    key: string,
-    value?: boolean,
-    description?: string,
-    actorId?: string,
-  ): Promise<FeatureFlagDoc>;
-  async createFeatureFlag(
-    keyOrInput: string | unknown,
-    valueOrActorId?: boolean | string,
-    descriptionRaw?: string,
-    actorIdRaw?: string,
-  ): Promise<FeatureFlagDoc> {
-    if (typeof keyOrInput === "string") {
-      return this.featureFlagService.createFeatureFlag(
-        {
-          key: keyOrInput,
-          value: typeof valueOrActorId === "boolean" ? valueOrActorId : false,
-          description: descriptionRaw,
-        },
-        actorIdRaw,
-      );
-    }
-    const actorId = typeof valueOrActorId === "string" ? valueOrActorId : actorIdRaw;
-    return this.featureFlagService.createFeatureFlag(keyOrInput, actorId);
+  async createFeatureFlag(input: unknown, actorId?: string): Promise<FeatureFlagDoc> {
+    return this.featureFlagService.createFeatureFlag(input, actorId);
   }
 
   async updateFeatureFlag(key: string, patch: unknown, actorId?: string) {
@@ -124,12 +105,68 @@ export class SystemService {
     return this.featureFlagService.evaluateFeatureFlag(key, defaultValue);
   }
 
+  private async buildAuditSearchContext(
+    query: string,
+    tz?: string,
+  ): Promise<AuditLogSearchContext | undefined> {
+    const q = query.trim().toLowerCase();
+    if (!q) return undefined;
+
+    const matchedActorIds = new Set<string>();
+    const matchedTokenIds = new Set<string>();
+
+    try {
+      const usersCol = this.db.collection<{ id: string; email: string; name?: string }>(
+        "cms_users",
+      );
+      const users = await usersCol.find();
+      for (const u of users) {
+        if (
+          (u.email && u.email.toLowerCase().includes(q)) ||
+          (u.name && u.name.toLowerCase().includes(q))
+        ) {
+          if (u.id) matchedActorIds.add(u.id);
+        }
+      }
+    } catch {
+      // Inaccessible collection or test stub
+    }
+
+    try {
+      const tokensCol = this.db.collection<{ id: string; name: string; tokenPrefix?: string }>(
+        "cms_api_tokens",
+      );
+      const tokens = await tokensCol.find();
+      for (const t of tokens) {
+        if (
+          (t.name && t.name.toLowerCase().includes(q)) ||
+          (t.tokenPrefix && t.tokenPrefix.toLowerCase().includes(q))
+        ) {
+          if (t.id) {
+            matchedTokenIds.add(t.id);
+            matchedTokenIds.add(`api-token:${t.id}`);
+          }
+        }
+      }
+    } catch {
+      // Inaccessible collection or test stub
+    }
+
+    return {
+      matchedActorIds,
+      matchedTokenIds,
+      ...(tz ? { timeZone: tz } : {}),
+    };
+  }
+
   // Audit Logs
-  async listAuditLogs(page = 1, limit = 50) {
+  async listAuditLogs(page = 1, limit = 50, search?: string, tz?: string) {
     const skip = (page - 1) * limit;
+    const searchContext =
+      search && search.trim() ? await this.buildAuditSearchContext(search, tz) : undefined;
     const [items, total] = await Promise.all([
-      this.auditLogRepo.list(skip, limit),
-      this.auditLogRepo.count(),
+      this.auditLogRepo.list(skip, limit, search, searchContext),
+      this.auditLogRepo.count(search, searchContext),
     ]);
 
     const actorIds = [
@@ -139,7 +176,7 @@ export class SystemService {
     if (actorIds.length > 0) {
       try {
         const usersCol = this.db.collection<{ id: string; email: string }>("cms_users");
-        const allUsers = await usersCol.find();
+        const allUsers = await usersCol.find({ id: { $in: actorIds } });
         for (const u of allUsers) {
           if (u.id && u.email) {
             userMap.set(u.id, u.email);
@@ -150,11 +187,54 @@ export class SystemService {
       }
     }
 
+    const tokenIds = [
+      ...new Set(
+        items
+          .map((i) => {
+            const raw = i.tokenId || (i.data?.["tokenId"] as string | undefined);
+            if (raw && raw.startsWith("api-token:")) {
+              return raw.replace("api-token:", "");
+            }
+            return raw;
+          })
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const tokenMap = new Map<string, { name: string; tokenPrefix?: string | undefined }>();
+    if (tokenIds.length > 0) {
+      try {
+        const tokensCol = this.db.collection<{
+          id: string;
+          name: string;
+          tokenPrefix?: string | undefined;
+        }>("cms_api_tokens");
+        const allTokens = await tokensCol.find({ id: { $in: tokenIds } });
+        for (const t of allTokens) {
+          if (t.id && t.name) {
+            tokenMap.set(t.id, { name: t.name, tokenPrefix: t.tokenPrefix });
+          }
+        }
+      } catch {
+        // Fallback gracefully
+      }
+    }
+
     const enriched = items.map((item) => {
       const email = item.actorId ? userMap.get(item.actorId) : undefined;
+      const rawTokenId = item.tokenId || (item.data?.["tokenId"] as string | undefined);
+      const cleanTokenId = rawTokenId?.startsWith("api-token:")
+        ? rawTokenId.replace("api-token:", "")
+        : rawTokenId;
+      const tokenInfo = cleanTokenId ? tokenMap.get(cleanTokenId) : undefined;
+      const tokenName = (item.data?.["tokenName"] as string | undefined) || tokenInfo?.name;
+      const tokenPrefix =
+        (item.data?.["tokenPrefix"] as string | undefined) || tokenInfo?.tokenPrefix;
+
       return {
         ...item,
         ...(email ? { userEmail: email } : {}),
+        ...(tokenName ? { tokenName } : {}),
+        ...(tokenPrefix ? { tokenPrefix } : {}),
       };
     });
 
@@ -164,15 +244,22 @@ export class SystemService {
   async recordAuditLog(entry: {
     event: string;
     actorId?: string | undefined;
+    actorType?: "user" | "agent" | "system" | undefined;
+    tokenId?: string | undefined;
     payload?: Record<string, unknown> | undefined;
     ip?: string | undefined;
   }): Promise<AuditLogDoc> {
     const doc = await this.auditLogRepo.create({
       event: entry.event,
       ...(entry.actorId ? { actorId: entry.actorId } : {}),
+      ...(entry.actorType ? { actorType: entry.actorType } : {}),
+      ...(entry.tokenId ? { tokenId: entry.tokenId } : {}),
       ...(entry.payload ? { data: entry.payload } : {}),
     });
-    this.logger.info(`Audit: ${entry.event}`, { actorId: entry.actorId });
+    this.logger.info(`Audit: ${entry.event}`, {
+      actorId: entry.actorId,
+      actorType: entry.actorType,
+    });
     return doc;
   }
 
@@ -210,18 +297,26 @@ export class SystemService {
       EVENTS.VAULT.UPDATED,
       EVENTS.VAULT.DELETED,
       EVENTS.VAULT.REVEALED,
+      EVENTS.MCP.TOOL_EXECUTED,
     ];
 
     for (const event of auditEvents) {
       this.hooks.on(event, async (payload: unknown) => {
-        const actorId =
-          payload && typeof payload === "object" && "actorId" in payload
-            ? (payload as { actorId?: string }).actorId
+        const p =
+          payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+        const actorId = typeof p["actorId"] === "string" ? p["actorId"] : undefined;
+        const actorType =
+          p["actorType"] === "agent" || p["actorType"] === "user" || p["actorType"] === "system"
+            ? p["actorType"]
             : undefined;
+        const tokenId = typeof p["tokenId"] === "string" ? p["tokenId"] : undefined;
+
         await this.recordAuditLog({
           event,
           actorId,
-          payload: (payload as Record<string, unknown>) ?? {},
+          actorType,
+          tokenId,
+          payload: p,
         });
       });
     }
