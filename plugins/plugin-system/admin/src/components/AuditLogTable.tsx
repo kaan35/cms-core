@@ -6,6 +6,11 @@ import {
   cn,
   formatDateTime,
   InputSearchField,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -17,7 +22,9 @@ import {
   useApi,
 } from "@cms/admin-shell";
 import {
+  AlertCircle,
   Bot,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -25,6 +32,8 @@ import {
   Eye,
   History,
   RefreshCw,
+  RotateCcw,
+  ShieldAlert,
 } from "lucide-react";
 import * as React from "react";
 import { AuditLogDetailDialog, type ApiAuditItem } from "./AuditLogDetailDialog";
@@ -42,6 +51,9 @@ interface AuditLogRow {
   actorType?: "user" | "agent" | "system" | undefined;
   tokenId?: string | undefined;
   mcpToolName?: string | undefined;
+  status?: "success" | "access_denied" | "error" | undefined;
+  requiredScope?: string | undefined;
+  error?: string | undefined;
   raw: ApiAuditItem;
 }
 
@@ -57,18 +69,72 @@ interface AuditLogResponse {
   total?: number;
 }
 
+function StatusBadge({ log }: { log: AuditLogRow }) {
+  const status = log.status || "success";
+
+  if (status === "access_denied") {
+    const tooltipText = log.requiredScope
+      ? `Missing permission: ${log.requiredScope}`
+      : log.error || "Access Denied";
+    return (
+      <Tooltip content={tooltipText}>
+        <Badge
+          variant="outline"
+          className="text-[10px] gap-1 font-mono font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25 cursor-help shrink-0"
+        >
+          <ShieldAlert className="size-2.5" />
+          Denied
+        </Badge>
+      </Tooltip>
+    );
+  }
+
+  if (status === "error") {
+    const tooltipText = log.error || "Execution error";
+    return (
+      <Tooltip content={tooltipText}>
+        <Badge
+          variant="outline"
+          className="text-[10px] gap-1 font-mono font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25 cursor-help shrink-0"
+        >
+          <AlertCircle className="size-2.5" />
+          Error
+        </Badge>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Badge
+      variant="outline"
+      className="text-[10px] gap-1 font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shrink-0"
+    >
+      <CheckCircle2 className="size-2.5" />
+      Success
+    </Badge>
+  );
+}
+
 export function AuditLogTable() {
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(50);
   const [search, setSearch] = React.useState("");
+  const [actorType, setActorType] = React.useState<string>("all");
+  const [status, setStatus] = React.useState<string>("all");
   const [selectedLog, setSelectedLog] = React.useState<ApiAuditItem | null>(null);
   const [detailModalOpen, setDetailModalOpen] = React.useState(false);
 
-  // Construct URL with server-side pagination & search
+  // Construct URL with server-side pagination, filters & search
   const apiUrl = React.useMemo(() => {
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("limit", String(limit));
+    if (actorType !== "all") {
+      params.set("actorType", actorType);
+    }
+    if (status !== "all") {
+      params.set("status", status);
+    }
     if (search.trim()) {
       params.set("search", search.trim());
       if (typeof window !== "undefined") {
@@ -83,7 +149,7 @@ export function AuditLogTable() {
       }
     }
     return `/api/audit-log?${params.toString()}`;
-  }, [page, limit, search]);
+  }, [page, limit, search, actorType, status]);
 
   const { data: rawData, isLoading, mutate } = useApi<AuditLogResponse>(apiUrl);
 
@@ -121,7 +187,7 @@ export function AuditLogTable() {
       } else if (tokenPrefix) {
         userDisplay = tokenPrefix;
       } else if (item.tokenId) {
-        const cleanId = item.tokenId.replace("api-token:", "");
+        const cleanId = String(item.tokenId).replace("api-token:", "");
         userDisplay = `Token (${cleanId.slice(0, 8)}...)`;
       } else {
         userDisplay = "AI Agent";
@@ -139,6 +205,18 @@ export function AuditLogTable() {
 
     const timeValue = item.createdAt || item.timestamp || new Date().toISOString();
 
+    const rawStatus = item.status || (item.data?.["status"] as string | undefined) || "success";
+    const rowStatus: "success" | "access_denied" | "error" =
+      rawStatus === "access_denied" || rawStatus === "error" ? rawStatus : "success";
+
+    const requiredScope =
+      (item.data?.["requiredScope"] as string | undefined) ||
+      (item.data?.["requiredPermission"] as string | undefined);
+
+    const errorMsg =
+      (item.data?.["error"] as string | undefined) ||
+      (item.data?.["errorMessage"] as string | undefined);
+
     return {
       id: item.id,
       action: actionName,
@@ -151,13 +229,35 @@ export function AuditLogTable() {
       actorType: isAgent ? "agent" : item.actorType,
       tokenId: item.tokenId,
       mcpToolName: mcpTool,
+      status: rowStatus,
+      requiredScope,
+      error: errorMsg,
       raw: item,
     };
   });
 
+  const isFiltered = actorType !== "all" || status !== "all" || search.trim() !== "";
+
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1); // Reset to page 1 on search change
+  };
+
+  const handleActorTypeChange = (val: string) => {
+    setActorType(val);
+    setPage(1);
+  };
+
+  const handleStatusChange = (val: string) => {
+    setStatus(val);
+    setPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setActorType("all");
+    setStatus("all");
+    setSearch("");
+    setPage(1);
   };
 
   const handleOpenDetail = (log: ApiAuditItem) => {
@@ -168,21 +268,107 @@ export function AuditLogTable() {
   return (
     <div className="space-y-4">
       {/* Top Header & Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">Audit Log Trail</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Immutable history of administrative actions, security events, and AI agent executions.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <InputSearchField
             placeholder="Search logs (action, actor, tool)..."
             value={search}
             onSearchChange={handleSearchChange}
-            containerClassName="w-64"
+            containerClassName="w-48 sm:w-56"
             className="h-8 text-xs"
           />
+
+          {/* Actor Type Dropdown Selector */}
+          <div className="w-32">
+            <Select
+              value={actorType}
+              onValueChange={(val) => {
+                if (val !== null && val !== undefined) {
+                  handleActorTypeChange(String(val));
+                }
+              }}
+            >
+              <SelectTrigger className="h-8 text-xs min-w-32 w-full">
+                <SelectValue placeholder="All Actors">
+                  {(val: unknown) => {
+                    switch (val) {
+                      case "agent":
+                        return "AI Agents";
+                      case "user":
+                        return "Users Only";
+                      case "system":
+                        return "System";
+                      default:
+                        return "All Actors";
+                    }
+                  }}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Actors</SelectItem>
+                <SelectItem value="agent">AI Agents</SelectItem>
+                <SelectItem value="user">Users Only</SelectItem>
+                <SelectItem value="system">System</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status Dropdown Selector */}
+          <div className="w-36">
+            <Select
+              value={status}
+              onValueChange={(val) => {
+                if (val !== null && val !== undefined) {
+                  handleStatusChange(String(val));
+                }
+              }}
+            >
+              <SelectTrigger className="h-8 text-xs min-w-36 w-full">
+                <SelectValue placeholder="All Statuses">
+                  {(val: unknown) => {
+                    switch (val) {
+                      case "success":
+                        return "Success";
+                      case "access_denied":
+                        return "Access Denied";
+                      case "error":
+                        return "Error";
+                      default:
+                        return "All Statuses";
+                    }
+                  }}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="success">Success</SelectItem>
+                <SelectItem value="access_denied">Access Denied</SelectItem>
+                <SelectItem value="error">Error</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Reset Filters Button */}
+          {isFiltered && (
+            <Tooltip content="Reset all filters">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground shrink-0"
+              >
+                <RotateCcw className="size-3 mr-1" />
+                Reset
+              </Button>
+            </Tooltip>
+          )}
+
           <Tooltip content="Refresh audit logs">
             <Button
               variant="outline"
@@ -209,20 +395,32 @@ export function AuditLogTable() {
           <div className="p-8 text-center">
             <History className="size-8 text-muted-foreground mx-auto mb-2 opacity-50" />
             <p className="text-xs font-medium text-foreground">No audit entries found</p>
-            {search && (
-              <p className="text-[11px] text-muted-foreground mt-1">
-                No logs match your search &quot;{search}&quot;. Try adjusting your filter.
-              </p>
-            )}
+            {isFiltered ? (
+              <div className="mt-2 space-y-2">
+                <p className="text-[11px] text-muted-foreground">
+                  No logs match the current filter criteria.
+                </p>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={handleResetFilters}
+                  className="text-xs"
+                >
+                  <RotateCcw className="size-3 mr-1" />
+                  Reset Filters
+                </Button>
+              </div>
+            ) : null}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                <TableHead className="w-[30%]">Action</TableHead>
-                <TableHead className="w-[28%]">Actor</TableHead>
-                <TableHead className="w-[16%]">Resource</TableHead>
-                <TableHead className="w-[20%] text-right">Timestamp</TableHead>
+                <TableHead className="w-[26%]">Action</TableHead>
+                <TableHead className="w-[14%]">Status</TableHead>
+                <TableHead className="w-[24%]">Actor</TableHead>
+                <TableHead className="w-[14%]">Resource</TableHead>
+                <TableHead className="w-[16%] text-right">Timestamp</TableHead>
                 <TableHead className="w-[6%] text-center">View</TableHead>
               </TableRow>
             </TableHeader>
@@ -249,6 +447,9 @@ export function AuditLogTable() {
                         {log.action}
                       </Badge>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge log={log} />
                   </TableCell>
                   <TableCell
                     className="font-sans text-foreground text-xs"
@@ -277,9 +478,7 @@ export function AuditLogTable() {
                         )}
                       </div>
                     ) : (
-                      <span className="truncate max-w-[170px] block">
-                        {log.userEmail || "System"}
-                      </span>
+                      <span className="truncate max-w-44 block">{log.userEmail || "System"}</span>
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-[11px]">

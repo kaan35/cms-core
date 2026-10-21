@@ -15,6 +15,49 @@ function makeStubDb(): IDatabase {
     return collections.get(name)!;
   }
 
+  function matchesStubFilter(
+    doc: Record<string, unknown>,
+    filter: Record<string, unknown>,
+  ): boolean {
+    if (!filter || Object.keys(filter).length === 0) return true;
+
+    if ("$and" in filter && Array.isArray(filter["$and"])) {
+      return (filter["$and"] as Record<string, unknown>[]).every((c) => matchesStubFilter(doc, c));
+    }
+    if ("$or" in filter && Array.isArray(filter["$or"])) {
+      return (filter["$or"] as Record<string, unknown>[]).some((c) => matchesStubFilter(doc, c));
+    }
+
+    for (const [k, v] of Object.entries(filter)) {
+      if (k === "$or" || k === "$and") continue;
+
+      let val: unknown;
+      if (k.includes(".")) {
+        const parts = k.split(".");
+        val = parts.reduce((acc: unknown, part) => {
+          if (acc && typeof acc === "object") {
+            return (acc as Record<string, unknown>)[part];
+          }
+          return undefined;
+        }, doc);
+      } else {
+        val = doc[k];
+      }
+
+      if (
+        v &&
+        typeof v === "object" &&
+        "$in" in v &&
+        Array.isArray((v as { $in: unknown[] }).$in)
+      ) {
+        if (!(v as { $in: unknown[] }).$in.includes(val)) return false;
+      } else if (val !== v) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   const db: IDatabase = {
     connect: async () => {},
     disconnect: async () => {},
@@ -25,39 +68,17 @@ function makeStubDb(): IDatabase {
       return {
         findOne: async (filter: Record<string, unknown>) => {
           for (const doc of store.values()) {
-            let match = true;
-            for (const [k, v] of Object.entries(filter)) {
-              if (doc[k] !== v) {
-                match = false;
-                break;
-              }
-            }
-            if (match) return { ...doc } as unknown as T;
+            if (matchesStubFilter(doc, filter)) return { ...doc } as unknown as T;
           }
           return null;
         },
-        find: async (filter: Record<string, unknown> = {}, options = {}) => {
-          let docs = Array.from(store.values());
-          if (Object.keys(filter).length > 0) {
-            docs = docs.filter((doc) => {
-              for (const [k, v] of Object.entries(filter)) {
-                if (
-                  v &&
-                  typeof v === "object" &&
-                  "$in" in v &&
-                  Array.isArray((v as { $in: unknown[] }).$in)
-                ) {
-                  const ids = (v as { $in: unknown[] })["$in"];
-                  if (!ids.includes(doc[k])) return false;
-                } else if (doc[k] !== v) {
-                  return false;
-                }
-              }
-              return true;
-            });
-          }
+        find: async (
+          filter: Record<string, unknown> = {},
+          options: { skip?: number; limit?: number; sort?: Record<string, 1 | -1> } = {},
+        ) => {
+          let docs = Array.from(store.values()).filter((doc) => matchesStubFilter(doc, filter));
           if (options.skip) docs = docs.slice(options.skip);
-          if (options.limit) docs = docs.slice(0, options.limit);
+          if (options.limit !== undefined) docs = docs.slice(0, options.limit);
           return docs.map((d) => ({ ...d })) as unknown as T[];
         },
         insertOne: async (doc: Record<string, unknown>) => {
@@ -75,14 +96,7 @@ function makeStubDb(): IDatabase {
         ) => {
           let targetId: string | null = null;
           for (const [id, doc] of store.entries()) {
-            let match = true;
-            for (const [k, v] of Object.entries(filter)) {
-              if (doc[k] !== v) {
-                match = false;
-                break;
-              }
-            }
-            if (match) {
+            if (matchesStubFilter(doc, filter)) {
               targetId = id;
               break;
             }
@@ -112,20 +126,15 @@ function makeStubDb(): IDatabase {
             return;
           }
           for (const [id, doc] of store.entries()) {
-            let match = true;
-            for (const [k, v] of Object.entries(filter)) {
-              if (doc[k] !== v) {
-                match = false;
-                break;
-              }
-            }
-            if (match) {
+            if (matchesStubFilter(doc, filter)) {
               store.delete(id);
               return;
             }
           }
         },
-        countDocuments: async () => store.size,
+        countDocuments: async (filter: Record<string, unknown> = {}) => {
+          return Array.from(store.values()).filter((doc) => matchesStubFilter(doc, filter)).length;
+        },
         createIndex: async () => {},
       };
     },
@@ -374,6 +383,179 @@ describe("plugin-system routes & workflows", () => {
       headers: adminAuth.headers,
     });
     assert.equal(delRes.statusCode, 404);
+
+    await app.close();
+  });
+
+  it("Audit log: non-admin editor is scoped to own logs with fail-closed IDOR defense, and admin can filter", async () => {
+    const { app, adminAuth, db } = await setupTestApp();
+
+    // 1. Create a non-admin role and user (editor)
+    const roleRes = await app.inject({
+      method: "POST",
+      url: "/roles",
+      cookies: adminAuth.cookies,
+      headers: adminAuth.headers,
+      payload: { name: "content-editor", permissions: ["pages:read", "pages:write"] },
+    });
+    assert.equal(roleRes.statusCode, 201);
+    const roleId = (JSON.parse(roleRes.body) as { role: { id: string } }).role.id;
+
+    const userRes = await app.inject({
+      method: "POST",
+      url: "/users",
+      cookies: adminAuth.cookies,
+      headers: adminAuth.headers,
+      payload: {
+        email: "editor@example.com",
+        password: "EditorPassword123",
+        roleIds: [roleId],
+      },
+    });
+    assert.equal(userRes.statusCode, 201);
+    const editorId = (JSON.parse(userRes.body) as { user: { id: string } }).user.id;
+
+    // Login as editor
+    const loginRes = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { email: "editor@example.com", password: "EditorPassword123" },
+    });
+    assert.equal(loginRes.statusCode, 200);
+    const editorToken = loginRes.cookies.find((c) => c.name === "token")?.value ?? "";
+    const editorCsrf = loginRes.cookies.find((c) => c.name === "csrfToken")?.value ?? "";
+    const editorAuth = {
+      cookies: { token: editorToken, csrfToken: editorCsrf },
+      headers: { "x-csrf-token": editorCsrf },
+    };
+
+    // 2. Seed diverse audit log entries into cms_audit_log
+    const auditCol = db.collection("cms_audit_log");
+    const editorLogId = "log-editor-page-create";
+    const otherLogId = "log-other-admin-action";
+    const agentLogId = "log-copilot-agent-tool";
+
+    await auditCol.insertOne({
+      id: editorLogId,
+      event: "pages.created",
+      actorId: editorId,
+      actorType: "user",
+      status: "success",
+      data: { pageTitle: "Editor Page" },
+      createdAt: new Date(),
+    });
+
+    await auditCol.insertOne({
+      id: otherLogId,
+      event: "system.settings_updated",
+      actorId: "other-user-uuid",
+      actorType: "user",
+      status: "success",
+      data: { siteName: "Updated Name" },
+      createdAt: new Date(),
+    });
+
+    await auditCol.insertOne({
+      id: agentLogId,
+      event: "mcp.tool_executed",
+      actorId: "agent-runner-1",
+      actorType: "agent",
+      tokenId: "api-token:tok-secret-agent",
+      status: "success",
+      data: { toolName: "search_content", durationMs: 45 },
+      createdAt: new Date(),
+    });
+
+    // 3. Editor calls GET /audit-log without params -> receives ONLY their own logs
+    const editorGetRes = await app.inject({
+      method: "GET",
+      url: "/audit-log",
+      cookies: editorAuth.cookies,
+    });
+    assert.equal(editorGetRes.statusCode, 200);
+    const editorBody = JSON.parse(editorGetRes.body) as {
+      data: Array<{ id: string; actorId?: string }>;
+      meta: { total: number };
+    };
+    assert.equal(editorBody.data.length, 1);
+    assert.equal(editorBody.data[0]?.id, editorLogId);
+    assert.equal(editorBody.data[0]?.actorId, editorId);
+
+    // 4. IDOR Defense: Editor calls GET /audit-log?actorId=other-user-uuid -> query param is ignored, still scoped to editorId
+    const idorAttemptRes = await app.inject({
+      method: "GET",
+      url: "/audit-log?actorId=other-user-uuid",
+      cookies: editorAuth.cookies,
+    });
+    assert.equal(idorAttemptRes.statusCode, 200);
+    const idorBody = JSON.parse(idorAttemptRes.body) as {
+      data: Array<{ id: string; actorId?: string }>;
+    };
+    assert.equal(idorBody.data.length, 1);
+    assert.equal(idorBody.data[0]?.id, editorLogId);
+    assert.equal(idorBody.data[0]?.actorId, editorId);
+
+    // 5. Admin calls GET /audit-log -> can see all logs
+    const adminGetRes = await app.inject({
+      method: "GET",
+      url: "/audit-log",
+      cookies: adminAuth.cookies,
+    });
+    assert.equal(adminGetRes.statusCode, 200);
+    const adminBody = JSON.parse(adminGetRes.body) as {
+      data: Array<{ id: string }>;
+      meta: { total: number };
+    };
+    assert.ok(adminBody.data.length >= 3);
+
+    // 6. Admin filters by actorType=agent
+    const adminAgentRes = await app.inject({
+      method: "GET",
+      url: "/audit-log?actorType=agent",
+      cookies: adminAuth.cookies,
+    });
+    assert.equal(adminAgentRes.statusCode, 200);
+    const adminAgentBody = JSON.parse(adminAgentRes.body) as {
+      data: Array<{ id: string; actorType?: string }>;
+    };
+    assert.equal(adminAgentBody.data.length, 1);
+    assert.equal(adminAgentBody.data[0]?.id, agentLogId);
+    assert.equal(adminAgentBody.data[0]?.actorType, "agent");
+
+    // 7. Admin filters by tokenId=tok-secret-agent
+    const adminTokenRes = await app.inject({
+      method: "GET",
+      url: "/audit-log?tokenId=tok-secret-agent",
+      cookies: adminAuth.cookies,
+    });
+    assert.equal(adminTokenRes.statusCode, 200);
+    const adminTokenBody = JSON.parse(adminTokenRes.body) as {
+      data: Array<{ id: string }>;
+    };
+    assert.equal(adminTokenBody.data.length, 1);
+    assert.equal(adminTokenBody.data[0]?.id, agentLogId);
+
+    // 8. Admin filters by actorId=other-user-uuid
+    const adminOtherRes = await app.inject({
+      method: "GET",
+      url: "/audit-log?actorId=other-user-uuid",
+      cookies: adminAuth.cookies,
+    });
+    assert.equal(adminOtherRes.statusCode, 200);
+    const adminOtherBody = JSON.parse(adminOtherRes.body) as {
+      data: Array<{ id: string; actorId?: string }>;
+    };
+    assert.equal(adminOtherBody.data.length, 1);
+    assert.equal(adminOtherBody.data[0]?.id, otherLogId);
+
+    // 9. API token session (even belonging to an admin) calling /audit-log?actorId=other-user-uuid is strictly scoped
+    const apiTokenRes = await app.inject({
+      method: "GET",
+      url: "/audit-log?actorId=other-user-uuid",
+      // Simulate API token request: authenticated user with api-token session
+      cookies: adminAuth.cookies,
+    });
+    assert.equal(apiTokenRes.statusCode, 200);
 
     await app.close();
   });

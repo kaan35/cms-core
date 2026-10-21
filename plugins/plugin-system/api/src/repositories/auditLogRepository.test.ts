@@ -4,17 +4,68 @@ import { describe, it } from "node:test";
 import type { AuditLogDoc } from "./auditLogRepository.js";
 import { AuditLogRepository } from "./auditLogRepository.js";
 
+function matchesStubFilter(doc: AuditLogDoc, filter?: Record<string, unknown>): boolean {
+  if (!filter || Object.keys(filter).length === 0) return true;
+
+  if ("$and" in filter && Array.isArray(filter["$and"])) {
+    return (filter["$and"] as Record<string, unknown>[]).every((c) => matchesStubFilter(doc, c));
+  }
+  if ("$or" in filter && Array.isArray(filter["$or"])) {
+    return (filter["$or"] as Record<string, unknown>[]).some((c) => matchesStubFilter(doc, c));
+  }
+
+  for (const [k, v] of Object.entries(filter)) {
+    if (k === "$or" || k === "$and") continue;
+
+    let docVal: unknown;
+    if (k.includes(".")) {
+      const parts = k.split(".");
+      docVal = parts.reduce((acc: unknown, part) => {
+        if (acc && typeof acc === "object") {
+          return (acc as Record<string, unknown>)[part];
+        }
+        return undefined;
+      }, doc);
+    } else {
+      docVal = doc[k];
+    }
+
+    if (v && typeof v === "object" && "$in" in v && Array.isArray((v as { $in: unknown[] }).$in)) {
+      if (!(v as { $in: unknown[] }).$in.includes(docVal)) return false;
+    } else if (docVal !== v) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function makeStubDb(): IDatabase {
   const store = new Map<string, AuditLogDoc>();
   const collection: ICollection<AuditLogDoc> = {
-    findOne: async (filter) => store.get(filter["id"] as string) ?? null,
-    find: async () => Array.from(store.values()),
+    findOne: async (filter) => {
+      for (const doc of store.values()) {
+        if (matchesStubFilter(doc, filter)) return doc;
+      }
+      return null;
+    },
+    find: async (filter = {}, options = {}) => {
+      let docs = Array.from(store.values()).filter((d) => matchesStubFilter(d, filter));
+      if (options.sort) {
+        docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+      if (options.skip) docs = docs.slice(options.skip);
+      if (options.limit !== undefined) docs = docs.slice(0, options.limit);
+      return docs;
+    },
     insertOne: async (doc) => {
       store.set(doc["id"] as string, doc as unknown as AuditLogDoc);
     },
     updateOne: async () => {},
     deleteOne: async () => {},
-    countDocuments: async () => store.size,
+    countDocuments: async (filter = {}) => {
+      return Array.from(store.values()).filter((d) => matchesStubFilter(d, filter)).length;
+    },
     createIndex: async () => {},
   };
 
@@ -181,5 +232,120 @@ describe("AuditLogRepository", () => {
     // 4. Search count
     const countTime = await repo.count("12:44", tzContext);
     assert.equal(countTime, 1);
+  });
+
+  it("filters audit logs using DB-level structured filter options", async () => {
+    const db = makeStubDb();
+    const repo = new AuditLogRepository(db);
+
+    const docUser = await repo.create({
+      event: "blog.post_created",
+      actorId: "user-1",
+      actorType: "user",
+      status: "success",
+      data: { title: "Hello World" },
+    });
+
+    const docAgent1 = await repo.create({
+      event: "mcp.tool_executed",
+      actorId: "agent-1",
+      actorType: "agent",
+      tokenId: "api-token:tok-agent-1",
+      status: "success",
+      data: { toolName: "list_pages" },
+    });
+
+    const docAgent2 = await repo.create({
+      event: "mcp.tool_executed",
+      actorId: "agent-2",
+      actorType: "agent",
+      tokenId: "tok-agent-2",
+      status: "access_denied",
+      data: { tool: "delete_page" },
+    });
+
+    const docSystem = await repo.create({
+      event: "system.backup_failed",
+      actorId: "system-cron",
+      actorType: "system",
+      status: "error",
+      data: { reason: "disk full" },
+    });
+
+    // 1. Filter by actorId
+    const byActor = await repo.list(0, 50, undefined, undefined, { actorId: "user-1" });
+    assert.equal(byActor.length, 1);
+    assert.equal(byActor[0]?.id, docUser.id);
+
+    // 2. Filter by actorType
+    const byActorType = await repo.list(0, 50, undefined, undefined, { actorType: "agent" });
+    assert.equal(byActorType.length, 2);
+
+    // 3. Filter by tokenId (prefixed and clean)
+    const byTokenClean = await repo.list(0, 50, undefined, undefined, { tokenId: "tok-agent-1" });
+    assert.equal(byTokenClean.length, 1);
+    assert.equal(byTokenClean[0]?.id, docAgent1.id);
+
+    const byTokenPrefixed = await repo.list(0, 50, undefined, undefined, {
+      tokenId: "api-token:tok-agent-2",
+    });
+    assert.equal(byTokenPrefixed.length, 1);
+    assert.equal(byTokenPrefixed[0]?.id, docAgent2.id);
+
+    // 4. Filter by status
+    const byStatusDenied = await repo.list(0, 50, undefined, undefined, {
+      status: "access_denied",
+    });
+    assert.equal(byStatusDenied.length, 1);
+    assert.equal(byStatusDenied[0]?.id, docAgent2.id);
+
+    const byStatusError = await repo.list(0, 50, undefined, undefined, { status: "error" });
+    assert.equal(byStatusError.length, 1);
+    assert.equal(byStatusError[0]?.id, docSystem.id);
+
+    // 5. Filter by toolName (matches both data.toolName and data.tool)
+    const byTool1 = await repo.list(0, 50, undefined, undefined, { toolName: "list_pages" });
+    assert.equal(byTool1.length, 1);
+    assert.equal(byTool1[0]?.id, docAgent1.id);
+
+    const byTool2 = await repo.list(0, 50, undefined, undefined, { toolName: "delete_page" });
+    assert.equal(byTool2.length, 1);
+    assert.equal(byTool2[0]?.id, docAgent2.id);
+
+    // 6. Filter by event
+    const byEvent = await repo.list(0, 50, undefined, undefined, { event: "system.backup_failed" });
+    assert.equal(byEvent.length, 1);
+    assert.equal(byEvent[0]?.id, docSystem.id);
+
+    // 7. Count with filter
+    const countAgents = await repo.count(undefined, undefined, { actorType: "agent" });
+    assert.equal(countAgents, 2);
+
+    const countErrors = await repo.count(undefined, undefined, { status: "error" });
+    assert.equal(countErrors, 1);
+
+    // 8. Search combined with filter
+    const searchWithFilter = await repo.list(0, 50, "list_pages", undefined, {
+      actorType: "agent",
+    });
+    assert.equal(searchWithFilter.length, 1);
+    assert.equal(searchWithFilter[0]?.id, docAgent1.id);
+
+    const searchCountWithFilter = await repo.count("list_pages", undefined, { actorType: "agent" });
+    assert.equal(searchCountWithFilter, 1);
+
+    // 9. Compound filter: actorId + status (ensures fail-closed $and structure)
+    const compoundResults = await repo.list(0, 50, undefined, undefined, {
+      actorId: "agent-2",
+      status: "access_denied",
+    });
+    assert.equal(compoundResults.length, 1);
+    assert.equal(compoundResults[0]?.id, docAgent2.id);
+
+    const nonMatchingCompound = await repo.list(0, 50, undefined, undefined, {
+      actorId: "user-1",
+      status: "access_denied",
+    });
+    assert.equal(nonMatchingCompound.length, 0);
   });
 });

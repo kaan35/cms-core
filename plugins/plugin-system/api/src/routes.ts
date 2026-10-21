@@ -139,10 +139,10 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
     {
       schema: {
         tags: ["System"],
-        summary: "List platform audit logs (Admin)",
+        summary: "List platform audit logs",
         security: [{ cookieAuth: [] }],
       },
-      preHandler: [authenticate, checkPermission(SYSTEM_PERMISSIONS.AUDIT_LOG_READ)],
+      preHandler: [authenticate],
     },
     controller.listAuditLogs.bind(controller),
   );

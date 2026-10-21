@@ -2,6 +2,7 @@ import type { IDatabase, IHookManager, ILogger, ISettingsService, PluginLoader }
 import { EVENTS, NotFoundError, buildPaginatedResult } from "@cms/core";
 import type {
   AuditLogDoc,
+  AuditLogFilterOptions,
   AuditLogRepository,
   AuditLogSearchContext,
 } from "../repositories/auditLogRepository.js";
@@ -160,13 +161,19 @@ export class SystemService {
   }
 
   // Audit Logs
-  async listAuditLogs(page = 1, limit = 50, search?: string, tz?: string) {
+  async listAuditLogs(
+    page = 1,
+    limit = 50,
+    search?: string,
+    tz?: string,
+    filter?: AuditLogFilterOptions,
+  ) {
     const skip = (page - 1) * limit;
     const searchContext =
       search && search.trim() ? await this.buildAuditSearchContext(search, tz) : undefined;
     const [items, total] = await Promise.all([
-      this.auditLogRepo.list(skip, limit, search, searchContext),
-      this.auditLogRepo.count(search, searchContext),
+      this.auditLogRepo.list(skip, limit, search, searchContext, filter),
+      this.auditLogRepo.count(search, searchContext, filter),
     ]);
 
     const actorIds = [
@@ -246,6 +253,7 @@ export class SystemService {
     actorId?: string | undefined;
     actorType?: "user" | "agent" | "system" | undefined;
     tokenId?: string | undefined;
+    status?: "success" | "access_denied" | "error" | undefined;
     payload?: Record<string, unknown> | undefined;
     ip?: string | undefined;
   }): Promise<AuditLogDoc> {
@@ -254,6 +262,7 @@ export class SystemService {
       ...(entry.actorId ? { actorId: entry.actorId } : {}),
       ...(entry.actorType ? { actorType: entry.actorType } : {}),
       ...(entry.tokenId ? { tokenId: entry.tokenId } : {}),
+      ...(entry.status ? { status: entry.status } : {}),
       ...(entry.payload ? { data: entry.payload } : {}),
     });
     this.logger.info(`Audit: ${entry.event}`, {
@@ -310,12 +319,17 @@ export class SystemService {
             ? p["actorType"]
             : undefined;
         const tokenId = typeof p["tokenId"] === "string" ? p["tokenId"] : undefined;
+        const status =
+          p["status"] === "success" || p["status"] === "access_denied" || p["status"] === "error"
+            ? p["status"]
+            : undefined;
 
         await this.recordAuditLog({
           event,
           actorId,
           actorType,
           tokenId,
+          status,
           payload: p,
         });
       });

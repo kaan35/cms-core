@@ -13,8 +13,10 @@ import {
   formatDateTime,
 } from "@cms/admin-shell";
 import {
+  AlertCircle,
   Bot,
   Check,
+  CheckCircle2,
   Clock,
   Copy,
   FileCode,
@@ -22,6 +24,7 @@ import {
   Key,
   Layers,
   Server,
+  ShieldAlert,
   User,
 } from "lucide-react";
 import * as React from "react";
@@ -38,6 +41,7 @@ export interface ApiAuditItem {
   userId?: string;
   userEmail?: string;
   resource?: string;
+  status?: "success" | "access_denied" | "error";
   data?: Record<string, unknown>;
   createdAt?: string;
   timestamp?: string;
@@ -67,10 +71,21 @@ export function AuditLogDetailDialog({ log, open, onOpenChange }: AuditLogDetail
   const mcpToolName =
     (log.data?.["toolName"] as string | undefined) || (log.data?.["tool"] as string | undefined);
   const mcpDurationMs = log.data?.["durationMs"] as number | undefined;
-  const mcpStatus = (log.data?.["status"] as string | undefined) || "success";
   const mcpParams =
     (log.data?.["params"] as Record<string, unknown> | undefined) ||
     (log.data?.["arguments"] as Record<string, unknown> | undefined);
+
+  const resolvedStatus = (log.status ||
+    (log.data?.["status"] as string | undefined) ||
+    "success") as "success" | "access_denied" | "error" | string;
+
+  const requiredScope =
+    (log.data?.["requiredScope"] as string | undefined) ||
+    (log.data?.["requiredPermission"] as string | undefined);
+
+  const errorMsg =
+    (log.data?.["error"] as string | undefined) ||
+    (log.data?.["errorMessage"] as string | undefined);
 
   const tokenName = log.tokenName || (log.data?.["tokenName"] as string | undefined);
   const tokenPrefix = log.tokenPrefix || (log.data?.["tokenPrefix"] as string | undefined);
@@ -116,12 +131,29 @@ export function AuditLogDetailDialog({ log, open, onOpenChange }: AuditLogDetail
               {resourceName}
             </Badge>
 
-            {isMcp && (
+            {resolvedStatus === "access_denied" ? (
               <Badge
-                variant={mcpStatus === "success" ? "outline" : "destructive"}
-                className="text-[10px] uppercase font-mono"
+                variant="outline"
+                className="text-[10px] uppercase font-mono font-medium gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
               >
-                {mcpStatus}
+                <ShieldAlert className="size-2.5" />
+                Access Denied
+              </Badge>
+            ) : resolvedStatus === "error" ? (
+              <Badge
+                variant="outline"
+                className="text-[10px] uppercase font-mono font-medium gap-1 bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25"
+              >
+                <AlertCircle className="size-2.5" />
+                Error
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="text-[10px] uppercase font-mono font-medium gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+              >
+                <CheckCircle2 className="size-2.5" />
+                Success
               </Badge>
             )}
           </div>
@@ -133,6 +165,41 @@ export function AuditLogDetailDialog({ log, open, onOpenChange }: AuditLogDetail
         </DialogHeader>
 
         <DialogBody className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-5">
+          {/* Access Denied Alert Card */}
+          {resolvedStatus === "access_denied" && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 space-y-1 text-amber-900 dark:text-amber-200">
+              <div className="flex items-center gap-2 font-semibold text-xs text-amber-700 dark:text-amber-400">
+                <ShieldAlert className="size-4 shrink-0" />
+                <span>Authorization Failure (Access Denied)</span>
+              </div>
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                {requiredScope ? (
+                  <>
+                    Missing required permission / scope:{" "}
+                    <code className="font-mono font-semibold bg-amber-500/20 px-1.5 py-0.5 rounded text-[11px]">
+                      {requiredScope}
+                    </code>
+                  </>
+                ) : (
+                  errorMsg ||
+                  "The actor did not have the required permissions to perform this operation."
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* Execution Error Alert Card */}
+          {resolvedStatus === "error" && (
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 space-y-1 text-rose-900 dark:text-rose-200">
+              <div className="flex items-center gap-2 font-semibold text-xs text-rose-700 dark:text-rose-400">
+                <AlertCircle className="size-4 shrink-0" />
+                <span>Execution Error</span>
+              </div>
+              <p className="text-xs font-mono break-all text-rose-800 dark:text-rose-300">
+                {errorMsg || "An unexpected error occurred during execution."}
+              </p>
+            </div>
+          )}
           {/* Actor & Execution Context Card */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Actor Card */}
@@ -211,6 +278,32 @@ export function AuditLogDetailDialog({ log, open, onOpenChange }: AuditLogDetail
               </span>
 
               <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Status:</span>
+                  {resolvedStatus === "access_denied" ? (
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-[10px] uppercase font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
+                    >
+                      Access Denied
+                    </Badge>
+                  ) : resolvedStatus === "error" ? (
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-[10px] uppercase font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25"
+                    >
+                      Error
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-[10px] uppercase font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                    >
+                      Success
+                    </Badge>
+                  )}
+                </div>
+
                 {typeof mcpDurationMs === "number" ? (
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Duration:</span>
@@ -227,7 +320,7 @@ export function AuditLogDetailDialog({ log, open, onOpenChange }: AuditLogDetail
 
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Record ID:</span>
-                  <span className="font-mono text-[10px] text-muted-foreground truncate max-w-[120px]">
+                  <span className="font-mono text-[10px] text-muted-foreground truncate max-w-30">
                     {log.id}
                   </span>
                 </div>
