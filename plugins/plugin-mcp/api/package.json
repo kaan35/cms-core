@@ -1,0 +1,36 @@
+{
+  "name": "@cms/plugin-mcp-api",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "cms-mcp": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --conditions=development --import tsx/esm --test 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@cms/core": "*",
+    "@modelcontextprotocol/node": "^2.1.1",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "fastify": "^5",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^26",
+    "typescript": "^6"
+  }
+}

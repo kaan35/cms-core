@@ -11,9 +11,53 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat&logo=tailwindcss)](https://tailwindcss.com)
 [![Zod](https://img.shields.io/badge/Zod-4-3E67B1?style=flat&logo=zod)](https://zod.dev)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/Tests-225%20Passing-success?style=flat&logo=node.js)](#-testing--commands)
+[![Tests](https://img.shields.io/badge/Tests-258%20Passing-success?style=flat&logo=node.js)](#-testing--commands)
 
-A modular, plugin-based content management and application platform built with **Fastify 5**, **Next.js 16 (React 19)**, **MongoDB 8**, and **Redis 8**. You can run it as a full website with a public frontend or as a private admin panel with only the plugins you need.
+A modular, plugin-based headless CMS and application starter built with **Fastify 5**, **Next.js 16 (React 19)**, **MongoDB 8**, and **Redis 8**. You can run it as a full website with a public frontend or as a lightweight admin panel with only the plugins you need.
+
+---
+
+## 📑 Table of Contents
+
+- [✨ Features](#-features)
+- [🧩 Plugins](#-plugins)
+- [📸 Screenshots & Showcase](#-screenshots--showcase)
+- [🛠️ Getting Started](#️-getting-started)
+  - [1. Run Locally](#1-run-the-monorepo-locally)
+  - [2. CLI Scaffolding (`cms new`)](#2-create-and-upgrade-projects-cms-new--cms-upgrade)
+  - [3. Selecting Plugins (`PLUGINS_PROFILE`)](#3-selecting-plugins-plugins_profile)
+  - [4. Docker Setup (Dev vs Prod)](#4-docker-architecture-development-vs-production)
+- [🏗️ Architecture & Monorepo Structure](#️-architecture--monorepo-structure)
+- [🧱 Web Client Blocks](#-web-client-blocks)
+- [🤖 AI Agent Integration (MCP)](#-ai-agent-integration-mcp)
+- [🛡️ Security](#️-security)
+- [🧪 Testing & Commands](#-testing--commands)
+
+---
+
+## ✨ Features
+
+- 🧩 **Modular Plugins**: Turn features on or off (`pages`, `blog`, `forms`, `vault`, etc.) per project via `.env` or from the Admin UI.
+- 🤖 **AI Assistant Ready (MCP)**: Built-in Model Context Protocol endpoint (`/api/mcp`) so tools like **Cursor**, **Antigravity**, or **Claude** can interact with your content safely using scoped tokens.
+- 🛡️ **Built-in Security**: Includes bcrypt password hashing, CSRF protection, AES-256-GCM encryption for secrets, and non-root Docker images.
+- 📊 **Audit Logs**: Records user and AI agent activity with status badges (`success`, `access_denied`, `error`) and filterable logs.
+- 📁 **Native Excel & CSV Export**: Generates `.xlsx` and CSV files using Node's built-in `zlib` without bulky external dependencies.
+- 🐳 **Docker Support**: Ready-to-use Docker Compose for local hot-reload development and minimal multi-stage production images.
+
+---
+
+## 🧩 Plugins
+
+| Plugin              | What it does                                                      |
+| :------------------ | :---------------------------------------------------------------- |
+| **`plugin-auth`**   | Authentication, roles, sessions, and scoped API/Agent tokens      |
+| **`plugin-system`** | Audit logs, runtime plugin management, and brand settings         |
+| **`plugin-mcp`**    | Remote HTTP MCP server and tools for AI coding assistants         |
+| **`plugin-pages`**  | Block-based page builder, version history, and redirects          |
+| **`plugin-blog`**   | Blog posts, categories, tags, and SEO fields                      |
+| **`plugin-forms`**  | Form builder, built-in captcha, and submissions with Excel export |
+| **`plugin-media`**  | Image uploads with MIME verification and S3/MinIO storage         |
+| **`plugin-vault`**  | Encrypted password and secret manager                             |
 
 ---
 
@@ -41,6 +85,10 @@ A modular, plugin-based content management and application platform built with *
 | :----------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------: |
 | ![Media Library](docs/images/media-preview.png)<br><sub>Asset uploads and media management</sub> | ![Brand Settings](docs/images/branding-preview.png)<br><sub>Theme colors, typography, and logo</sub> |
 
+|                                              API & Agent Tokens                                               |                                                 1-Click AI Agent Setup                                                  |
+| :-----------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------: |
+| ![API & Agent Tokens](docs/images/mcp-tokens-preview.png)<br><sub>Scoped access keys & agent management</sub> | ![Agent Setup Modal](docs/images/mcp-token-modal-preview.png)<br><sub>1-click setup for Antigravity, Cursor, etc.</sub> |
+
 ### 🌐 Public Web Client (`client-template`)
 
 |                                                 Homepage (Dark)                                                 |                                                    Homepage (Light)                                                     |
@@ -53,7 +101,7 @@ A modular, plugin-based content management and application platform built with *
 
 ---
 
-## 🛠️ How to Use
+## 🛠️ Getting Started
 
 ### 1. Run the Monorepo Locally
 
@@ -80,8 +128,11 @@ npm run dev
 | **REST API & Health** | [http://localhost:3001/health](http://localhost:3001/health) | Fastify 5 backend API and health check                       |
 | **Swagger UI**        | [http://localhost:3001/docs](http://localhost:3001/docs)     | Interactive OpenAPI documentation generated from Zod schemas |
 | **Admin Panel**       | [http://localhost:3002](http://localhost:3002)               | Manage content, plugins, users, and system settings          |
-| **Setup Wizard**      | [http://localhost:3002/setup](http://localhost:3002/setup)   | First-run screen to create the initial Superadmin account    |
+| **Setup Wizard**      | [http://localhost:3002/setup](http://localhost:3002/setup)   | First-run screen to create the initial admin account         |
 | **Public Web Client** | [http://localhost:3003](http://localhost:3003)               | Sample Next.js 16 public website powered by the block engine |
+
+> [!TIP]
+> **First-Time Setup:** When running for the first time, navigate to [http://localhost:3002/setup](http://localhost:3002/setup) to create the initial admin account. Once completed, the wizard automatically locks permanently for security.
 
 ---
 
@@ -109,12 +160,12 @@ node cli/bin/cms.js upgrade latest --dir=../my-site
 
 You can choose which plugins run in each project through the `PLUGINS_PROFILE` variable in `.env`:
 
-| `PLUGINS_PROFILE`        | Loaded Plugins                                               | Typical Use Case                                                   |
-| :----------------------- | :----------------------------------------------------------- | :----------------------------------------------------------------- |
-| `full` _(default)_       | `auth`, `system`, `media`, `pages`, `blog`, `forms`, `vault` | All built-in plugins enabled                                       |
-| `minimal`                | `auth`, `system`                                             | Core authentication, users, roles, and system settings only        |
-| `vault`                  | `auth`, `system`, `vault`                                    | Private admin panel with the encrypted password manager            |
-| `pages,blog,forms,media` | `auth`, `system`, `pages`, `blog`, `forms`, `media`          | Public website, blog, and contact forms without the password vault |
+| `PLUGINS_PROFILE`        | Loaded Plugins                                                      | Typical Use Case                                                   |
+| :----------------------- | :------------------------------------------------------------------ | :----------------------------------------------------------------- |
+| `full` _(default)_       | `auth`, `system`, `media`, `pages`, `blog`, `forms`, `vault`, `mcp` | All built-in plugins enabled                                       |
+| `minimal`                | `auth`, `system`                                                    | Core authentication, users, roles, and system settings only        |
+| `vault`                  | `auth`, `system`, `vault`                                           | Private admin panel with the encrypted password manager            |
+| `pages,blog,forms,media` | `auth`, `system`, `pages`, `blog`, `forms`, `media`                 | Public website, blog, and contact forms without the password vault |
 
 - **Core Plugins:** `auth` and `system` are always enabled in every project.
 - **Automatic Sidebar Filtering:** Plugins omitted from `PLUGINS_PROFILE` are automatically marked `enabled: false` in the database so they do not appear in the Admin sidebar.
@@ -127,11 +178,11 @@ You can choose which plugins run in each project through the `PLUGINS_PROFILE` v
 
 The platform supports hot-reload development and ultra-slim multi-stage production builds:
 
-| Dimension | Local Development (`Dockerfile.dev`) | Production Deployment (`Dockerfile`) |
-| :--- | :--- | :--- |
-| **Image Size** | ~2.8 GB (includes `devDependencies`, compilers, `tsx`) | **~180 MB** (zero dev tooling, minimal standalone runtime) |
-| **Execution** | Live host volume bind-mounts (`.:/app`) & hot-reload | Standalone compiled artifacts (`node dist/main.js`, Next.js standalone) |
-| **Security** | Development debugging user | **Enforced `USER node` (non-root)**, reduced CVE surface |
+| Dimension      | Local Development (`Dockerfile.dev`)                   | Production Deployment (`Dockerfile`)                                    |
+| :------------- | :----------------------------------------------------- | :---------------------------------------------------------------------- |
+| **Image Size** | ~2.8 GB (includes `devDependencies`, compilers, `tsx`) | **~180 MB** (zero dev tooling, minimal standalone runtime)              |
+| **Execution**  | Live host volume bind-mounts (`.:/app`) & hot-reload   | Standalone compiled artifacts (`node dist/main.js`, Next.js standalone) |
+| **Security**   | Development debugging user                             | **Enforced `USER node` (non-root)**, reduced CVE surface                |
 
 ```bash
 # Development container workflow
@@ -161,8 +212,9 @@ cms-core/
 │   ├── admin-shell/     ← Shared React 19 UI components, dynamic Sidebar, form inputs
 │   └── client-sdk/      ← Shared TypeScript types and API client for frontend apps
 ├── plugins/
-│   ├── plugin-auth/     ← Authentication, RBAC permissions, active sessions, CSRF protection
+│   ├── plugin-auth/     ← Authentication, API/agent tokens, RBAC, sessions, CSRF protection
 │   ├── plugin-system/   ← Audit logs, feature flags, brand settings, runtime plugin toggles
+│   ├── plugin-mcp/      ← Remote Streamable HTTP MCP server & AI agent tools
 │   ├── plugin-pages/    ← Block-based page builder, version history, 301 redirects
 │   ├── plugin-blog/     ← Blog articles, slugs, reading time, SEO metadata
 │   ├── plugin-media/    ← S3/MinIO file uploads and binary MIME verification
@@ -185,7 +237,7 @@ cms-core/
 
 ---
 
-## 🧱 Web Client Block Engine (`client-template`)
+## 🧱 Web Client Blocks
 
 Projects created with `--client` include a modular Next.js 16 frontend that renders pages built in the Admin panel:
 
@@ -204,18 +256,118 @@ Projects created with `--client` include a modular Next.js 16 frontend that rend
 
 ---
 
-## 🛡️ Security Architecture
+## 🤖 AI Agent Integration (MCP)
 
-The platform is designed around strict fail-closed and standard OWASP Top 10 web security guidelines:
+The platform provides a native Model Context Protocol (MCP) endpoint (`/api/mcp`) supporting modern **Remote Streamable HTTP MCP** as the primary standard, enabling AI agents (such as **Google Antigravity**, **Claude Desktop**, **Cursor**, **Windsurf**, and **GitHub Copilot**) to safely interact with CMS content. An optional local `stdio` CLI transport (`plugins/plugin-mcp/api`) is also available for source-level local workflows.
 
-- **Authentication & Passwords:** Passwords are hashed with `bcrypt` (enforcing a 72-byte input limit) and login requests run a dummy check when an email is not found to prevent timing-based user enumeration.
-- **Sessions & Access Control:** Uses `HttpOnly`, `SameSite` cookies and `HS256` JWTs with role-based permissions (`checkPermission`) and one-click session revocation (`POST /api/auth/sessions/revoke-all`). The initial `/setup` route locks permanently after the first admin is created.
-- **CSRF & Input Validation:** State-changing requests require a Double-Submit CSRF token verified in constant time. All request bodies, queries, and parameters are validated with Zod schemas before reaching MongoDB.
-- **Password Vault Encryption:** Secrets stored in `plugin-vault` are encrypted at rest with `AES-256-GCM` using a unique 12-byte IV per item and a key derived via Node.js built-in `Argon2id`.
-- **Server-Side Ingress Guard (`PluginGuard`):** Ingress middleware blocks direct API access to disabled plugins with an immediate fail-closed `503 Service Unavailable`.
-- **Container Hardening (Non-Root User):** Production Dockerfiles enforce `USER node` (non-root) to minimize the host attack surface and prevent container breakout vulnerabilities.
-- **Zero-Dependency Native Data Engine:** Excel (`.xlsx`) and RFC 4180 CSV export with UTF-8 BOM are generated natively using Node.js built-in `node:zlib` without third-party spreadsheet dependencies.
-- **File Uploads & Logging:** `plugin-media` verifies binary file signatures (PNG, JPEG, WebP magic bytes), enforces a 10 MB limit, renames files to UUIDs, and blocks SVG/XML uploads. Sensitive fields (`password`, `token`, `secret`, `cookie`) are automatically redacted in logs.
+### Available MCP Tools
+
+| Tool Name              | Parameters                                        | Description                                                                   |
+| :--------------------- | :------------------------------------------------ | :---------------------------------------------------------------------------- |
+| `get_system_status`    | _none_                                            | Checks API health and returns platform metrics (pages, posts, forms, plugins) |
+| `list_pages`           | `limit`, `offset`, `search`                       | Lists CMS pages with metadata and block counts                                |
+| `get_page`             | `slug`                                            | Retrieves complete page details and visual block structures                   |
+| `create_page_draft`    | `title`, `slug`, `blocks`                         | Creates a new page draft for human review in the Admin builder                |
+| `list_blog_posts`      | `limit`, `status`, `search`                       | Lists articles filtered by publication status (`draft`, `published`)          |
+| `get_blog_post`        | `slug`                                            | Retrieves a full blog post including Markdown body and reading time           |
+| `create_blog_draft`    | `title`, `slug`, `body`, `tags`, `seoDescription` | Drafts a new article with automatic slug and excerpt generation               |
+| `suggest_seo_metadata` | `title`, `body`                                   | Generates recommended SEO titles, descriptions, and tag arrays                |
+| `list_forms`           | _none_                                            | Lists available dynamic forms and field schemas                               |
+| `get_form_submissions` | `formId`, `limit`                                 | Retrieves sanitized form submissions and survey responses                     |
+
+> [!IMPORTANT]
+> **Strict Vault Isolation:** By architectural invariant, the encrypted Password Vault (`plugin-vault`) is **never exposed** to the MCP server. AI agents have zero access to credentials, passwords, or vault secrets.
+
+---
+
+### Connecting AI Agents & IDEs (Antigravity, Cursor, Copilot, Codex, Claude, Windsurf)
+
+The Admin panel includes built-in quick presets and 1-click configuration generators at `/dashboard/tokens`:
+
+1. Navigate to **Admin Panel** $\rightarrow$ **Settings** $\rightarrow$ **API & Agent Tokens** (or `/dashboard/tokens`).
+2. Click **Generate New Agent / API Token**, choose your preferred agent preset (**Antigravity**, **Cursor**, **GitHub Copilot**, **OpenAI Codex**, **Claude Desktop**, or **Windsurf**), and generate the key.
+3. Copy the pre-filled configuration snippet with 1-click into your editor's config file:
+
+|                                              API & Agent Tokens Manager                                               |                                                  1-Click Multi-Agent Setup Modal                                                   |
+| :-------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------: |
+| ![API & Agent Tokens](docs/images/mcp-tokens-preview.png)<br><sub>Scoped access keys, expiration & agent badges</sub> | ![Agent Setup Modal](docs/images/mcp-token-modal-preview.png)<br><sub>Pre-filled configuration for Antigravity, Cursor, etc.</sub> |
+
+| Agent / Editor                  | Target Configuration File             | Transport & Auth                           |
+| :------------------------------ | :------------------------------------ | :----------------------------------------- |
+| **Google Antigravity**          | `~/.gemini/config/mcp_config.json`    | Remote Streamable HTTP (`url` + `Bearer`)  |
+| **Cursor IDE**                  | `.cursor/mcp.json`                    | Remote Streamable HTTP (`url` + `Bearer`)  |
+| **GitHub Copilot**              | `~/.copilot/mcp-config.json`          | Remote Streamable HTTP (`url` + `Bearer`)  |
+| **OpenAI Codex / Custom GPT**   | Custom GPT Action or API Header       | Streamable HTTP (`/api/mcp`) / REST Header |
+| **Claude Desktop**              | `claude_desktop_config.json`          | Remote Streamable HTTP (`url` + `Bearer`)  |
+| **Windsurf IDE (Codeium)**      | `~/.codeium/windsurf/mcp_config.json` | Remote Streamable HTTP (`url` + `Bearer`)  |
+| **cURL & Automation Pipelines** | Direct HTTP Request                   | `Authorization: Bearer cms_token_...`      |
+
+#### Primary: Remote Streamable HTTP Configuration (Recommended)
+
+Add to your editor's configuration file (e.g. `~/.gemini/config/mcp_config.json`, `.cursor/mcp.json`, or `~/.copilot/mcp-config.json`):
+
+```json
+{
+  "mcpServers": {
+    "cms": {
+      "type": "http",
+      "url": "http://localhost:3001/api/mcp",
+      "tools": ["*"],
+      "headers": {
+        "Authorization": "Bearer cms_token_xxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+#### Optional: Local `stdio` Alternative (via `plugins/plugin-mcp/api`)
+
+For offline local development directly against the monorepo source:
+
+```json
+{
+  "mcpServers": {
+    "cms": {
+      "command": "node",
+      "args": ["<PROJECT_ROOT>/plugins/plugin-mcp/api/dist/cli.js"],
+      "env": {
+        "CMS_API_URL": "http://localhost:3001",
+        "CMS_API_KEY": "cms_token_xxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+---
+
+## 🛡️ Security
+
+Key security measures built into the platform:
+
+- **Authentication & Sessions**
+  - Passwords hashed with `bcrypt` (enforcing 72-byte truncation protection).
+  - Dummy hash check on failed logins to prevent timing-based email enumeration.
+  - `HttpOnly` and `SameSite` session cookies with `HS256` JWTs.
+  - Instant session revocation (`POST /api/auth/sessions/revoke-all`).
+  - First-run `/setup` wizard permanently locks once the initial admin is registered.
+
+- **Access Control & API Defense**
+  - Role-based permissions (`RBAC`) enforced across all plugin endpoints.
+  - Scoped agent tokens (`pages:read`, `blog:write`) with fail-closed rejection.
+  - Constant-time Double-Submit CSRF protection on state-changing requests.
+  - Strict input validation with Zod schemas before database queries.
+  - Disabled plugins are completely blocked at ingress (`503 Service Unavailable`).
+
+- **Data Protection & Vault**
+  - Secrets in `plugin-vault` are encrypted at rest with `AES-256-GCM` and unique IVs.
+  - Encryption keys derived using Node.js native `Argon2id`.
+  - Sensitive values (`password`, `token`, `secret`) are automatically redacted in server logs.
+
+- **Uploads & Infrastructure**
+  - Uploads verified by binary magic bytes (PNG, JPEG, WebP) with SVG/XML blocked against XSS.
+  - Production Docker images strictly enforce non-root execution (`USER node`).
 
 ---
 
@@ -226,15 +378,15 @@ The platform is designed around strict fail-closed and standard OWASP Top 10 web
 npm run ci
 
 # Or run individual steps:
-npm test            # Run all unit and integration tests (225 passing, ~5.5s)
-npm run typecheck   # Dynamic parallel typecheck across all 22 workspaces (~4s)
+npm test            # Run all unit and integration tests (258 passing, ~6s)
+npm run typecheck   # Fast parallel typecheck across all 23 workspaces (~4.5s)
 npm run lint        # Run ESLint across all workspaces (~5s)
 npm run build       # Compile packages to dist/
 npm run db:backup   # Save timestamped MongoDB archive to backups/
 npm run db:restore  # Restore database from backups/backup-latest.archive
 ```
 
-### ⚡ Dynamic Monorepo Tooling
+### ⚡ Fast Monorepo Scripts
 
-- **Parallel Typechecking (`scripts/typecheck.mjs`):** Replaces slow sequential `npm --workspaces` execution (~32s) with an optimized parallel runner (~4s). It checks all composite library packages in a single pass via `tsc -b --noEmit` while simultaneously compiling standalone applications (`api`, `admin`, `client-template`, `cli`) concurrently across CPU cores. Workspaces are discovered dynamically at runtime from `package.json`, requiring zero configuration updates when adding or removing plugins.
-- **Fail-Closed Verification:** Captures process exit codes across all concurrent compilation targets to ensure zero silent failures in CI/CD pipelines.
+- **Fast Parallel Typecheck (`npm run typecheck`):** Checks libraries via `tsc -b` and builds applications concurrently across CPU cores (~4.5s vs ~32s sequential). Dynamically detects workspaces from `package.json`.
+- **One-Command CI (`npm run ci`):** Runs build, typecheck, lint, and all 258 tests in a single pass to ensure clean commits.

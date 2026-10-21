@@ -21,7 +21,8 @@
     "@cms/plugin-pages-api": "*",
     "@cms/plugin-blog-api": "*",
     "@cms/plugin-forms-api": "*",
-    "@cms/plugin-vault-api": "*"
+    "@cms/plugin-vault-api": "*",
+    "@cms/plugin-mcp-api": "*"
   },
   "devDependencies": {
     "@types/node": "^26"
