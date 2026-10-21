@@ -48,10 +48,21 @@ function makeInMemoryDb(): IDatabase {
           let docs = Array.from(store.values());
           if (Object.keys(filter).length > 0) {
             docs = docs.filter((doc) => {
+              if (Array.isArray(filter["$or"])) {
+                return (filter["$or"] as Record<string, unknown>[]).some((subFilter) => {
+                  return Object.entries(subFilter).every(([k, v]) => {
+                    if (typeof v === "object" && v !== null && "$in" in v) {
+                      const ids = (v as { $in: string[] })["$in"];
+                      return ids.includes(doc[k] as string);
+                    }
+                    return doc[k] === v;
+                  });
+                });
+              }
               for (const [k, v] of Object.entries(filter)) {
-                if (k === "id" && typeof v === "object" && v !== null && "$in" in v) {
+                if (typeof v === "object" && v !== null && "$in" in v) {
                   const ids = (v as { $in: string[] })["$in"];
-                  if (!ids.includes(doc["id"] as string)) return false;
+                  if (!ids.includes(doc[k] as string)) return false;
                 } else if (doc[k] !== v) {
                   return false;
                 }
@@ -148,8 +159,11 @@ async function setupTestApp(envOverrides: Record<string, string> = {}) {
 
   const dummyCache = {
     get: async () => null,
+    getJson: async () => null,
     set: async () => {},
+    setJson: async () => {},
     del: async () => {},
+    getOrSet: async <T>(_key: string, factory: () => Promise<T>) => factory(),
     isAlive: async () => true,
     quit: async () => {},
   };
@@ -256,7 +270,7 @@ describe("plugin-auth routes & workflows", () => {
       payload: {
         email: "regular@example.com",
         password: "UserPassword123",
-        roleIds: ["admin", "hacker-role"], // Rule 29: must be ignored
+        roleIds: ["admin", "hacker-role"], // Disallowed role escalation: must be ignored
       },
     });
 
@@ -290,7 +304,7 @@ describe("plugin-auth routes & workflows", () => {
       url: "/roles",
       cookies: { token: adminToken, csrfToken: adminCsrf },
       headers: { "x-csrf-token": adminCsrf },
-      payload: { name: "editor", permissions: ["pages:write", "blog:write"] },
+      payload: { name: "content-editor", permissions: ["pages:write", "blog:write"] },
     });
     assert.equal(roleRes.statusCode, 201);
     const roleObj = JSON.parse(roleRes.body) as { role: { id: string; name: string } };

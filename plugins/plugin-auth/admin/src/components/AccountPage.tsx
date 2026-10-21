@@ -1,12 +1,13 @@
 "use client";
 
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger, useAuth } from "@cms/admin-shell";
-import { Shield, User } from "lucide-react";
+import { Key, Shield, User } from "lucide-react";
 import * as React from "react";
 import { PasswordCard } from "./account/PasswordCard";
 import { ProfileCard } from "./account/ProfileCard";
 import { ThemeCard } from "./account/ThemeCard";
 import { SessionsList } from "./SessionsList";
+import { ApiTokensList } from "./tokens/ApiTokensList";
 
 export function AccountPage() {
   const { user } = useAuth();
@@ -22,7 +23,7 @@ export function AccountPage() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-sm grid-cols-2 p-1">
+        <TabsList className="grid w-full max-w-md grid-cols-3 p-1">
           <TabsTrigger value="profile" className="flex items-center gap-2 px-3.5 py-1.5 text-xs">
             <User className="size-4" />
             <span>Profile & Preferences</span>
@@ -30,6 +31,10 @@ export function AccountPage() {
           <TabsTrigger value="sessions" className="flex items-center gap-2 px-3.5 py-1.5 text-xs">
             <Shield className="size-4" />
             <span>Active Sessions</span>
+          </TabsTrigger>
+          <TabsTrigger value="tokens" className="flex items-center gap-2 px-3.5 py-1.5 text-xs">
+            <Key className="size-4" />
+            <span>API & Agent Tokens</span>
           </TabsTrigger>
         </TabsList>
 
@@ -43,6 +48,11 @@ export function AccountPage() {
         {/* Tab 2: Active Sessions */}
         <TabsContent value="sessions">
           <SessionsList />
+        </TabsContent>
+
+        {/* Tab 3: API & Agent Tokens */}
+        <TabsContent value="tokens">
+          <ApiTokensList />
         </TabsContent>
       </Tabs>
     </div>

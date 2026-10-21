@@ -1,7 +1,8 @@
 import type { LogLevel } from "@cms/core";
-import { ConfigService, LogService, RedisCacheService, createServer } from "@cms/core";
+import { ConfigService, LogService, RedisCacheService } from "@cms/core";
 import { DatabaseService } from "@cms/db";
 import process from "node:process";
+import { buildApp } from "./app.js";
 import { API_PLUGIN_MANIFEST } from "./plugins.js";
 
 const env = process.env;
@@ -18,7 +19,7 @@ await db.connect();
 const cache = new RedisCacheService(config.get("REDIS_URL"), logger);
 await cache.connect();
 
-const app = await createServer(db, cache, env, API_PLUGIN_MANIFEST);
+const app = await buildApp(db, cache, env, API_PLUGIN_MANIFEST);
 
 const apiPort = config.getInt("PORT", config.getInt("API_PORT", 3001));
 const host = config.getOrDefault("HOST", "0.0.0.0");

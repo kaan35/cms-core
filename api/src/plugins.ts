@@ -1,7 +1,12 @@
 import type { PluginManifestEntry } from "@cms/core";
-import { initAuthMigration, registerAuthPlugin } from "@cms/plugin-auth-api";
+import {
+  initAuthMigration,
+  registerAuthPlugin,
+  seedDefaultRolesMigration,
+} from "@cms/plugin-auth-api";
 import { initBlogMigration, registerBlogPlugin } from "@cms/plugin-blog-api";
 import { initFormsMigration, registerFormsPlugin } from "@cms/plugin-forms-api";
+import { registerMcpPlugin } from "@cms/plugin-mcp-api";
 import { initMediaMigration, registerMediaPlugin } from "@cms/plugin-media-api";
 import {
   initPagesMigration,
@@ -21,6 +26,13 @@ export const API_PLUGIN_MANIFEST: PluginManifestEntry[] = [
         description: "Initialize auth collections (users, roles, sessions) and default admin role",
         up: async (db) => {
           await initAuthMigration.up(db);
+        },
+      },
+      {
+        id: "202608160001_seed_default_roles",
+        description: "Seed default editor and user system role templates",
+        up: async (db) => {
+          await seedDefaultRolesMigration.up(db);
         },
       },
     ],
@@ -129,6 +141,13 @@ export const API_PLUGIN_MANIFEST: PluginManifestEntry[] = [
     ],
     register: async (scope, services) => {
       await registerVaultPlugin(scope, services);
+    },
+  },
+  {
+    name: "plugin-mcp",
+    priority: 35,
+    register: async (scope, services) => {
+      await registerMcpPlugin(scope, services);
     },
   },
 ];

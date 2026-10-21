@@ -6,7 +6,9 @@ import {
   Compass,
   FileText,
   Flame,
+  History,
   Image as ImageIcon,
+  Key,
   KeyRound,
   LayoutDashboard,
   Plug,
@@ -74,6 +76,18 @@ export const defaultNavSections: NavSection[] = [
     items: [
       { name: "Users & RBAC", href: "/dashboard/users", icon: Users, pluginId: "plugin-auth" },
       { name: "Role Templates", href: "/dashboard/roles", icon: Shield, pluginId: "plugin-auth" },
+      {
+        name: "API & Agent Tokens",
+        href: "/dashboard/tokens",
+        icon: Key,
+        pluginId: "plugin-auth",
+      },
+      {
+        name: "Audit Trail",
+        href: "/dashboard/audit",
+        icon: History,
+        pluginId: "plugin-system",
+      },
     ],
   },
   {

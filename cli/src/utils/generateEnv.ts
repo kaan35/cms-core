@@ -88,6 +88,7 @@ CLIENT_TARGET=${clientTarget}
 # Cryptographic Keys & Session Security
 JWT_SECRET=${jwtSecret}
 VAULT_SECRET=${vaultSecret}
+API_TOKEN_PREFIX=${options.projectName.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}_token_
 SESSION_TTL_HOURS=168
 COOKIE_SECURE=${isDev ? "false" : "true"}
 COOKIE_PREFIX=${options.projectName.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}_
@@ -104,6 +105,7 @@ MONGO_DB_NAME=${dbName}
 MONGO_PORT=${mongoPort}
 REDIS_URL=redis://redis:6379
 REDIS_PORT=${redisPort}
+CACHE_SETTINGS_TTL_SECONDS=86400
 
 # Network & Origins
 CORS_ALLOWED_ORIGINS=${origins.join(",")}

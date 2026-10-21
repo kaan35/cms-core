@@ -4,4 +4,7 @@ export * from "./components/RoleEditor";
 export * from "./components/SessionsList";
 export * from "./components/UserPermissionsEditor";
 export * from "./components/AccountPage";
+export * from "./components/tokens/ApiTokensList";
+export * from "./components/tokens/CreateTokenDialog";
+export * from "./components/tokens/TokenDetailDialog";
 export * from "./constants/permissions";

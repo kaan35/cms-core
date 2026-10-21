@@ -2,6 +2,7 @@ import { UnauthorizedError } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RolesRepository } from "../repositories/rolesRepository.js";
 import type { UsersRepository } from "../repositories/usersRepository.js";
+import type { ApiTokenService } from "../services/ApiTokenService.js";
 import type { SessionService } from "../sessionService.js";
 
 export function createAuthenticateMiddleware(
@@ -9,17 +10,19 @@ export function createAuthenticateMiddleware(
   usersRepo: UsersRepository,
   rolesRepo?: RolesRepository,
   cookiePrefix = "",
+  apiTokenService?: ApiTokenService,
 ) {
   const tokenCookieName = `${cookiePrefix}token`;
   return async function authenticate(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
     const cookieToken =
-      request.cookies[tokenCookieName] || (!cookiePrefix ? request.cookies["token"] : undefined);
+      request.cookies?.[tokenCookieName] ||
+      (!cookiePrefix ? request.cookies?.["token"] : undefined);
     let token = cookieToken;
 
     if (!token && request.headers.authorization) {
-      const parts = request.headers.authorization.split(" ");
-      if (parts.length === 2 && /^Bearer$/i.test(parts[0] ?? "")) {
-        token = parts[1];
+      const authHeader = request.headers.authorization.trim();
+      if (authHeader.startsWith("Bearer ") || authHeader.startsWith("bearer ")) {
+        token = authHeader.slice(7).trim();
       }
     }
 
@@ -27,14 +30,37 @@ export function createAuthenticateMiddleware(
       throw new UnauthorizedError("Authentication required");
     }
 
-    const sessionUser = await sessionService.validateAndSlideSession(token);
-    const userDoc = await usersRepo.findById(sessionUser.id);
+    let userId: string;
+    let sessionId: string;
+    let initialPermissions: string[];
+    const isApiToken = apiTokenService ? apiTokenService.isApiToken(token) : false;
 
+    let tokenName: string | undefined;
+    let tokenPrefix: string | undefined;
+
+    if (isApiToken) {
+      if (!apiTokenService) {
+        throw new UnauthorizedError("API tokens not configured");
+      }
+      const validation = await apiTokenService.validateToken(token);
+      userId = validation.userId;
+      sessionId = `api-token:${validation.tokenId}`;
+      tokenName = validation.tokenName;
+      tokenPrefix = validation.tokenPrefix;
+      initialPermissions = validation.scopes || [];
+    } else {
+      const sessionUser = await sessionService.validateAndSlideSession(token);
+      userId = sessionUser.id;
+      sessionId = sessionUser.sessionId;
+      initialPermissions = sessionUser.permissions || [];
+    }
+
+    const userDoc = await usersRepo.findById(userId);
     if (!userDoc) {
       throw new UnauthorizedError("User no longer exists");
     }
 
-    let permissions = sessionUser.permissions || [];
+    let permissions = initialPermissions;
     let roleNames: string[] = [];
     if (rolesRepo) {
       let roleIds = userDoc.roleIds || [];
@@ -49,7 +75,21 @@ export function createAuthenticateMiddleware(
       roleNames = roles.map((r) => r.name);
       const rolePermissions = roles.flatMap((r) => r.permissions || []);
       const directPermissions = userDoc.permissions || [];
-      permissions = Array.from(new Set([...permissions, ...rolePermissions, ...directPermissions]));
+      const userEffectivePerms = Array.from(new Set([...rolePermissions, ...directPermissions]));
+
+      if (isApiToken) {
+        if (initialPermissions.includes("*")) {
+          permissions = userEffectivePerms.length > 0 ? userEffectivePerms : ["*"];
+        } else {
+          if (userEffectivePerms.includes("*") || userEffectivePerms.length === 0) {
+            permissions = initialPermissions;
+          } else {
+            permissions = initialPermissions.filter((s) => userEffectivePerms.includes(s));
+          }
+        }
+      } else {
+        permissions = Array.from(new Set([...permissions, ...userEffectivePerms]));
+      }
     }
 
     const primaryRole = roleNames[0] || (permissions.includes("*") ? "admin" : "user");
@@ -62,7 +102,9 @@ export function createAuthenticateMiddleware(
       roles: roleNames,
       roleIds: userDoc.roleIds,
       permissions,
-      sessionId: sessionUser.sessionId,
+      sessionId,
+      ...(tokenName ? { tokenName } : {}),
+      ...(tokenPrefix ? { tokenPrefix } : {}),
     };
   };
 }

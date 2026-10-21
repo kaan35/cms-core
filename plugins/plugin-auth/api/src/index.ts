@@ -1,27 +1,35 @@
 import type { CoreServices } from "@cms/core";
 import type { FastifyInstance } from "fastify";
+import { ApiTokenController } from "./controllers/ApiTokenController.js";
 import { AuthController } from "./controllers/AuthController.js";
 import { RoleController } from "./controllers/RoleController.js";
 import { UserController } from "./controllers/UserController.js";
 import { createAuthenticateMiddleware } from "./middleware/authenticate.js";
 import { createCheckPermissionMiddleware } from "./middleware/checkPermission.js";
 import { createVerifyCsrfMiddleware } from "./middleware/verifyCsrf.js";
+import { ApiTokensRepository } from "./repositories/apiTokensRepository.js";
 import { RolesRepository } from "./repositories/rolesRepository.js";
 import { SessionsRepository } from "./repositories/sessionsRepository.js";
 import { UsersRepository } from "./repositories/usersRepository.js";
+import { ApiTokenService } from "./services/ApiTokenService.js";
 import { AuthService } from "./services/AuthService.js";
 import { RoleService } from "./services/RoleService.js";
 import { UserService } from "./services/UserService.js";
+import { deriveTokenKey } from "./services/tokenCipher.js";
 import { SessionService } from "./sessionService.js";
 
 // Services & Controllers
+export { ApiTokenController } from "./controllers/ApiTokenController.js";
 export { AuthController } from "./controllers/AuthController.js";
 export { RoleController } from "./controllers/RoleController.js";
 export { UserController } from "./controllers/UserController.js";
+export { ApiTokenService } from "./services/ApiTokenService.js";
+export type { ApiTokenInfo } from "./services/ApiTokenService.js";
 export { AuthService } from "./services/AuthService.js";
 export type { AuthResult } from "./services/AuthService.js";
 export { RoleService } from "./services/RoleService.js";
 export { UserService } from "./services/UserService.js";
+export { decryptTokenString, deriveTokenKey, encryptTokenString } from "./services/tokenCipher.js";
 
 // Domain & Rules
 export {
@@ -65,13 +73,60 @@ export { ADMIN_ROLE_NAME, AUTH_PERMISSIONS, hasPermission } from "./domain/permi
 
 // Repositories & Migrations
 export { initAuthMigration } from "./migrations/202601010000_init_auth.js";
+export { seedDefaultRolesMigration } from "./migrations/202608160001_seed_default_roles.js";
+export { ApiTokensRepository } from "./repositories/apiTokensRepository.js";
+export type { ApiTokenDoc } from "./repositories/apiTokensRepository.js";
 export { RolesRepository } from "./repositories/rolesRepository.js";
 export type { RoleDoc } from "./repositories/rolesRepository.js";
 export { SessionsRepository } from "./repositories/sessionsRepository.js";
 export type { SessionDoc } from "./repositories/sessionsRepository.js";
 export { UsersRepository } from "./repositories/usersRepository.js";
 export type { UserDoc } from "./repositories/usersRepository.js";
-export { SessionService, type ISessionService, type ISessionInfo } from "./sessionService.js";
+export { SessionService, type ISessionInfo, type ISessionService } from "./sessionService.js";
+
+async function ensureDefaultSystemRoles(rolesRepo: RolesRepository): Promise<void> {
+  const defaults = [
+    {
+      name: "admin",
+      description: "Full platform administrative access across all system entities and settings",
+      permissions: ["*"],
+      isSystem: true,
+    },
+    {
+      name: "editor",
+      description: "Content management permissions for pages, blog posts, forms, and media assets",
+      permissions: [
+        "pages:read:draft",
+        "pages:write",
+        "blog:read:draft",
+        "blog:write",
+        "forms:read",
+        "forms:write",
+        "media:read",
+        "media:write",
+      ],
+      isSystem: true,
+    },
+    {
+      name: "user",
+      description: "Standard member profile with basic authenticated member access",
+      permissions: [],
+      isSystem: true,
+    },
+  ];
+
+  for (const def of defaults) {
+    const existing = await rolesRepo.findByName(def.name);
+    if (!existing) {
+      await rolesRepo.create(def);
+    } else if (!existing.description || existing.isSystem === undefined) {
+      await rolesRepo.update(existing.id, {
+        description: existing.description || def.description,
+        isSystem: true,
+      });
+    }
+  }
+}
 
 export async function registerAuthPlugin(
   app: FastifyInstance,
@@ -82,6 +137,9 @@ export async function registerAuthPlugin(
   const usersRepo = new UsersRepository(db);
   const rolesRepo = new RolesRepository(db);
   const sessionsRepo = new SessionsRepository(db);
+  const apiTokensRepo = new ApiTokensRepository(db);
+
+  await ensureDefaultSystemRoles(rolesRepo);
 
   const jwtSecret = config.getOrDefault("JWT_SECRET", "") || process.env["JWT_SECRET"] || "";
 
@@ -104,11 +162,20 @@ export async function registerAuthPlugin(
     slideThresholdMinutes,
   );
 
+  const tokenSecret =
+    config.getOrDefault("TOKEN_ENCRYPTION_SECRET", "") ||
+    config.getOrDefault("VAULT_SECRET", "") ||
+    jwtSecret;
+  const tokenEncryptionKey = deriveTokenKey(tokenSecret);
+  const apiTokenPrefix = config.getOrDefault("API_TOKEN_PREFIX", "cms_token_");
+  const apiTokenService = new ApiTokenService(apiTokensRepo, tokenEncryptionKey, apiTokenPrefix);
+
   const authenticate = createAuthenticateMiddleware(
     sessionService,
     usersRepo,
     rolesRepo,
     cookiePrefix,
+    apiTokenService,
   );
   const checkPermission = createCheckPermissionMiddleware();
   const verifyCsrf = createVerifyCsrfMiddleware(cookiePrefix);
@@ -180,6 +247,7 @@ export async function registerAuthPlugin(
   );
   const userController = new UserController(userService);
   const roleController = new RoleController(roleService);
+  const apiTokenController = new ApiTokenController(apiTokenService);
 
   const registerRateLimitMax = config.getInt("RATE_LIMIT_REGISTER_MAX", 10);
   const registerRateLimitWindow = config.getOrDefault(
@@ -196,6 +264,7 @@ export async function registerAuthPlugin(
       auth: authController,
       user: userController,
       role: roleController,
+      apiToken: apiTokenController,
     },
     {
       registerRateLimitMax,
