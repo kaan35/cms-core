@@ -7,6 +7,11 @@ import {
   DialogDeleteConfirm,
   InputSearchField,
   PageHeader,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   StatCard,
   Table,
@@ -152,40 +157,35 @@ export function RoleList() {
               className="bg-card w-full"
             />
 
-            <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setRoleTypeFilter("all")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  roleTypeFilter === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+            <div className="w-36">
+              <Select
+                value={roleTypeFilter}
+                onValueChange={(val) => {
+                  if (val !== null && val !== undefined) {
+                    setRoleTypeFilter(val as "all" | "system" | "custom");
+                  }
+                }}
               >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => setRoleTypeFilter("system")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  roleTypeFilter === "system"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                System
-              </button>
-              <button
-                type="button"
-                onClick={() => setRoleTypeFilter("custom")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  roleTypeFilter === "custom"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Custom
-              </button>
+                <SelectTrigger className="h-8 text-xs min-w-36 w-full bg-card">
+                  <SelectValue placeholder="All Roles">
+                    {(val: unknown) => {
+                      switch (val) {
+                        case "system":
+                          return "System Roles";
+                        case "custom":
+                          return "Custom Roles";
+                        default:
+                          return "All Roles";
+                      }
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="system">System Roles</SelectItem>
+                  <SelectItem value="custom">Custom Roles</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

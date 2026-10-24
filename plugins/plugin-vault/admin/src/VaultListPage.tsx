@@ -10,6 +10,11 @@ import {
   DropdownMenuTrigger,
   InputSearchField,
   PageHeader,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   StatCard,
   Table,
@@ -244,69 +249,61 @@ export function VaultListPage() {
               className="bg-card w-full"
             />
 
-            <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setStatusFilter("all")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  statusFilter === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+            <div className="w-32">
+              <Select
+                value={statusFilter}
+                onValueChange={(val) => {
+                  if (val !== null && val !== undefined) {
+                    setStatusFilter(val as "all" | "active" | "stale");
+                  }
+                }}
               >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("active")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  statusFilter === "active"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Active
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("stale")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  statusFilter === "stale"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Stale
-              </button>
+                <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
+                  <SelectValue placeholder="All Statuses">
+                    {(val: unknown) => {
+                      switch (val) {
+                        case "active":
+                          return "Active";
+                        case "stale":
+                          return "Stale";
+                        default:
+                          return "All Statuses";
+                      }
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="stale">Stale</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {availableCategories.length > 0 && (
-              <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto overflow-x-auto max-w-full">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory("all")}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors capitalize shrink-0 ${
-                    selectedCategory === "all"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+              <div className="w-36">
+                <Select
+                  value={selectedCategory}
+                  onValueChange={(val) => {
+                    if (val !== null && val !== undefined) {
+                      setSelectedCategory(String(val));
+                    }
+                  }}
                 >
-                  All Categories
-                </button>
-                {availableCategories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors capitalize shrink-0 ${
-                      selectedCategory === cat
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+                  <SelectTrigger className="h-8 text-xs min-w-36 w-full bg-card capitalize">
+                    <SelectValue placeholder="All Categories">
+                      {(val: unknown) => (val === "all" ? "All Categories" : String(val))}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {availableCategories.map((cat) => (
+                      <SelectItem key={cat} value={cat} className="capitalize">
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>

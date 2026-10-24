@@ -1,6 +1,15 @@
 "use client";
 
-import { Button, InputSearchField, Tooltip } from "@cms/admin-shell";
+import {
+  Button,
+  InputSearchField,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+} from "@cms/admin-shell";
 import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
@@ -30,40 +39,35 @@ export function BlogPostListToolbar({
           containerClassName="flex-1 w-full sm:max-w-sm"
         />
 
-        <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => onStatusFilterChange("all")}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              statusFilter === "all"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+        <div className="w-32">
+          <Select
+            value={statusFilter}
+            onValueChange={(val) => {
+              if (val !== null && val !== undefined) {
+                onStatusFilterChange(val as "all" | "published" | "draft");
+              }
+            }}
           >
-            All
-          </button>
-          <button
-            type="button"
-            onClick={() => onStatusFilterChange("published")}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              statusFilter === "published"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Published
-          </button>
-          <button
-            type="button"
-            onClick={() => onStatusFilterChange("draft")}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              statusFilter === "draft"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Drafts
-          </button>
+            <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
+              <SelectValue placeholder="All Statuses">
+                {(val: unknown) => {
+                  switch (val) {
+                    case "published":
+                      return "Published";
+                    case "draft":
+                      return "Drafts";
+                    default:
+                      return "All Statuses";
+                  }
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="draft">Drafts</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

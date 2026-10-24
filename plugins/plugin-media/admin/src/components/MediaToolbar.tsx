@@ -1,6 +1,16 @@
 "use client";
 
-import { Button, cn, InputSearchField, Tooltip } from "@cms/admin-shell";
+import {
+  Button,
+  cn,
+  InputSearchField,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+} from "@cms/admin-shell";
 import { Grid, List as ListIcon, RefreshCw, UploadCloud } from "lucide-react";
 
 interface MediaToolbarProps {
@@ -37,43 +47,38 @@ export function MediaToolbar({
           className="bg-card w-full"
         />
 
-        <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => onTypeFilterChange("all")}
-            className={cn(
-              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-              typeFilter === "all"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
+        <div className="w-32">
+          <Select
+            value={typeFilter}
+            onValueChange={(val) => {
+              if (val !== null && val !== undefined) {
+                onTypeFilterChange(val as "all" | "image" | "document" | "other");
+              }
+            }}
           >
-            All
-          </button>
-          <button
-            type="button"
-            onClick={() => onTypeFilterChange("image")}
-            className={cn(
-              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-              typeFilter === "image"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Images
-          </button>
-          <button
-            type="button"
-            onClick={() => onTypeFilterChange("document")}
-            className={cn(
-              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-              typeFilter === "document"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Docs
-          </button>
+            <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
+              <SelectValue placeholder="All Types">
+                {(val: unknown) => {
+                  switch (val) {
+                    case "image":
+                      return "Images";
+                    case "document":
+                      return "Documents";
+                    case "other":
+                      return "Other";
+                    default:
+                      return "All Types";
+                  }
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="image">Images</SelectItem>
+              <SelectItem value="document">Documents</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

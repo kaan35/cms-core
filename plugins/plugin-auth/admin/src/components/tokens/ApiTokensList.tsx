@@ -9,6 +9,11 @@ import {
   formatRelativeTime,
   InputSearchField,
   PageHeader,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   StatCard,
   Table,
@@ -187,40 +192,35 @@ export function ApiTokensList() {
               className="bg-card w-full"
             />
 
-            <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setScopeFilter("all")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  scopeFilter === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+            <div className="w-36">
+              <Select
+                value={scopeFilter}
+                onValueChange={(val) => {
+                  if (val !== null && val !== undefined) {
+                    setScopeFilter(val as "all" | "full" | "scoped");
+                  }
+                }}
               >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => setScopeFilter("full")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  scopeFilter === "full"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Full Access
-              </button>
-              <button
-                type="button"
-                onClick={() => setScopeFilter("scoped")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  scopeFilter === "scoped"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Scoped
-              </button>
+                <SelectTrigger className="h-8 text-xs min-w-36 w-full bg-card">
+                  <SelectValue placeholder="All Scopes">
+                    {(val: unknown) => {
+                      switch (val) {
+                        case "full":
+                          return "Full Access";
+                        case "scoped":
+                          return "Scoped";
+                        default:
+                          return "All Scopes";
+                      }
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Scopes</SelectItem>
+                  <SelectItem value="full">Full Access</SelectItem>
+                  <SelectItem value="scoped">Scoped</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

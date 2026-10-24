@@ -7,6 +7,11 @@ import {
   DialogDeleteConfirm,
   InputSearchField,
   PageHeader,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   StatCard,
   Table,
@@ -69,11 +74,15 @@ export function UserList() {
   }, [users]);
 
   const [roleFilter, setRoleFilter] = React.useState<"all" | "admin" | "member">("all");
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "suspended">("all");
 
   const filteredUsers = React.useMemo(() => {
     return users.filter((u) => {
       if (roleFilter === "admin" && u.role !== "admin") return false;
       if (roleFilter === "member" && u.role === "admin") return false;
+
+      if (statusFilter === "active" && u.status === "suspended") return false;
+      if (statusFilter === "suspended" && u.status !== "suspended") return false;
 
       if (!search.trim()) return true;
       const q = search.toLowerCase();
@@ -83,7 +92,7 @@ export function UserList() {
         u.role.toLowerCase().includes(q)
       );
     });
-  }, [users, search, roleFilter]);
+  }, [users, search, roleFilter, statusFilter]);
 
   const handleConfirmDelete = async () => {
     if (!deleteModal.target) return;
@@ -144,40 +153,66 @@ export function UserList() {
               className="bg-card w-full"
             />
 
-            <div className="flex items-center rounded-lg border border-border/80 bg-card p-1 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setRoleFilter("all")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  roleFilter === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+            <div className="w-32">
+              <Select
+                value={roleFilter}
+                onValueChange={(val) => {
+                  if (val !== null && val !== undefined) {
+                    setRoleFilter(val as "all" | "admin" | "member");
+                  }
+                }}
               >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => setRoleFilter("admin")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  roleFilter === "admin"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
+                  <SelectValue placeholder="All Roles">
+                    {(val: unknown) => {
+                      switch (val) {
+                        case "admin":
+                          return "Admins";
+                        case "member":
+                          return "Members";
+                        default:
+                          return "All Roles";
+                      }
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="admin">Admins</SelectItem>
+                  <SelectItem value="member">Members</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-32">
+              <Select
+                value={statusFilter}
+                onValueChange={(val) => {
+                  if (val !== null && val !== undefined) {
+                    setStatusFilter(val as "all" | "active" | "suspended");
+                  }
+                }}
               >
-                Admins
-              </button>
-              <button
-                type="button"
-                onClick={() => setRoleFilter("member")}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  roleFilter === "member"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Members
-              </button>
+                <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
+                  <SelectValue placeholder="All Statuses">
+                    {(val: unknown) => {
+                      switch (val) {
+                        case "active":
+                          return "Active";
+                        case "suspended":
+                          return "Suspended";
+                        default:
+                          return "All Statuses";
+                      }
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -258,10 +293,17 @@ export function UserList() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
-                        <span className="size-1.5 rounded-full bg-emerald-500" />
-                        Active
-                      </span>
+                      {u.status === "suspended" ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-rose-500 font-medium">
+                          <span className="size-1.5 rounded-full bg-rose-500" />
+                          Suspended
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
+                          <span className="size-1.5 rounded-full bg-emerald-500" />
+                          Active
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
