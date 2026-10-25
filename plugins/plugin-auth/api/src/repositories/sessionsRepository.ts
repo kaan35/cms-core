@@ -52,10 +52,16 @@ export class SessionsRepository {
   }
 
   async deleteByUserId(userId: string): Promise<void> {
-    await this.collection.deleteOne({ userId });
+    const sessions = await this.findByUserId(userId);
+    for (const session of sessions) {
+      await this.collection.deleteOne({ id: session.id });
+    }
   }
 
   async deleteAll(): Promise<void> {
-    await this.collection.deleteOne({});
+    const all = await this.collection.find({});
+    for (const s of all) {
+      await this.collection.deleteOne({ id: s.id });
+    }
   }
 }

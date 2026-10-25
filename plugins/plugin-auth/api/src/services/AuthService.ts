@@ -198,6 +198,10 @@ export class AuthService {
       throw new UnauthorizedError("Invalid email or password");
     }
 
+    if (user.status === "suspended") {
+      throw new ForbiddenError("Account is suspended. Please contact administrator.");
+    }
+
     return this.createAuthResult(user, meta);
   }
 

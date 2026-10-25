@@ -8,6 +8,7 @@ export interface UserDoc extends Record<string, unknown> {
   passwordHash: string;
   roleIds: string[];
   permissions?: string[] | undefined;
+  status?: "active" | "suspended" | undefined;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +38,7 @@ export class UsersRepository {
     roleIds: string[];
     name?: string | undefined;
     permissions?: string[] | undefined;
+    status?: "active" | "suspended" | undefined;
   }): Promise<UserDoc> {
     const now = new Date();
     const doc: UserDoc = {
@@ -46,6 +48,7 @@ export class UsersRepository {
       passwordHash: data.passwordHash,
       roleIds: data.roleIds,
       permissions: data.permissions,
+      status: data.status || "active",
       createdAt: now,
       updatedAt: now,
     };

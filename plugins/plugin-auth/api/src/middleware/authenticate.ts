@@ -1,4 +1,4 @@
-import { UnauthorizedError } from "@cms/core";
+import { ForbiddenError, UnauthorizedError } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RolesRepository } from "../repositories/rolesRepository.js";
 import type { UsersRepository } from "../repositories/usersRepository.js";
@@ -58,6 +58,10 @@ export function createAuthenticateMiddleware(
     const userDoc = await usersRepo.findById(userId);
     if (!userDoc) {
       throw new UnauthorizedError("User no longer exists");
+    }
+
+    if (userDoc.status === "suspended") {
+      throw new ForbiddenError("Account is suspended");
     }
 
     let permissions = initialPermissions;

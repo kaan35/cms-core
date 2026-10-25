@@ -10,11 +10,13 @@ interface UserProfileCardProps {
   name: string;
   password: string;
   role: string;
+  status: "active" | "suspended";
   rolesData: Array<{ id: string; name: string; permissions: string[] }>;
   onEmailChange: (email: string) => void;
   onNameChange: (name: string) => void;
   onPasswordChange: (password: string) => void;
   onRoleChange: (role: string) => void;
+  onStatusChange: (status: "active" | "suspended") => void;
 }
 
 export function UserProfileCard({
@@ -23,11 +25,13 @@ export function UserProfileCard({
   name,
   password,
   role,
+  status,
   rolesData,
   onEmailChange,
   onNameChange,
   onPasswordChange,
   onRoleChange,
+  onStatusChange,
 }: UserProfileCardProps) {
   const roleOptions = React.useMemo(() => {
     if (rolesData && rolesData.length > 0) {
@@ -83,6 +87,25 @@ export function UserProfileCard({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+        <InputSelectField
+          label="Role Template"
+          value={role}
+          onValueChange={(val) => onRoleChange(val)}
+          options={roleOptions}
+        />
+
+        <InputSelectField
+          label="Account Status"
+          value={status}
+          onValueChange={(val) => onStatusChange(val as "active" | "suspended")}
+          options={[
+            { value: "active", label: "Active" },
+            { value: "suspended", label: "Suspended" },
+          ]}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
         <InputField
           label="Password"
           type="password"
@@ -93,13 +116,6 @@ export function UserProfileCard({
           required={isNew}
           hint={!isNew ? "(Leave blank to keep unchanged)" : undefined}
           className="text-xs"
-        />
-
-        <InputSelectField
-          label="Role Template"
-          value={role}
-          onValueChange={(val) => onRoleChange(val)}
-          options={roleOptions}
         />
       </div>
     </div>

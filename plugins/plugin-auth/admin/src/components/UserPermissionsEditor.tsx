@@ -41,6 +41,7 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
     name: "",
     password: "",
     role: "user",
+    status: "active" as "active" | "suspended",
     permissions: [] as string[],
   });
 
@@ -60,6 +61,7 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
         name: userData.name || "",
         password: "",
         role: userRole,
+        status: (userData.status as "active" | "suspended") || "active",
         permissions: initialPerms,
       });
     }
@@ -135,6 +137,7 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
           password: inputData.password,
           role: inputData.role,
           roleIds: [roleId],
+          status: inputData.status,
           permissions: finalPermissions,
         });
         toast.success("User created successfully!");
@@ -145,6 +148,7 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
           name: inputData.name,
           role: inputData.role,
           roleIds: [roleId],
+          status: inputData.status,
           permissions: finalPermissions,
         };
         if (inputData.password && inputData.password.trim().length > 0) {
@@ -215,11 +219,13 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
         name={inputData.name}
         password={inputData.password}
         role={inputData.role}
+        status={inputData.status}
         rolesData={rolesData}
         onEmailChange={(email) => setInputData((prev) => ({ ...prev, email }))}
         onNameChange={(name) => setInputData((prev) => ({ ...prev, name }))}
         onPasswordChange={(password) => setInputData((prev) => ({ ...prev, password }))}
         onRoleChange={handleRoleTemplateChange}
+        onStatusChange={(status) => setInputData((prev) => ({ ...prev, status }))}
       />
 
       <PermissionMatrixCard

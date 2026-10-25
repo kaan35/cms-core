@@ -4,14 +4,11 @@ import {
   api,
   Badge,
   Button,
+  DialogConfirm,
   DialogDeleteConfirm,
   InputSearchField,
   PageHeader,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  SelectFilter,
   Skeleton,
   StatCard,
   Table,
@@ -24,7 +21,16 @@ import {
   Tooltip,
   useApi,
 } from "@cms/admin-shell";
-import { Pencil, RefreshCw, ShieldCheck, Trash2, UserCheck, UserPlus, Users } from "lucide-react";
+import {
+  Pencil,
+  RefreshCw,
+  ShieldCheck,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  Users,
+  UserX,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -50,6 +56,17 @@ export function UserList() {
   }>({
     target: null,
     isDeleting: false,
+  });
+
+  // Status toggle confirmation modal state
+  const [suspendModal, setSuspendModal] = React.useState<{
+    target: UserItem | null;
+    action: "suspend" | "activate";
+    isSubmitting: boolean;
+  }>({
+    target: null,
+    action: "suspend",
+    isSubmitting: false,
   });
 
   const { data: rawData, isLoading, mutate } = useApi<{ data: UserItem[] } | UserItem[]>("/users");
@@ -109,6 +126,28 @@ export function UserList() {
     }
   };
 
+  const handleConfirmToggleStatus = async () => {
+    if (!suspendModal.target) return;
+    const { target, action } = suspendModal;
+    setSuspendModal((prev) => ({ ...prev, isSubmitting: true }));
+    try {
+      await api.put(`/users/${target.id}`, {
+        status: action === "suspend" ? "suspended" : "active",
+      });
+      toast.success(
+        action === "suspend"
+          ? `User ${target.email} suspended and active sessions revoked.`
+          : `User ${target.email} activated successfully.`,
+      );
+      setSuspendModal({ target: null, action: "suspend", isSubmitting: false });
+      mutate();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update user status";
+      toast.error(msg);
+      setSuspendModal((prev) => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-300">
       {/* Unified PageHeader */}
@@ -154,65 +193,31 @@ export function UserList() {
             />
 
             <div className="w-32">
-              <Select
+              <SelectFilter
                 value={roleFilter}
-                onValueChange={(val) => {
-                  if (val !== null && val !== undefined) {
-                    setRoleFilter(val as "all" | "admin" | "member");
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
-                  <SelectValue placeholder="All Roles">
-                    {(val: unknown) => {
-                      switch (val) {
-                        case "admin":
-                          return "Admins";
-                        case "member":
-                          return "Members";
-                        default:
-                          return "All Roles";
-                      }
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="admin">Admins</SelectItem>
-                  <SelectItem value="member">Members</SelectItem>
-                </SelectContent>
-              </Select>
+                onValueChange={setRoleFilter}
+                options={[
+                  { value: "all", label: "All Roles" },
+                  { value: "admin", label: "Admins" },
+                  { value: "member", label: "Members" },
+                ]}
+                placeholder="All Roles"
+                className="h-8 text-xs min-w-32 w-full bg-card"
+              />
             </div>
 
             <div className="w-32">
-              <Select
+              <SelectFilter
                 value={statusFilter}
-                onValueChange={(val) => {
-                  if (val !== null && val !== undefined) {
-                    setStatusFilter(val as "all" | "active" | "suspended");
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
-                  <SelectValue placeholder="All Statuses">
-                    {(val: unknown) => {
-                      switch (val) {
-                        case "active":
-                          return "Active";
-                        case "suspended":
-                          return "Suspended";
-                        default:
-                          return "All Statuses";
-                      }
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
-                </SelectContent>
-              </Select>
+                onValueChange={setStatusFilter}
+                options={[
+                  { value: "all", label: "All Statuses" },
+                  { value: "active", label: "Active" },
+                  { value: "suspended", label: "Suspended" },
+                ]}
+                placeholder="All Statuses"
+                className="h-8 text-xs min-w-32 w-full bg-card"
+              />
             </div>
           </div>
 
@@ -262,7 +267,7 @@ export function UserList() {
                   <TableHead className="font-semibold">User</TableHead>
                   <TableHead className="w-36 font-semibold">Role</TableHead>
                   <TableHead className="w-28 font-semibold">Status</TableHead>
-                  <TableHead className="w-24 text-right font-semibold">Actions</TableHead>
+                  <TableHead className="w-28 text-right font-semibold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -307,6 +312,41 @@ export function UserList() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {u.status === "suspended" ? (
+                          <Tooltip content="Activate User">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() =>
+                                setSuspendModal({
+                                  target: u,
+                                  action: "activate",
+                                  isSubmitting: false,
+                                })
+                              }
+                              className="text-emerald-500 hover:text-emerald-400"
+                            >
+                              <UserCheck className="size-4" />
+                            </Button>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip content="Suspend User">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() =>
+                                setSuspendModal({
+                                  target: u,
+                                  action: "suspend",
+                                  isSubmitting: false,
+                                })
+                              }
+                              className="text-muted-foreground hover:text-rose-500"
+                            >
+                              <UserX className="size-4" />
+                            </Button>
+                          </Tooltip>
+                        )}
                         <Tooltip content="Edit User & Permissions">
                           <Link href={`/dashboard/users/${u.id}`}>
                             <Button variant="ghost" size="icon-sm">
@@ -347,6 +387,24 @@ export function UserList() {
         description="This action is permanent and will revoke all associated sessions and permissions."
         confirmLabel="Delete User"
         isDeleting={deleteModal.isDeleting}
+      />
+
+      <DialogConfirm
+        open={Boolean(suspendModal.target)}
+        onClose={() => setSuspendModal({ target: null, action: "suspend", isSubmitting: false })}
+        onConfirm={handleConfirmToggleStatus}
+        title={
+          suspendModal.action === "suspend" ? "Suspend User Account" : "Reactivate User Account"
+        }
+        description={
+          suspendModal.action === "suspend"
+            ? `Are you sure you want to suspend user ${suspendModal.target?.email}? All active sessions will be terminated immediately and they will be barred from logging in.`
+            : `Are you sure you want to reactivate user ${suspendModal.target?.email}? They will regain access to log in with their assigned role.`
+        }
+        confirmLabel={suspendModal.action === "suspend" ? "Suspend User" : "Reactivate User"}
+        confirmVariant={suspendModal.action === "suspend" ? "destructive" : "default"}
+        confirmIcon={suspendModal.action === "suspend" ? <UserX /> : <UserCheck />}
+        isLoading={suspendModal.isSubmitting}
       />
     </div>
   );

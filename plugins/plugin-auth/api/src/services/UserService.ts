@@ -56,6 +56,7 @@ export class UserService {
         role,
         roleIds: u.roleIds,
         permissions: u.permissions || [],
+        status: u.status || "active",
         createdAt: u.createdAt,
       };
     });
@@ -78,23 +79,15 @@ export class UserService {
       roleIds: user.roleIds,
       roles: roles.map((r) => ({ id: r.id, name: r.name })),
       permissions: user.permissions || [],
+      status: user.status || "active",
       createdAt: user.createdAt,
     };
   }
 
   async createUser(input: unknown | CreateUserInput, actorId?: string) {
-    const validated =
-      typeof input === "object" && input !== null && "password" in input && "email" in input
-        ? (input as CreateUserInput)
-        : validateCreateUser(input);
+    const validated = validateCreateUser(input);
 
-    const email = (validated.email || "").trim().toLowerCase();
-    if (!email || !email.includes("@")) {
-      throw new ValidationError("A valid email address is required");
-    }
-    if (!validated.password) {
-      throw new ValidationError("Password is required");
-    }
+    const email = validated.email;
     const pwdVal = validatePasswordStrength(validated.password);
     if (!pwdVal.valid) {
       throw new ValidationError(pwdVal.error ?? "Invalid password");
@@ -126,6 +119,7 @@ export class UserService {
       name: validated.name,
       roleIds,
       permissions: validated.permissions,
+      status: validated.status || "active",
     });
 
     await this.hooks.emit(EVENTS.AUTH.USER_CREATED, {
@@ -140,6 +134,7 @@ export class UserService {
       role: validated.role || "user",
       roleIds: user.roleIds,
       permissions: user.permissions || [],
+      status: user.status || "active",
       createdAt: user.createdAt,
     };
   }
@@ -150,10 +145,7 @@ export class UserService {
       throw new NotFoundError("User not found");
     }
 
-    const validated =
-      typeof input === "object" && input !== null
-        ? (input as UpdateUserInput)
-        : validateUpdateUser(input);
+    const validated = validateUpdateUser(input);
 
     const patch: Partial<UserDoc> = {};
 
@@ -195,6 +187,10 @@ export class UserService {
       patch.permissions = validated.permissions;
     }
 
+    if (validated.status !== undefined) {
+      patch.status = validated.status;
+    }
+
     if (validated.password) {
       const pwdVal = validatePasswordStrength(validated.password);
       if (!pwdVal.valid) {
@@ -213,7 +209,16 @@ export class UserService {
       this.logger.info("Revoked all sessions for user after password update", { userId: id });
     }
 
-    await this.hooks.emit(EVENTS.AUTH.USER_UPDATED, { userId: id, actorId });
+    if (validated.status === "suspended") {
+      await this.sessionsRepo.deleteByUserId(user.id);
+      this.logger.info("Revoked all sessions for user after suspension", { userId: user.id });
+    }
+
+    if (validated.status === "suspended") {
+      await this.hooks.emit(EVENTS.AUTH.USER_UPDATED, { userId: user.id, status: "suspended" });
+    } else {
+      await this.hooks.emit(EVENTS.AUTH.USER_UPDATED, { userId: id, actorId });
+    }
 
     const roles = await this.rolesRepo.findByIds(updated.roleIds || []);
     const roleNames = roles.map((r) => r.name);
@@ -227,6 +232,7 @@ export class UserService {
       roleIds: updated.roleIds,
       roles: roles.map((r) => ({ id: r.id, name: r.name })),
       permissions: updated.permissions || [],
+      status: updated.status || "active",
       createdAt: updated.createdAt,
     };
   }

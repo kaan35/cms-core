@@ -67,6 +67,7 @@ export const CreateUserSchema = z.object({
   permissions: z.array(z.string()).optional(),
   role: z.string().trim().optional(),
   roleIds: z.array(z.string()).default([]),
+  status: z.enum(["active", "suspended"]).optional().default("active"),
 });
 
 export const UpdateUserSchema = z.object({
@@ -76,7 +77,11 @@ export const UpdateUserSchema = z.object({
   permissions: z.array(z.string()).optional(),
   role: z.string().trim().optional(),
   roleIds: z.array(z.string()).optional(),
+  status: z.enum(["active", "suspended"]).optional(),
 });
+
+export const createUserSchema = CreateUserSchema;
+export const updateUserSchema = UpdateUserSchema;
 
 // 4. Role Management Schemas
 export const CreateRoleSchema = z.object({

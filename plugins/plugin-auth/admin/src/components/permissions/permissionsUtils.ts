@@ -5,6 +5,7 @@ export interface UserDetailResponse {
   email?: string;
   name?: string;
   role?: string;
+  status?: string;
   roleIds?: string[];
   roles?: Array<{ id: string; name: string }>;
   permissions?: string[];
@@ -13,6 +14,7 @@ export interface UserDetailResponse {
     email: string;
     name?: string;
     role?: string;
+    status?: string;
     roleIds?: string[];
     roles?: Array<{ id: string; name: string }>;
     permissions?: string[];
