@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { copyDirectory } from "./utils/copyDirectory.js";
 import { copyComposeFiles } from "./utils/generateCompose.js";
 import { generateEnvContent } from "./utils/generateEnv.js";
-import type { PluginProfile } from "./utils/pinnedVersions.js";
+import type { PluginSelection } from "./utils/pinnedVersions.js";
+import { resolveProjectPorts } from "./utils/ports.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,10 +29,11 @@ export interface NewProjectOptions {
   adminPort?: number | undefined;
   clientPort?: number | undefined;
   mongoPort?: number | undefined;
+  redisPort?: number | undefined;
   skipInstall?: boolean | undefined;
   includeAdmin?: boolean | undefined;
   includeClient?: boolean | undefined;
-  pluginsProfile?: PluginProfile | undefined;
+  plugins?: PluginSelection | undefined;
 }
 
 export interface NewProjectResult {
@@ -45,6 +47,7 @@ export interface NewProjectResult {
     admin?: number | undefined;
     client?: number | undefined;
     mongo?: number | undefined;
+    redis?: number | undefined;
   };
 }
 
@@ -55,10 +58,35 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
   const includeClient = options.includeClient ?? false;
   const includeAdmin = options.includeAdmin !== false;
   const autoUpdate = options.autoUpdate !== false;
-  const apiPort = options.apiPort ?? 3001;
-  const adminPort = options.adminPort ?? 3002;
-  const clientPort = options.clientPort ?? 3003;
-  const mongoPort = options.mongoPort ?? 27018;
+  const resolvedPorts = await resolveProjectPorts({
+    apiPort: options.apiPort,
+    adminPort: options.adminPort,
+    clientPort: options.clientPort,
+    mongoPort: options.mongoPort,
+    redisPort: options.redisPort,
+    includeAdmin,
+    includeClient,
+  });
+
+  for (const shift of resolvedPorts.autoShifted) {
+    if (shift.explicit) {
+      if (shift.requested !== shift.assigned) {
+        console.warn(
+          `⚠️  Port ${shift.requested} for ${shift.name} collides with another service in this project; auto-assigned ${shift.assigned}.`,
+        );
+      } else {
+        console.warn(
+          `⚠️  Port ${shift.requested} for ${shift.name} was explicitly requested, but is currently in use on the host.`,
+        );
+      }
+    } else {
+      console.log(
+        `ℹ  Port ${shift.requested} is in use; auto-assigned available port ${shift.assigned} for ${shift.name}.`,
+      );
+    }
+  }
+
+  const { apiPort, adminPort, clientPort, mongoPort, redisPort } = resolvedPorts;
 
   // 1. Ensure target directory is clean
   try {
@@ -108,9 +136,10 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
     adminPort,
     clientPort,
     mongoPort,
+    redisPort,
     includeAdmin,
     includeClient,
-    pluginsProfile: options.pluginsProfile,
+    plugins: options.plugins,
   });
   await fs.writeFile(path.join(projectDir, ".env"), envContent, "utf-8");
 
@@ -130,6 +159,9 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
     dev: includeClient
       ? "npm --prefix client run dev"
       : "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d",
+    "dev:build": includeClient
+      ? "npm --prefix client run dev"
+      : "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
@@ -175,6 +207,15 @@ export async function createNewProject(options: NewProjectOptions): Promise<NewP
     const clientDest = path.join(projectDir, "client");
     const clientTemplateSrc = getClientTemplateDir();
     await copyDirectory(clientTemplateSrc, clientDest);
+    if (clientPort) {
+      const clientPkgPath = path.join(clientDest, "package.json");
+      const clientPkgRaw = await fs.readFile(clientPkgPath, "utf-8");
+      const updatedClientPkg = clientPkgRaw.replace(
+        '"dev": "next dev -p 3003"',
+        `"dev": "next dev -p ${clientPort}"`,
+      );
+      await fs.writeFile(clientPkgPath, updatedClientPkg, "utf-8");
+    }
     services.push("client");
   }
 
@@ -207,6 +248,7 @@ npm run docker:up
 ${includeAdmin ? `- **Admin Panel:** [http://localhost:${adminPort}](http://localhost:${adminPort})` : ""}
 ${includeClient ? `- **Public Website:** [http://localhost:${clientPort}](http://localhost:${clientPort})` : ""}
 - **MongoDB:** \`mongodb://localhost:${mongoPort}\`
+- **Redis:** \`redis://localhost:${redisPort}\`
 
 ## 1-Minute Auto-Update Setup (Cronjob)
 When \`NODE_ENV=production\` and \`AUTO_UPDATE=true\` in \`.env\`:
@@ -227,6 +269,7 @@ When \`NODE_ENV=production\` and \`AUTO_UPDATE=true\` in \`.env\`:
       admin: includeAdmin ? adminPort : undefined,
       client: includeClient ? clientPort : undefined,
       mongo: mongoPort,
+      redis: redisPort,
     },
   };
 }

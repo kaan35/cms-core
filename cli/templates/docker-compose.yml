@@ -6,7 +6,7 @@ services:
     env_file: .env
     environment:
       - PORT=3001
-      - PLUGINS_PROFILE=${PLUGINS_PROFILE:-full}
+      - PLUGINS=${PLUGINS:-full}
     ports:
       - "${API_PORT:-3001}:3001"
     depends_on:

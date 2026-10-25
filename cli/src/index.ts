@@ -8,13 +8,26 @@ import { promptNewProject } from "./utils/prompt.js";
 
 export { createNewProject, upgradeProject };
 
+function parsePortFlag(flagName: string, val: unknown): number | undefined {
+  if (val === undefined) return undefined;
+  const parsed = parseInt(String(val), 10);
+  if (isNaN(parsed) || parsed < 1 || parsed > 65535) {
+    console.error(
+      `Error: Invalid port "${val}" for --${flagName}. Port must be between 1 and 65535.`,
+    );
+    process.exitCode = 1;
+    throw new Error(`Invalid port for --${flagName}`);
+  }
+  return parsed;
+}
+
 export async function runCli(args: string[]): Promise<void> {
   const { values, positionals } = parseArgs({
     args,
     options: {
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
-      profile: { type: "string" },
+      plugins: { type: "string" },
       admin: { type: "boolean" },
       "no-admin": { type: "boolean" },
       client: { type: "boolean" },
@@ -25,6 +38,7 @@ export async function runCli(args: string[]): Promise<void> {
       "client-port": { type: "string" },
       "mongo-port": { type: "string" },
       "db-port": { type: "string" },
+      "redis-port": { type: "string" },
       "auto-update": { type: "boolean" },
       "no-auto-update": { type: "boolean" },
       dir: { type: "string" },
@@ -50,7 +64,7 @@ export async function runCli(args: string[]): Promise<void> {
 
   if (command === "new") {
     const hasFlags = Boolean(
-      values.profile ||
+      values.plugins ||
       values.admin !== undefined ||
       values["no-admin"] ||
       values.client !== undefined ||
@@ -61,6 +75,7 @@ export async function runCli(args: string[]): Promise<void> {
       values["client-port"] ||
       values["mongo-port"] ||
       values["db-port"] ||
+      values["redis-port"] ||
       values.dir ||
       values.env ||
       values["no-auto-update"] ||
@@ -73,17 +88,19 @@ export async function runCli(args: string[]): Promise<void> {
 
     let projectName = positionals[1];
     let targetDir = values.dir as string | undefined;
-    let pluginsProfile = values.profile as string | undefined;
+    let plugins = values.plugins as string | undefined;
     let includeAdmin = values["no-admin"] ? false : values.admin ? true : undefined;
     let includeClient = values["no-client"] ? false : values.client ? true : undefined;
     let nodeEnv = (values.env as "production" | "development") || undefined;
-    let apiPort = values["api-port"] ? parseInt(values["api-port"] as string, 10) : undefined;
-    let adminPort = values["admin-port"] ? parseInt(values["admin-port"] as string, 10) : undefined;
-    let clientPort = values["client-port"]
-      ? parseInt(values["client-port"] as string, 10)
-      : undefined;
-    const rawMongoPort = (values["mongo-port"] || values["db-port"]) as string | undefined;
-    let mongoPort = rawMongoPort ? parseInt(rawMongoPort, 10) : undefined;
+    let apiPort = parsePortFlag("api-port", values["api-port"]);
+    let adminPort = parsePortFlag("admin-port", values["admin-port"]);
+    let clientPort = parsePortFlag("client-port", values["client-port"]);
+    const rawMongoPort = values["mongo-port"] ?? values["db-port"];
+    let mongoPort = parsePortFlag(
+      values["mongo-port"] !== undefined ? "mongo-port" : "db-port",
+      rawMongoPort,
+    );
+    let redisPort = parsePortFlag("redis-port", values["redis-port"]);
     let autoUpdate = values["no-auto-update"] ? false : Boolean(values["auto-update"] ?? true);
 
     if (isInteractive) {
@@ -97,10 +114,11 @@ export async function runCli(args: string[]): Promise<void> {
           adminPort,
           clientPort,
           mongoPort,
+          redisPort,
           autoUpdate,
           includeAdmin,
           includeClient,
-          pluginsProfile,
+          plugins,
         });
       } catch (err: unknown) {
         if (err instanceof Error && err.message.startsWith("Setup cancelled")) {
@@ -117,10 +135,11 @@ export async function runCli(args: string[]): Promise<void> {
       adminPort = answers.adminPort;
       clientPort = answers.clientPort;
       mongoPort = answers.mongoPort;
+      redisPort = answers.redisPort;
       autoUpdate = answers.autoUpdate;
       includeAdmin = answers.includeAdmin;
       includeClient = answers.includeClient;
-      pluginsProfile = answers.pluginsProfile;
+      plugins = answers.plugins;
     } else {
       if (!projectName) {
         console.error("Error: Please provide a project name. Example: cms new my-corp-site");
@@ -129,7 +148,7 @@ export async function runCli(args: string[]): Promise<void> {
       }
       includeAdmin = includeAdmin ?? true;
       includeClient = includeClient ?? false;
-      pluginsProfile = pluginsProfile ?? (includeClient ? "full" : "minimal");
+      plugins = plugins ?? (includeClient ? "full" : "minimal");
       targetDir = targetDir || "./projects";
     }
 
@@ -147,9 +166,10 @@ export async function runCli(args: string[]): Promise<void> {
         adminPort,
         clientPort,
         mongoPort,
+        redisPort,
         includeAdmin,
         includeClient,
-        pluginsProfile,
+        plugins,
       });
 
       console.log(`\nProject created successfully at: ${result.projectDir}`);
@@ -165,13 +185,22 @@ export async function runCli(args: string[]): Promise<void> {
       if (result.ports.mongo) {
         console.log(`  - MongoDB:     mongodb://localhost:${result.ports.mongo}`);
       }
+      if (result.ports.redis) {
+        console.log(`  - Redis:       redis://localhost:${result.ports.redis}`);
+      }
       console.log(`\nTo get started:`);
       const relPath = path.relative(process.cwd(), result.projectDir);
       const cdPath = relPath.startsWith("..") ? result.projectDir : relPath;
       console.log(`  cd ${cdPath}`);
-      if (result.nodeEnv === "development" && result.includeClient) {
-        console.log(`  docker compose up -d api admin  # Start Core CMS & Database`);
-        console.log(`  npm run dev                     # Start Client Site with hot-reload`);
+      if (result.nodeEnv === "development") {
+        if (result.includeClient) {
+          console.log(`  docker compose up -d api admin  # Start Core CMS & Database`);
+          console.log(`  npm run dev                     # Start Client Site with hot-reload`);
+        } else {
+          console.log(
+            `  npm run dev                     # Fast start (or 'npm run dev:build' for fresh build)`,
+          );
+        }
       } else {
         console.log(`  docker compose up -d`);
       }

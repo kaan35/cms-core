@@ -224,9 +224,9 @@ export async function createServer(
   app.decorate("pluginLoader", pluginLoader);
   app.decorate("hooks", hooks);
 
-  const profile = config.getOrDefault("PLUGINS_PROFILE", "full");
+  const plugins = config.getOrDefault("PLUGINS", "full");
   const baseManifest = customManifest ?? PLUGIN_MANIFEST;
-  const manifest = await resolvePluginManifest(baseManifest, logger, profile);
+  const manifest = await resolvePluginManifest(baseManifest, logger, plugins);
   await pluginLoader.loadAll(manifest, coreMigrations);
 
   const shutdown = async (): Promise<void> => {

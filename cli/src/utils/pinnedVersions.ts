@@ -16,6 +16,7 @@ export const OPTIONAL_CONTENT_PLUGINS = [
   "plugin-blog",
   "plugin-forms",
   "plugin-vault",
+  "plugin-mcp",
 ] as const;
 
-export type PluginProfile = "minimal" | "full" | (string & {});
+export type PluginSelection = "minimal" | "full" | (string & {});

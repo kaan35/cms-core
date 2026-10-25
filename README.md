@@ -11,7 +11,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat&logo=tailwindcss)](https://tailwindcss.com)
 [![Zod](https://img.shields.io/badge/Zod-4-3E67B1?style=flat&logo=zod)](https://zod.dev)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/Tests-258%20Passing-success?style=flat&logo=node.js)](#-testing--commands)
+[![Tests](https://img.shields.io/badge/Tests-278%20Passing-success?style=flat&logo=node.js)](#-testing--commands)
 
 A modular, plugin-based headless CMS and application starter built with **Fastify 5**, **Next.js 16 (React 19)**, **MongoDB 8**, and **Redis 8**. You can run it as a full website with a public frontend or as a lightweight admin panel with only the plugins you need.
 
@@ -25,7 +25,7 @@ A modular, plugin-based headless CMS and application starter built with **Fastif
 - [🛠️ Getting Started](#️-getting-started)
   - [1. Run Locally](#1-run-the-monorepo-locally)
   - [2. CLI Scaffolding (`cms new`)](#2-create-and-upgrade-projects-cms-new--cms-upgrade)
-  - [3. Selecting Plugins (`PLUGINS_PROFILE`)](#3-selecting-plugins-plugins_profile)
+  - [3. Selecting Plugins (`PLUGINS`)](#3-selecting-plugins-plugins)
   - [4. Docker Setup (Dev vs Prod)](#4-docker-architecture-development-vs-production)
 - [🏗️ Architecture & Monorepo Structure](#️-architecture--monorepo-structure)
 - [🧱 Web Client Blocks](#-web-client-blocks)
@@ -138,39 +138,45 @@ npm run dev
 
 ### 2. Create and Upgrade Projects (`cms new` & `cms upgrade`)
 
-The CLI tool (`cli/bin/cms.js`) scaffolds and upgrades lightweight project folders containing `.env`, `docker-compose.yml`, `package.json`, and an optional `client/` folder without copying `api/` or `admin/` source code:
+The CLI tool (`cli/bin/cms.js`) scaffolds and upgrades lightweight project folders containing `.env`, `docker-compose.yml`, `package.json`, and an optional `client/` folder without copying `api/` or `admin/` source code (by default inside `./projects/<name>`, or pass `--dir=..` to place it in a parent/sibling directory):
 
 ```bash
-# Private admin panel with Password Vault (no public website)
-node cli/bin/cms.js new ../my-site --profile=vault --no-client --dir=.. --yes
+# Admin panel with Password Vault (no public client)
+node cli/bin/cms.js new my-vault --plugins=vault --no-client --yes
 
 # Full website with Pages, Blog, Forms, Media, and Next.js client/
-node cli/bin/cms.js new ../my-site --profile=pages,blog,forms,media --client --dir=.. --yes
+node cli/bin/cms.js new my-site --plugins=pages,blog,forms,media --client --yes
+
+# Smart auto-port: CLI automatically detects in-use ports and assigns the next free ports
+node cli/bin/cms.js new my-site --plugins=vault --no-client --yes
+
+# Explicit custom ports for running alongside other projects
+node cli/bin/cms.js new my-site --api-port=3101 --admin-port=3102 --mongo-port=27019 --redis-port=6380
 
 # Interactive setup prompt
 node cli/bin/cms.js new --interactive
 
 # Upgrade an existing project to a specific CMS container version
-node cli/bin/cms.js upgrade latest --dir=../my-site
+node cli/bin/cms.js upgrade latest --dir=./projects/my-site
 ```
 
 ---
 
-### 3. Selecting Plugins (`PLUGINS_PROFILE`)
+### 3. Selecting Plugins (`PLUGINS`)
 
-You can choose which plugins run in each project through the `PLUGINS_PROFILE` variable in `.env`:
+You can choose which plugins run in each project through the `PLUGINS` variable in `.env` (or `--plugins` in the CLI):
 
-| `PLUGINS_PROFILE`        | Loaded Plugins                                                      | Typical Use Case                                                   |
+| `PLUGINS`                | Loaded Plugins                                                      | Typical Use Case                                                   |
 | :----------------------- | :------------------------------------------------------------------ | :----------------------------------------------------------------- |
 | `full` _(default)_       | `auth`, `system`, `media`, `pages`, `blog`, `forms`, `vault`, `mcp` | All built-in plugins enabled                                       |
 | `minimal`                | `auth`, `system`                                                    | Core authentication, users, roles, and system settings only        |
-| `vault`                  | `auth`, `system`, `vault`                                           | Private admin panel with the encrypted password manager            |
+| `vault`                  | `auth`, `system`, `vault`                                           | Standalone admin panel with the encrypted password manager         |
 | `pages,blog,forms,media` | `auth`, `system`, `pages`, `blog`, `forms`, `media`                 | Public website, blog, and contact forms without the password vault |
 
 - **Core Plugins:** `auth` and `system` are always enabled in every project.
-- **Automatic Sidebar Filtering:** Plugins omitted from `PLUGINS_PROFILE` are automatically marked `enabled: false` in the database so they do not appear in the Admin sidebar.
+- **Automatic Sidebar Filtering:** Plugins omitted from `PLUGINS` are automatically marked `enabled: false` in the database so they do not appear in the Admin sidebar.
 - **Runtime Toggles:** Installed plugins can also be turned on or off anytime from the Admin UI at `/dashboard/plugins`.
-- **Startup Validation:** If an unknown plugin name is passed in `PLUGINS_PROFILE`, the server stops on startup with a clear error message listing the valid plugin names.
+- **Startup Validation:** If an unknown plugin name is passed in `PLUGINS`, the server stops on startup with a clear error message listing the valid plugin names.
 
 ---
 
@@ -231,7 +237,7 @@ cms-core/
 | Layer                                                         | Distributed As                                    | Maintenance                                                               |
 | :------------------------------------------------------------ | :------------------------------------------------ | :------------------------------------------------------------------------ |
 | **Core Packages** (`core`, `db`, `admin-shell`, `client-sdk`) | Workspace packages                                | Centrally maintained in the monorepo                                      |
-| **Built-in Plugins** (`plugin-*`)                             | Modular 3-tier plugins (`api`, `admin`, `client`) | Centrally maintained; enabled per project via `PLUGINS_PROFILE`           |
+| **Built-in Plugins** (`plugin-*`)                             | Modular 3-tier plugins (`api`, `admin`, `client`) | Centrally maintained; enabled per project via `PLUGINS`                   |
 | **Backend & Admin Runtimes** (`api/`, `admin/`)               | Docker images (`cms-api`, `cms-admin`)            | Pre-configured server and admin containers                                |
 | **Public Website** (`client-template/`)                       | Starter Next.js 16 app                            | Copied into `--client` projects so you can customize your frontend design |
 
@@ -350,7 +356,7 @@ Key security measures built into the platform:
   - Passwords hashed with `bcrypt` (enforcing 72-byte truncation protection).
   - Dummy hash check on failed logins to prevent timing-based email enumeration.
   - `HttpOnly` and `SameSite` session cookies with `HS256` JWTs.
-  - Instant session revocation (`POST /api/auth/sessions/revoke-all`).
+  - Instant session revocation (`POST /api/auth/sessions/revoke-all`) and account suspension (`status: "suspended"` with immediate session termination and fail-closed 403 rejection).
   - First-run `/setup` wizard permanently locks once the initial admin is registered.
 
 - **Access Control & API Defense**
@@ -378,15 +384,15 @@ Key security measures built into the platform:
 npm run ci
 
 # Or run individual steps:
-npm test            # Run all unit and integration tests (258 passing, ~6s)
-npm run typecheck   # Fast parallel typecheck across all 23 workspaces (~4.5s)
-npm run lint        # Run ESLint across all workspaces (~5s)
-npm run build       # Compile packages to dist/
-npm run db:backup   # Save timestamped MongoDB archive to backups/
-npm run db:restore  # Restore database from backups/backup-latest.archive
+npm test              # Run all unit and integration tests across monorepo
+npm run typecheck     # Fast parallel typecheck across all 23 workspaces (~4.5s)
+npm run lint          # Run ESLint across all workspaces (~5s)
+npm run build         # Compile packages to dist/
+npm run db:backup     # Save timestamped MongoDB archive to backups/
+npm run db:restore    # Restore database from backups/backup-latest.archive
 ```
 
 ### ⚡ Fast Monorepo Scripts
 
 - **Fast Parallel Typecheck (`npm run typecheck`):** Checks libraries via `tsc -b` and builds applications concurrently across CPU cores (~4.5s vs ~32s sequential). Dynamically detects workspaces from `package.json`.
-- **One-Command CI (`npm run ci`):** Runs build, typecheck, lint, and all 258 tests in a single pass to ensure clean commits.
+- **One-Command CI (`npm run ci`):** Runs build, typecheck, lint, and all test suites in a single pass to ensure clean commits.

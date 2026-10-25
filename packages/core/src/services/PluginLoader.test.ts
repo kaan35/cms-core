@@ -300,7 +300,7 @@ describe("PluginLoader & resolvePluginManifest", () => {
       },
       (err: unknown) => {
         assert.ok(err instanceof Error);
-        assert.ok(err.message.includes("Unknown plugin(s) in PLUGINS_PROFILE: plugin-vaullt"));
+        assert.ok(err.message.includes("Unknown plugin(s) in PLUGINS: plugin-vaullt"));
         assert.ok(err.message.includes("plugin-vault"));
         return true;
       },

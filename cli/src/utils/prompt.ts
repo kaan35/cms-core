@@ -2,7 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import readline from "node:readline";
-import type { PluginProfile } from "./pinnedVersions.js";
+import type { PluginSelection } from "./pinnedVersions.js";
+import { DEFAULT_PORTS } from "./ports.js";
 
 export interface PromptNewProjectOptions {
   projectName?: string | undefined;
@@ -12,10 +13,11 @@ export interface PromptNewProjectOptions {
   adminPort?: number | undefined;
   clientPort?: number | undefined;
   mongoPort?: number | undefined;
+  redisPort?: number | undefined;
   autoUpdate?: boolean | undefined;
   includeAdmin?: boolean | undefined;
   includeClient?: boolean | undefined;
-  pluginsProfile?: PluginProfile | undefined;
+  plugins?: PluginSelection | undefined;
 }
 
 export interface PromptResult {
@@ -26,10 +28,11 @@ export interface PromptResult {
   adminPort?: number | undefined;
   clientPort?: number | undefined;
   mongoPort: number;
+  redisPort: number;
   autoUpdate: boolean;
   includeAdmin: boolean;
   includeClient: boolean;
-  pluginsProfile: PluginProfile;
+  plugins: PluginSelection;
 }
 
 export async function promptNewProject(
@@ -137,34 +140,33 @@ export async function promptNewProject(
       includeClient = clientAnswer.toLowerCase().startsWith("y");
     }
 
-    // 4. Plugin Profile Selection
-    let pluginsProfile: PluginProfile =
-      defaults.pluginsProfile ?? (includeClient ? "full" : "minimal");
-    if (defaults.pluginsProfile === undefined) {
-      console.log(`? Select plugin profile:`);
-      console.log(
-        `  1) minimal  - Auth & System only (Ideal for custom apps, SaaS, Password Manager)`,
-      );
-      console.log(`  2) full     - Auth, System, Pages, Blog, Forms, Media (Full CMS)`);
+    // 4. Plugin Selection
+    let plugins: PluginSelection = defaults.plugins ?? (includeClient ? "full" : "minimal");
+    if (defaults.plugins === undefined) {
+      console.log(`? Select plugins to enable:`);
+      console.log(`  1) minimal  - Auth & System only (Core authentication & settings)`);
+      console.log(`  2) full     - All built-in plugins (Pages, Blog, Forms, Media, Vault, MCP)`);
+      console.log(`  (Or enter comma-separated plugin names, e.g. vault,mcp or pages,blog)`);
       const defaultChoice = includeClient ? "2" : "1";
-      const profileAnswer = await ask(`  Choice (1/2) [${defaultChoice}]: `);
-      const trimmed = profileAnswer.trim().toLowerCase();
+      const pluginsAnswer = await ask(`  Choice (1/2) [${defaultChoice}]: `);
+      const trimmed = pluginsAnswer.trim().toLowerCase();
       if (trimmed === "1" || trimmed === "minimal") {
-        pluginsProfile = "minimal";
+        plugins = "minimal";
       } else if (trimmed === "2" || trimmed === "full") {
-        pluginsProfile = "full";
+        plugins = "full";
       } else if (trimmed.length > 0) {
-        pluginsProfile = trimmed;
+        plugins = trimmed;
       } else {
-        pluginsProfile = defaultChoice === "2" ? "full" : "minimal";
+        plugins = defaultChoice === "2" ? "full" : "minimal";
       }
     }
 
     // 5. Ports Configuration
-    let apiPort = defaults.apiPort ?? 3001;
-    let adminPort = includeAdmin ? (defaults.adminPort ?? 3002) : undefined;
-    let clientPort = includeClient ? (defaults.clientPort ?? 3000) : undefined;
-    let mongoPort = defaults.mongoPort ?? 27018;
+    let apiPort = defaults.apiPort ?? DEFAULT_PORTS.api;
+    let adminPort = includeAdmin ? (defaults.adminPort ?? DEFAULT_PORTS.admin) : undefined;
+    let clientPort = includeClient ? (defaults.clientPort ?? DEFAULT_PORTS.client) : undefined;
+    let mongoPort = defaults.mongoPort ?? DEFAULT_PORTS.mongo;
+    let redisPort = defaults.redisPort ?? DEFAULT_PORTS.redis;
 
     const customizePortsAnswer = await ask(`? Configure custom ports? (y/N) [n]: `);
     if (customizePortsAnswer.toLowerCase().startsWith("y")) {
@@ -175,7 +177,9 @@ export async function promptNewProject(
       }
 
       if (includeAdmin) {
-        const adminInput = await ask(`  Host port for Admin Shell (${adminPort ?? 3002}): `);
+        const adminInput = await ask(
+          `  Host port for Admin Shell (${adminPort ?? DEFAULT_PORTS.admin}): `,
+        );
         if (adminInput) {
           const parsed = parseInt(adminInput, 10);
           if (!isNaN(parsed) && parsed > 0 && parsed < 65536) adminPort = parsed;
@@ -183,7 +187,9 @@ export async function promptNewProject(
       }
 
       if (includeClient) {
-        const clientInput = await ask(`  Host port for Client Site (${clientPort ?? 3000}): `);
+        const clientInput = await ask(
+          `  Host port for Client Site (${clientPort ?? DEFAULT_PORTS.client}): `,
+        );
         if (clientInput) {
           const parsed = parseInt(clientInput, 10);
           if (!isNaN(parsed) && parsed > 0 && parsed < 65536) clientPort = parsed;
@@ -194,6 +200,12 @@ export async function promptNewProject(
       if (mongoInput) {
         const parsed = parseInt(mongoInput, 10);
         if (!isNaN(parsed) && parsed > 0 && parsed < 65536) mongoPort = parsed;
+      }
+
+      const redisInput = await ask(`  Host port for Redis cache (${redisPort}): `);
+      if (redisInput) {
+        const parsed = parseInt(redisInput, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed < 65536) redisPort = parsed;
       }
     }
 
@@ -224,10 +236,11 @@ export async function promptNewProject(
       adminPort,
       clientPort,
       mongoPort,
+      redisPort,
       autoUpdate,
       includeAdmin,
       includeClient,
-      pluginsProfile,
+      plugins,
     };
   } finally {
     rl.close();

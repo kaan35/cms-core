@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_CMS_REGISTRY, type PluginProfile } from "./pinnedVersions.js";
+import { DEFAULT_CMS_REGISTRY, type PluginSelection } from "./pinnedVersions.js";
+import { DEFAULT_PORTS } from "./ports.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,7 +21,7 @@ export interface GenerateEnvOptions {
   mongoPort?: number | undefined;
   redisPort?: number | undefined;
   mongoDbName?: string | undefined;
-  pluginsProfile?: PluginProfile | undefined;
+  plugins?: PluginSelection | undefined;
   includeAdmin?: boolean | undefined;
   includeClient?: boolean | undefined;
 }
@@ -41,12 +42,12 @@ export function generateEnvContent(options: GenerateEnvOptions): string {
   const restartPolicy = isDev ? "no" : "unless-stopped";
   const clientTarget = isDev ? "dev" : "runner";
   const autoUpdate = isDev ? false : options.autoUpdate !== false;
-  const apiPort = options.apiPort ?? 3001;
-  const adminPort = options.adminPort ?? 3002;
-  const clientPort = options.clientPort ?? 3000;
-  const mongoPort = options.mongoPort ?? 27017;
-  const redisPort = options.redisPort ?? 6379;
-  const pluginsProfile = options.pluginsProfile ?? "full";
+  const apiPort = options.apiPort ?? DEFAULT_PORTS.api;
+  const adminPort = options.adminPort ?? DEFAULT_PORTS.admin;
+  const clientPort = options.clientPort ?? DEFAULT_PORTS.client;
+  const mongoPort = options.mongoPort ?? DEFAULT_PORTS.mongo;
+  const redisPort = options.redisPort ?? DEFAULT_PORTS.redis;
+  const plugins = options.plugins ?? "full";
   const dbName =
     options.mongoDbName ?? options.projectName.toLowerCase().replace(/[^a-z0-9_]/g, "_");
 
@@ -57,7 +58,7 @@ export function generateEnvContent(options: GenerateEnvOptions): string {
       .replace(/^[^a-z0-9]+/, "") || "cms";
 
   const origins: string[] = [];
-  if (options.includeClient !== false) origins.push(`http://localhost:${clientPort}`);
+  if (options.includeClient) origins.push(`http://localhost:${clientPort}`);
   if (options.includeAdmin !== false) origins.push(`http://localhost:${adminPort}`);
 
   return `# ==============================================================================
@@ -77,7 +78,7 @@ AUTO_UPDATE=${autoUpdate ? "true" : "false"}
 
 # Active Plugins: "full" (all), "minimal" (auth+system only), or comma-separated plugin names:
 # Available plugins: pages, blog, forms, media, vault (auth & system are always enabled)
-PLUGINS_PROFILE=${pluginsProfile}
+PLUGINS=${plugins}
 
 # Environment Mode (production | development)
 NODE_ENV=${nodeEnv}

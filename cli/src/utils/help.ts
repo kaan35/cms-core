@@ -15,13 +15,14 @@ Commands:
     --dir             Target directory (default: "./projects")
     --admin, --no-admin   Include or exclude Admin Shell (default: included)
     --client, --no-client Include or exclude Next.js Client (default: no-client)
-    --profile         Plugins to enable: "full", "minimal", or comma-separated list (pages,blog,forms,media,vault)
+    --plugins         Plugins to enable: "full", "minimal", or comma-separated list (pages,blog,forms,media,vault,mcp)
     --env             Server mode: "production" (default) or "development"
     --cms-tag         Docker image tag for CMS core (default: "latest")
     --api-port        Host port for API service (default: 3001)
     --admin-port      Host port for Admin Shell service (default: 3002)
-    --client-port     Host port for Next.js Client site (default: 3000)
-    --mongo-port      Host port for MongoDB database (default: 27018)
+    --client-port     Host port for Next.js Client site (default: 3003)
+    --mongo-port      Host port for MongoDB database (default: 27017)
+    --redis-port      Host port for Redis cache service (default: 6379)
     --no-auto-update  Disable 1-minute cron auto-update in .env
     -y, --yes         Skip interactive prompts and use defaults
     -i, --interactive Force interactive wizard mode

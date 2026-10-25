@@ -6,7 +6,7 @@ services:
     env_file: .env
     environment:
       - PORT=3001
-      - PLUGINS_PROFILE=${PLUGINS_PROFILE:-full}
+      - PLUGINS=${PLUGINS:-full}
     ports:
       - "${API_PORT:-3001}:3001"
     depends_on:
@@ -27,6 +27,8 @@ services:
     restart: unless-stopped
     environment:
       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-cms}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -39,6 +41,8 @@ services:
     container_name: ${PROJECT_NAME}-redis
     image: redis:8
     restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:

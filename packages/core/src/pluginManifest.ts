@@ -8,22 +8,22 @@ import type { PluginManifestEntry } from "./types/plugin.js";
 export const PLUGIN_MANIFEST: PluginManifestEntry[] = [];
 
 /**
- * Filters and resolves the provided plugin manifest according to the given profile string.
+ * Filters and resolves the provided plugin manifest according to the given plugins selection string.
  * Supports "minimal" (auth + system only), comma-separated list of plugins, or "full" (all provided).
  */
 export async function resolvePluginManifest(
   baseManifest: PluginManifestEntry[] = PLUGIN_MANIFEST,
   logger?: ILogger | undefined,
-  profile?: "minimal" | "full" | string | undefined,
+  plugins?: "minimal" | "full" | string | undefined,
 ): Promise<PluginManifestEntry[]> {
-  logger?.debug("Resolving available plugin manifests for server bootstrap", { profile });
+  logger?.debug("Resolving available plugin manifests for server bootstrap", { plugins });
   let filteredBase: PluginManifestEntry[];
-  if (profile === "minimal") {
+  if (plugins === "minimal") {
     filteredBase = baseManifest.filter(
       (e) => e.name === "plugin-auth" || e.name === "plugin-system",
     );
-  } else if (profile && profile !== "full") {
-    const requested = profile
+  } else if (plugins && plugins !== "full") {
+    const requested = plugins
       .split(",")
       .map((s) => s.trim())
       .filter((s) => s.length > 0)
@@ -35,7 +35,7 @@ export async function resolvePluginManifest(
       if (unknown.length > 0) {
         const validList = Array.from(availableNames).join(", ");
         throw new Error(
-          `Unknown plugin(s) in PLUGINS_PROFILE: ${unknown.join(", ")}. Available plugins: ${validList}`,
+          `Unknown plugin(s) in PLUGINS: ${unknown.join(", ")}. Available plugins: ${validList}`,
         );
       }
     }
