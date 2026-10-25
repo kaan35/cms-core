@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Button,
-  cn,
-  InputSearchField,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Tooltip,
-} from "@cms/admin-shell";
+import { Button, cn, InputSearchField, SelectFilter, Tooltip } from "@cms/admin-shell";
 import { Grid, List as ListIcon, RefreshCw, UploadCloud } from "lucide-react";
 
 interface MediaToolbarProps {
@@ -48,37 +38,18 @@ export function MediaToolbar({
         />
 
         <div className="w-32">
-          <Select
+          <SelectFilter
             value={typeFilter}
-            onValueChange={(val) => {
-              if (val !== null && val !== undefined) {
-                onTypeFilterChange(val as "all" | "image" | "document" | "other");
-              }
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
-              <SelectValue placeholder="All Types">
-                {(val: unknown) => {
-                  switch (val) {
-                    case "image":
-                      return "Images";
-                    case "document":
-                      return "Documents";
-                    case "other":
-                      return "Other";
-                    default:
-                      return "All Types";
-                  }
-                }}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="image">Images</SelectItem>
-              <SelectItem value="document">Documents</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+            onValueChange={onTypeFilterChange}
+            options={[
+              { value: "all", label: "All Types" },
+              { value: "image", label: "Images" },
+              { value: "document", label: "Documents" },
+              { value: "other", label: "Other" },
+            ]}
+            placeholder="All Types"
+            className="h-8 text-xs min-w-32 w-full bg-card"
+          />
         </div>
       </div>
 

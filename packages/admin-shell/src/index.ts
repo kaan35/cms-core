@@ -14,6 +14,7 @@ export * from "./components/ui/label";
 export * from "./components/ui/popover";
 export * from "./components/ui/search-field";
 export * from "./components/ui/select";
+export * from "./components/ui/select-filter";
 export * from "./components/ui/separator";
 export * from "./components/ui/skeleton";
 export * from "./components/ui/sonner";

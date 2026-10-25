@@ -7,11 +7,7 @@ import {
   DialogDeleteConfirm,
   InputSearchField,
   PageHeader,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  SelectFilter,
   Skeleton,
   StatCard,
   Table,
@@ -158,34 +154,17 @@ export function RoleList() {
             />
 
             <div className="w-36">
-              <Select
+              <SelectFilter
                 value={roleTypeFilter}
-                onValueChange={(val) => {
-                  if (val !== null && val !== undefined) {
-                    setRoleTypeFilter(val as "all" | "system" | "custom");
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs min-w-36 w-full bg-card">
-                  <SelectValue placeholder="All Roles">
-                    {(val: unknown) => {
-                      switch (val) {
-                        case "system":
-                          return "System Roles";
-                        case "custom":
-                          return "Custom Roles";
-                        default:
-                          return "All Roles";
-                      }
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="system">System Roles</SelectItem>
-                  <SelectItem value="custom">Custom Roles</SelectItem>
-                </SelectContent>
-              </Select>
+                onValueChange={setRoleTypeFilter}
+                options={[
+                  { value: "all", label: "All Roles" },
+                  { value: "system", label: "System Roles" },
+                  { value: "custom", label: "Custom Roles" },
+                ]}
+                placeholder="All Roles"
+                className="h-8 text-xs min-w-36 w-full bg-card"
+              />
             </div>
           </div>
 

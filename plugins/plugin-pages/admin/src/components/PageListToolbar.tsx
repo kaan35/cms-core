@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  Button,
-  InputSearchField,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Tooltip,
-} from "@cms/admin-shell";
+import { Button, InputSearchField, SelectFilter, Tooltip } from "@cms/admin-shell";
 import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
@@ -40,34 +31,17 @@ export function PageListToolbar({
         />
 
         <div className="w-32">
-          <Select
+          <SelectFilter
             value={statusFilter}
-            onValueChange={(val) => {
-              if (val !== null && val !== undefined) {
-                onStatusFilterChange(val as "all" | "published" | "draft");
-              }
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
-              <SelectValue placeholder="All Statuses">
-                {(val: unknown) => {
-                  switch (val) {
-                    case "published":
-                      return "Published";
-                    case "draft":
-                      return "Drafts";
-                    default:
-                      return "All Statuses";
-                  }
-                }}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
-              <SelectItem value="draft">Drafts</SelectItem>
-            </SelectContent>
-          </Select>
+            onValueChange={onStatusFilterChange}
+            options={[
+              { value: "all", label: "All Statuses" },
+              { value: "published", label: "Published" },
+              { value: "draft", label: "Drafts" },
+            ]}
+            placeholder="All Statuses"
+            className="h-8 text-xs min-w-32 w-full bg-card"
+          />
         </div>
       </div>
 

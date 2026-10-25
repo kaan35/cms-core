@@ -9,11 +9,7 @@ import {
   formatRelativeTime,
   InputSearchField,
   PageHeader,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  SelectFilter,
   Skeleton,
   StatCard,
   Table,
@@ -193,34 +189,17 @@ export function ApiTokensList() {
             />
 
             <div className="w-36">
-              <Select
+              <SelectFilter
                 value={scopeFilter}
-                onValueChange={(val) => {
-                  if (val !== null && val !== undefined) {
-                    setScopeFilter(val as "all" | "full" | "scoped");
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs min-w-36 w-full bg-card">
-                  <SelectValue placeholder="All Scopes">
-                    {(val: unknown) => {
-                      switch (val) {
-                        case "full":
-                          return "Full Access";
-                        case "scoped":
-                          return "Scoped";
-                        default:
-                          return "All Scopes";
-                      }
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Scopes</SelectItem>
-                  <SelectItem value="full">Full Access</SelectItem>
-                  <SelectItem value="scoped">Scoped</SelectItem>
-                </SelectContent>
-              </Select>
+                onValueChange={setScopeFilter}
+                options={[
+                  { value: "all", label: "All Scopes" },
+                  { value: "full", label: "Full Access" },
+                  { value: "scoped", label: "Scoped" },
+                ]}
+                placeholder="All Scopes"
+                className="h-8 text-xs min-w-36 w-full bg-card"
+              />
             </div>
           </div>
 

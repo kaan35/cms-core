@@ -10,11 +10,7 @@ import {
   DropdownMenuTrigger,
   InputSearchField,
   PageHeader,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  SelectFilter,
   Skeleton,
   StatCard,
   Table,
@@ -23,9 +19,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tooltip,
   api,
   toast,
-  Tooltip,
   useApi,
 } from "@cms/admin-shell";
 import {
@@ -250,60 +246,34 @@ export function VaultListPage() {
             />
 
             <div className="w-32">
-              <Select
+              <SelectFilter
                 value={statusFilter}
-                onValueChange={(val) => {
-                  if (val !== null && val !== undefined) {
-                    setStatusFilter(val as "all" | "active" | "stale");
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs min-w-32 w-full bg-card">
-                  <SelectValue placeholder="All Statuses">
-                    {(val: unknown) => {
-                      switch (val) {
-                        case "active":
-                          return "Active";
-                        case "stale":
-                          return "Stale";
-                        default:
-                          return "All Statuses";
-                      }
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="stale">Stale</SelectItem>
-                </SelectContent>
-              </Select>
+                onValueChange={setStatusFilter}
+                options={[
+                  { value: "all", label: "All Statuses" },
+                  { value: "active", label: "Active" },
+                  { value: "stale", label: "Stale" },
+                ]}
+                placeholder="All Statuses"
+                className="h-8 text-xs min-w-32 w-full bg-card"
+              />
             </div>
 
             {availableCategories.length > 0 && (
               <div className="w-36">
-                <Select
+                <SelectFilter
                   value={selectedCategory}
-                  onValueChange={(val) => {
-                    if (val !== null && val !== undefined) {
-                      setSelectedCategory(String(val));
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-xs min-w-36 w-full bg-card capitalize">
-                    <SelectValue placeholder="All Categories">
-                      {(val: unknown) => (val === "all" ? "All Categories" : String(val))}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {availableCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat} className="capitalize">
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onValueChange={setSelectedCategory}
+                  options={[
+                    { value: "all", label: "All Categories" },
+                    ...availableCategories.map((cat) => ({
+                      value: cat,
+                      label: cat.charAt(0).toUpperCase() + cat.slice(1),
+                    })),
+                  ]}
+                  placeholder="All Categories"
+                  className="h-8 text-xs min-w-36 w-full bg-card capitalize"
+                />
               </div>
             )}
           </div>
