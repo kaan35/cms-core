@@ -160,6 +160,7 @@ export async function registerAuthPlugin(
     logger,
     sessionTtlHours,
     slideThresholdMinutes,
+    hooks,
   );
 
   const tokenSecret =
@@ -245,7 +246,7 @@ export async function registerAuthPlugin(
     cookieSecure,
     cookiePrefix,
   );
-  const userController = new UserController(userService);
+  const userController = new UserController(userService, sessionService);
   const roleController = new RoleController(roleService);
   const apiTokenController = new ApiTokenController(apiTokenService);
 

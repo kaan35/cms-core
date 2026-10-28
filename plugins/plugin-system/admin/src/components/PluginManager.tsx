@@ -43,7 +43,7 @@ const PLUGIN_METADATA: Record<
   },
   "plugin-system": {
     label: "System Settings",
-    description: "Audit logs, feature flags and site configuration",
+    description: "Audit logs and site configuration",
     version: "0.1.0",
     isCore: true,
   },

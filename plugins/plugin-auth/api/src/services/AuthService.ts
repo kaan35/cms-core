@@ -206,31 +206,29 @@ export class AuthService {
   }
 
   async logout(sessionId?: string): Promise<void> {
-    if (sessionId) await this.sessionService.revokeSession(sessionId);
+    if (sessionId) await this.sessionService.revokeSession(sessionId, undefined, "logout");
   }
 
-  async listSessions(userId: string, currentSessionId?: string) {
-    return this.sessionService.listUserSessions(userId, currentSessionId);
+  async listSessions(userId: string, currentSessionId?: string, includeHistory = false) {
+    return this.sessionService.listUserSessions(userId, currentSessionId, includeHistory);
   }
 
   async deleteSession(
     sessionId: string,
     user: { id: string; permissions: string[] },
   ): Promise<void> {
-    return this.sessionService.deleteUserSession(sessionId, user);
+    return this.sessionService.deleteUserSession(sessionId, user, "self_revoked");
   }
 
   async revokeAllUserSessions(userId: string, actorId?: string): Promise<void> {
     const targetUser = await this.usersRepo.findById(userId);
     if (!targetUser) throw new NotFoundError("User not found");
-    await this.sessionService.revokeUserSessions(userId);
-    await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, { userId, actorId });
+    await this.sessionService.revokeUserSessions(userId, actorId, "admin_revoked");
     this.logger.info("Admin revoked all sessions for user", { userId, actorId });
   }
 
   async revokeAllSessions(actorId?: string): Promise<void> {
-    await this.sessionService.revokeAllSessions();
-    await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, { all: true, actorId });
+    await this.sessionService.revokeAllSessions(actorId, "panic_revoke_all");
     this.logger.warn("PANIC: Revoked all active sessions across entire system", { actorId });
   }
 

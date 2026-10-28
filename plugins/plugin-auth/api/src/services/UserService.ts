@@ -205,13 +205,38 @@ export class UserService {
     }
 
     if (validated.password) {
-      await this.sessionsRepo.deleteByUserId(id);
-      this.logger.info("Revoked all sessions for user after password update", { userId: id });
+      await this.sessionsRepo.revokeByUserId(id, actorId, "password_changed");
+      await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, {
+        userId: id,
+        actorId,
+        reason: "password_changed",
+      });
+      this.logger.info("Revoked all sessions for user after password update", {
+        userId: id,
+        actorId,
+      });
     }
 
     if (validated.status === "suspended") {
-      await this.sessionsRepo.deleteByUserId(user.id);
-      this.logger.info("Revoked all sessions for user after suspension", { userId: user.id });
+      await this.sessionsRepo.revokeByUserId(user.id, actorId, "user_suspended");
+      await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, {
+        userId: user.id,
+        actorId,
+        reason: "user_suspended",
+      });
+      await this.hooks.emit(EVENTS.AUTH.USER_SUSPENDED, {
+        userId: user.id,
+        actorId,
+      });
+      this.logger.info("Revoked all sessions for user after suspension", {
+        userId: user.id,
+        actorId,
+      });
+    } else if (validated.status === "active" && user.status === "suspended") {
+      await this.hooks.emit(EVENTS.AUTH.USER_ACTIVATED, {
+        userId: user.id,
+        actorId,
+      });
     }
 
     if (validated.status === "suspended") {
@@ -247,7 +272,12 @@ export class UserService {
     }
 
     await this.usersRepo.delete(id);
-    await this.sessionsRepo.deleteByUserId(id);
+    await this.sessionsRepo.revokeByUserId(id, actorId, "admin_revoked");
+    await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, {
+      userId: id,
+      actorId,
+      reason: "admin_revoked",
+    });
 
     await this.hooks.emit(EVENTS.AUTH.USER_DELETED, {
       userId: id,

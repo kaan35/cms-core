@@ -18,7 +18,7 @@ export function useAuth() {
       try {
         return await api.get<{ user: AuthUser }>(url);
       } catch (err: unknown) {
-        if (err instanceof ApiError && err.status === 401) {
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
           return null;
         }
         throw err;
@@ -26,9 +26,10 @@ export function useAuth() {
     },
     {
       revalidateOnMount: false,
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
       shouldRetryOnError: false,
-      dedupingInterval: 60000,
+      dedupingInterval: 5000,
     },
   );
 

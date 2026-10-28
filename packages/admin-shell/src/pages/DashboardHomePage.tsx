@@ -6,8 +6,21 @@ import { DashboardQuickActions } from "../components/dashboard/DashboardQuickAct
 import { DashboardShortcuts } from "../components/dashboard/DashboardShortcuts";
 import { StatCard } from "../components/StatCard";
 import { useApi } from "../hooks/useApi";
+import { useAuth } from "../hooks/useAuth";
 
 export function DashboardHomePage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const userPerms = React.useMemo(() => user?.permissions || [], [user?.permissions]);
+
+  const hasPerm = React.useCallback(
+    (candidates: string[]) => {
+      if (isAdmin) return true;
+      return candidates.some((c) => userPerms.includes(c));
+    },
+    [isAdmin, userPerms],
+  );
+
   const { data: statsData } = useApi<{
     pagesCount?: number;
     postsCount?: number;
@@ -44,6 +57,12 @@ export function DashboardHomePage() {
   const isMediaEnabled = activePlugins.has("plugin-media");
   const isAuthEnabled = activePlugins.has("plugin-auth");
 
+  const canViewPages = isPagesEnabled && hasPerm(["pages:read:draft", "pages:write"]);
+  const canViewBlog = isBlogEnabled && hasPerm(["blog:read:draft", "blog:write"]);
+  const canViewForms = isFormsEnabled && hasPerm(["forms:read", "forms:write"]);
+  const canViewUsers = isAuthEnabled && hasPerm(["users:read", "users:write"]);
+  const canViewPlugins = isAdmin || userPerms.includes("system:plugins:read");
+
   const pagesCount = statsData?.pagesCount ?? 0;
   const postsCount = statsData?.postsCount ?? 0;
   const formsCount = statsData?.formsCount ?? 0;
@@ -51,54 +70,60 @@ export function DashboardHomePage() {
   const pluginsCount = statsData?.pluginsCount ?? (plugins.filter((p) => p.enabled).length || 0);
   const totalPlugins = statsData?.totalPlugins ?? (plugins.length || 0);
 
+  const hasAnyStat = canViewPages || canViewBlog || canViewForms || canViewUsers || canViewPlugins;
+
   return (
     <div className="space-y-6">
       {/* Top Stat Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {isPagesEnabled && (
-          <StatCard
-            title="PAGES"
-            value={pagesCount}
-            description="Published site pages"
-            icon={FileText}
-            iconColor="blue"
-          />
-        )}
-        {isBlogEnabled && (
-          <StatCard
-            title="BLOG POSTS"
-            value={postsCount}
-            description="Articles & blog updates"
-            icon={BookOpen}
-            iconColor="teal"
-          />
-        )}
-        {isFormsEnabled && (
-          <StatCard
-            title="FORMS"
-            value={formsCount}
-            description="Active contact & lead forms"
-            icon={ClipboardList}
-            iconColor="purple"
-          />
-        )}
-        {isAuthEnabled && (
-          <StatCard
-            title="USERS"
-            value={usersCount}
-            description="Active accounts & roles"
-            icon={Users}
-            iconColor="teal"
-          />
-        )}
-        <StatCard
-          title="PLUGINS"
-          value={`${pluginsCount} / ${totalPlugins}`}
-          description="Installed system extensions"
-          icon={Plug}
-          iconColor="amber"
-        />
-      </div>
+      {hasAnyStat && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {canViewPages && (
+            <StatCard
+              title="PAGES"
+              value={pagesCount}
+              description="Published site pages"
+              icon={FileText}
+              iconColor="blue"
+            />
+          )}
+          {canViewBlog && (
+            <StatCard
+              title="BLOG POSTS"
+              value={postsCount}
+              description="Articles & blog updates"
+              icon={BookOpen}
+              iconColor="teal"
+            />
+          )}
+          {canViewForms && (
+            <StatCard
+              title="FORMS"
+              value={formsCount}
+              description="Active contact & lead forms"
+              icon={ClipboardList}
+              iconColor="purple"
+            />
+          )}
+          {canViewUsers && (
+            <StatCard
+              title="USERS"
+              value={usersCount}
+              description="Active accounts & roles"
+              icon={Users}
+              iconColor="teal"
+            />
+          )}
+          {canViewPlugins && (
+            <StatCard
+              title="PLUGINS"
+              value={`${pluginsCount} / ${totalPlugins}`}
+              description="Installed system extensions"
+              icon={Plug}
+              iconColor="amber"
+            />
+          )}
+        </div>
+      )}
 
       {/* Grid: Quick Actions & Management Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

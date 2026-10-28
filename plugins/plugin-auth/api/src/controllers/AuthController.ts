@@ -172,7 +172,12 @@ export class AuthController {
       return reply.status(401).send({ message: "Unauthorized" });
     }
     const currentSessionId = request.user?.sessionId;
-    const sessions = await this.authService.listSessions(userId, currentSessionId);
+    const { includeHistory } = (request.query as { includeHistory?: string }) || {};
+    const sessions = await this.authService.listSessions(
+      userId,
+      currentSessionId,
+      includeHistory === "true" || includeHistory === "1",
+    );
     return reply.send({ sessions });
   }
 

@@ -6,14 +6,14 @@ export const EVENTS = {
     ROLE_CREATED: "role.created",
     ROLE_UPDATED: "role.updated",
     ROLE_DELETED: "role.deleted",
-    SESSION_REVOKED: "session.revoked",
+    SESSION_REFRESHED: "auth.session.refreshed",
+    SESSION_REVOKED: "auth.session.revoked",
+    USER_SUSPENDED: "auth.user.suspended",
+    USER_ACTIVATED: "auth.user.activated",
   },
   SYSTEM: {
     PLUGIN_TOGGLED: "plugin.toggled",
     SETTINGS_UPDATED: "settings.updated",
-    FEATURE_FLAG_CREATED: "feature-flag.created",
-    FEATURE_FLAG_UPDATED: "feature-flag.updated",
-    FEATURE_FLAG_DELETED: "feature-flag.deleted",
   },
   MEDIA: {
     FILE_UPLOADED: "media.uploaded",

@@ -61,18 +61,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Feature flags & settings read during SSR
-  const [flags, settingsRes] = await Promise.all([
-    api.get<Record<string, boolean>>("/feature-flags").catch(() => ({})),
-    api.get<{ settings?: SettingsDoc } | SettingsDoc>("/settings").catch(() => null),
-  ]);
+  // Settings read during SSR
+  const settingsRes = await api
+    .get<{ settings?: SettingsDoc } | SettingsDoc>("/settings")
+    .catch(() => null);
 
   const settings =
     settingsRes && "settings" in settingsRes && settingsRes.settings
       ? settingsRes.settings
       : (settingsRes as SettingsDoc | null);
 
-  const enableScrollAnimations = (flags as Record<string, boolean>).scrollAnimations !== false;
+  const enableScrollAnimations = true;
   const defaultTheme = (settings?.defaultTheme as "dark" | "light" | "system") || "light";
   const primaryColor = settings?.primaryColor || settings?.brandColor || "#3b82f6";
   const foregroundColor = getContrastForeground(primaryColor);

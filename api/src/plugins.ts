@@ -46,7 +46,7 @@ export const API_PLUGIN_MANIFEST: PluginManifestEntry[] = [
     migrations: [
       {
         id: "202601020000_init_system",
-        description: "Create indexes for cms_plugins, cms_feature_flags, and cms_audit_log",
+        description: "Create indexes for cms_plugins and cms_audit_log",
         up: async (db) => {
           await initSystemMigration.up(db);
         },

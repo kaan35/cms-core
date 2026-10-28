@@ -9,14 +9,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   toast,
   useApi,
 } from "@cms/admin-shell";
-import { Key, RefreshCw, ShieldAlert } from "lucide-react";
+import { History, Key, Laptop, RefreshCw, ShieldAlert } from "lucide-react";
 import * as React from "react";
 import { RevokeSessionDialogs } from "./sessions/RevokeSessionDialogs";
 import { SessionTableRow } from "./sessions/SessionTableRow";
-import type { SessionItem } from "./sessions/sessionUtils";
+import { isSessionActive, type SessionItem } from "./sessions/sessionUtils";
 
 export type { SessionItem } from "./sessions/sessionUtils";
 
@@ -37,6 +41,14 @@ export function SessionsList() {
     : Array.isArray(rawData?.sessions)
       ? rawData.sessions
       : [];
+
+  const activeSessions = React.useMemo(() => {
+    return sessions.filter((s) => isSessionActive(s) && s.status !== "revoked");
+  }, [sessions]);
+
+  const historySessions = React.useMemo(() => {
+    return sessions.filter((s) => !isSessionActive(s) || s.status === "revoked");
+  }, [sessions]);
 
   const handleConfirmRevoke = async () => {
     if (!sessionToRevoke) return;
@@ -70,13 +82,17 @@ export function SessionsList() {
     }
   };
 
+  const otherActiveSessionsCount = activeSessions.filter((s) => !s.current && !s.isCurrent).length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Active Sessions</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            Device & Session History
+          </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Manage your signed-in devices and active authentication tokens
+            Manage your signed-in devices, active tokens, and historical sign-in activities
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -85,6 +101,7 @@ export function SessionsList() {
           </Button>
           <Button
             variant="destructive"
+            disabled={otherActiveSessionsCount === 0 || isRevokingAll}
             onClick={() => setRevokeAllModalOpen(true)}
             iconStart={<ShieldAlert />}
           >
@@ -93,47 +110,107 @@ export function SessionsList() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs">
-        {isLoading ? (
-          <div className="p-4 space-y-3">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList>
+          <TabsTrigger value="active" className="gap-2">
+            <Laptop className="size-3.5" />
+            <span>Active Sessions ({activeSessions.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="history" className="gap-2">
+            <History className="size-3.5" />
+            <span>Session History ({historySessions.length})</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active">
+          <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs">
+            {isLoading ? (
+              <div className="p-4 space-y-3">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : activeSessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
+                  <Key className="size-6 opacity-80" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">No active sessions</h3>
+                <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+                  No active authenticated device sessions were found for your account.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                    <TableHead className="w-[35%]">Device & Browser</TableHead>
+                    <TableHead>IP Address</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Activity & Lifetime</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activeSessions.map((session) => (
+                    <SessionTableRow
+                      key={session.id}
+                      session={session}
+                      isRevoking={revokingId === session.id}
+                      onRequestRevoke={setSessionToRevoke}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
-        ) : sessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
-              <Key className="size-6 opacity-80" />
-            </div>
-            <h3 className="text-sm font-semibold text-foreground">No active sessions</h3>
-            <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
-              No authenticated device sessions were found for your account.
-            </p>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs">
+            {isLoading ? (
+              <div className="p-4 space-y-3">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : historySessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
+                  <History className="size-6 opacity-80" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">No session history</h3>
+                <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+                  No previous or terminated sessions recorded.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                    <TableHead className="w-[35%]">Device & Browser</TableHead>
+                    <TableHead>IP Address</TableHead>
+                    <TableHead>Status / Reason</TableHead>
+                    <TableHead>Activity & Lifetime</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {historySessions.map((session) => (
+                    <SessionTableRow
+                      key={session.id}
+                      session={session}
+                      isRevoking={false}
+                      onRequestRevoke={() => {}}
+                      showRevokeAction={false}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                <TableHead className="w-[35%]">Device & Browser</TableHead>
-                <TableHead>IP Address</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created / Expires</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessions.map((session) => (
-                <SessionTableRow
-                  key={session.id}
-                  session={session}
-                  isRevoking={revokingId === session.id}
-                  onRequestRevoke={setSessionToRevoke}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
 
       <RevokeSessionDialogs
         sessionToRevoke={sessionToRevoke}

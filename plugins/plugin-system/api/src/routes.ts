@@ -22,10 +22,10 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
     {
       schema: {
         tags: ["System"],
-        summary: "List all plugins and their runtime status (Admin)",
+        summary: "List all plugins and their runtime status (Authenticated)",
         security: [{ cookieAuth: [] }],
       },
-      preHandler: [authenticate, checkPermission(SYSTEM_PERMISSIONS.PLUGINS_READ)],
+      preHandler: [authenticate],
     },
     controller.listPlugins.bind(controller),
   );
@@ -67,70 +67,6 @@ export function registerSystemRoutes(app: FastifyInstance, controller: SystemCon
       preHandler: [authenticate, verifyCsrf, checkPermission(SYSTEM_PERMISSIONS.SETTINGS_WRITE)],
     },
     controller.updateSettings.bind(controller),
-  );
-
-  // Feature Flags
-  // GET is public (unauthenticated SSR & client evaluation)
-  app.get(
-    "/feature-flags",
-    {
-      schema: {
-        tags: ["System"],
-        summary: "Get public feature flags evaluation (public)",
-      },
-    },
-    controller.listFeatureFlags.bind(controller),
-  );
-
-  app.post(
-    "/feature-flags",
-    {
-      schema: {
-        tags: ["System"],
-        summary: "Create a new feature flag (Admin)",
-        security: [{ cookieAuth: [] }, { csrfToken: [] }],
-      },
-      preHandler: [
-        authenticate,
-        verifyCsrf,
-        checkPermission(SYSTEM_PERMISSIONS.FEATURE_FLAGS_WRITE),
-      ],
-    },
-    controller.createFeatureFlag.bind(controller),
-  );
-
-  app.put(
-    "/feature-flags/:key",
-    {
-      schema: {
-        tags: ["System"],
-        summary: "Update feature flag value (Admin)",
-        security: [{ cookieAuth: [] }, { csrfToken: [] }],
-      },
-      preHandler: [
-        authenticate,
-        verifyCsrf,
-        checkPermission(SYSTEM_PERMISSIONS.FEATURE_FLAGS_WRITE),
-      ],
-    },
-    controller.updateFeatureFlag.bind(controller),
-  );
-
-  app.delete(
-    "/feature-flags/:key",
-    {
-      schema: {
-        tags: ["System"],
-        summary: "Delete a feature flag (Admin)",
-        security: [{ cookieAuth: [] }, { csrfToken: [] }],
-      },
-      preHandler: [
-        authenticate,
-        verifyCsrf,
-        checkPermission(SYSTEM_PERMISSIONS.FEATURE_FLAGS_WRITE),
-      ],
-    },
-    controller.deleteFeatureFlag.bind(controller),
   );
 
   // Audit Log (Read-Only)

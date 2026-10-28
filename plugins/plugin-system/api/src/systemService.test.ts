@@ -1,6 +1,5 @@
 import type { PluginLoader } from "@cms/core";
 import {
-  ConflictError,
   HookManager,
   NotFoundError,
   SettingsService,
@@ -11,7 +10,6 @@ import { createInMemoryDb } from "@cms/db";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { AuditLogRepository } from "./repositories/auditLogRepository.js";
-import { FeatureFlagsRepository } from "./repositories/featureFlagsRepository.js";
 import { PluginsRepository } from "./repositories/pluginsRepository.js";
 import { SystemService } from "./systemService.js";
 
@@ -19,7 +17,6 @@ describe("SystemService", () => {
   const setup = async () => {
     const db = createInMemoryDb();
     const pluginsRepo = new PluginsRepository(db);
-    const featureFlagsRepo = new FeatureFlagsRepository(db);
     const auditLogRepo = new AuditLogRepository(db);
     const settings = new SettingsService(db, stubLogger);
     const hooks = new HookManager();
@@ -33,7 +30,6 @@ describe("SystemService", () => {
 
     const service = new SystemService(
       pluginsRepo,
-      featureFlagsRepo,
       auditLogRepo,
       settings,
       stubPluginLoader,
@@ -49,7 +45,6 @@ describe("SystemService", () => {
       db,
       hooks,
       pluginsRepo,
-      featureFlagsRepo,
       auditLogRepo,
       isReloaded: () => reloaded,
     };
@@ -91,38 +86,6 @@ describe("SystemService", () => {
     assert.equal(updated.brandFont, "Roboto");
     assert.equal(updated.adminTitle, "Password Manager Admin");
     assert.equal(updated.siteTitle, "Password Manager Website");
-  });
-
-  it("manages feature flags lifecycle", async () => {
-    const { service } = await setup();
-
-    // Invalid flag key
-    await assert.rejects(
-      async () =>
-        service.createFeatureFlag({ key: "invalid key with spaces", label: "Test", value: true }),
-      ValidationError,
-    );
-
-    const flag = await service.createFeatureFlag({
-      key: "new_checkout",
-      label: "New Checkout Flow",
-      value: true,
-    });
-    assert.equal(flag.key, "new_checkout");
-    assert.equal(flag.value, true);
-
-    // Conflict error on duplicate key
-    await assert.rejects(
-      async () =>
-        service.createFeatureFlag({ key: "new_checkout", label: "Duplicate", value: false }),
-      ConflictError,
-    );
-
-    const updated = await service.updateFeatureFlag("new_checkout", { value: false });
-    assert.equal(updated.value, false);
-
-    await service.deleteFeatureFlag("new_checkout");
-    await assert.rejects(async () => service.getFeatureFlag("new_checkout"), NotFoundError);
   });
 
   it("automatic audit logging captures platform events", async () => {

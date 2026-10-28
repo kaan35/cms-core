@@ -6,22 +6,15 @@ export const SYSTEM_PERMISSIONS = {
   PLUGINS_WRITE: PERMISSIONS.SYSTEM.PLUGINS_WRITE,
   SETTINGS_READ: PERMISSIONS.SYSTEM.SETTINGS_READ,
   SETTINGS_WRITE: PERMISSIONS.SYSTEM.SETTINGS_WRITE,
-  FEATURE_FLAGS_READ: PERMISSIONS.SYSTEM.FEATURE_FLAGS_READ,
-  FEATURE_FLAGS_WRITE: PERMISSIONS.SYSTEM.FEATURE_FLAGS_WRITE,
   AUDIT_LOG_READ: PERMISSIONS.SYSTEM.AUDIT_LOG_READ,
 } as const;
 
 export const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-export const FEATURE_FLAG_KEY_REGEX = /^[a-zA-Z0-9_.-]{2,64}$/;
 
 export type SiteTheme = "dark" | "light" | "system";
 
 export function validateHexColor(color: string): boolean {
   return HEX_COLOR_REGEX.test(color.trim());
-}
-
-export function validateFeatureFlagKey(key: string): boolean {
-  return FEATURE_FLAG_KEY_REGEX.test(key.trim());
 }
 
 export function validateTheme(theme: string): boolean {
@@ -74,33 +67,12 @@ export const UpdateSettingsSchema = z.object({
   sessionTimeoutMinutes: z.number().int().positive().optional(),
 });
 
-export const CreateFeatureFlagSchema = z.object({
-  key: z
-    .string()
-    .trim()
-    .regex(
-      FEATURE_FLAG_KEY_REGEX,
-      "Flag key must be 2-64 alphanumeric, dash, dot, or underscore characters",
-    ),
-  label: z.string().trim().optional(),
-  description: z.string().trim().optional(),
-  value: z.boolean().default(false),
-});
-
-export const UpdateFeatureFlagSchema = z.object({
-  label: z.string().trim().optional(),
-  description: z.string().trim().optional(),
-  value: z.boolean().optional(),
-});
-
 export const TogglePluginSchema = z.object({
   enabled: z.boolean(),
 });
 
 // Inferred TypeScript Types
 export type UpdateSettingsInput = z.infer<typeof UpdateSettingsSchema>;
-export type CreateFeatureFlagInput = z.infer<typeof CreateFeatureFlagSchema>;
-export type UpdateFeatureFlagInput = z.infer<typeof UpdateFeatureFlagSchema>;
 export type TogglePluginInput = z.infer<typeof TogglePluginSchema>;
 
 export interface SystemSettingsDoc {
@@ -124,14 +96,6 @@ export type SettingsDoc = SystemSettingsDoc;
 // Validation Helpers
 export function validateUpdateSettings(input: unknown): UpdateSettingsInput {
   return validateWithSchema(UpdateSettingsSchema, input, "Invalid system settings payload");
-}
-
-export function validateCreateFeatureFlag(input: unknown): CreateFeatureFlagInput {
-  return validateWithSchema(CreateFeatureFlagSchema, input, "Invalid feature flag payload");
-}
-
-export function validateUpdateFeatureFlag(input: unknown): UpdateFeatureFlagInput {
-  return validateWithSchema(UpdateFeatureFlagSchema, input, "Invalid feature flag update payload");
 }
 
 export function validateTogglePlugin(input: unknown): TogglePluginInput {

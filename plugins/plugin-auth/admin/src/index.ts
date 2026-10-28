@@ -3,6 +3,7 @@ export * from "./components/RoleList";
 export * from "./components/RoleEditor";
 export * from "./components/SessionsList";
 export * from "./components/UserPermissionsEditor";
+export * from "./components/permissions/UserSessionsCard";
 export * from "./components/AccountPage";
 export * from "./components/tokens/ApiTokensList";
 export * from "./components/tokens/CreateTokenDialog";

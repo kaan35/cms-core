@@ -78,15 +78,12 @@ export type {
 // --- System & Navigation Types ---
 export type {
   AuditLogDoc,
-  CreateFeatureFlagInput,
-  FeatureFlagDoc,
   NavigationMenuItem,
   PluginDoc,
   SettingsDoc,
   SiteTheme,
   SystemSettingsDoc,
   TogglePluginInput,
-  UpdateFeatureFlagInput,
   UpdateSettingsInput,
 } from "@cms/plugin-system-api";
 

@@ -1,18 +1,19 @@
 export const ALL_PERMISSIONS: Record<string, string[]> = {
   USERS: ["users:read", "users:write"],
   ROLES: ["roles:read", "roles:write"],
-  AUTH: ["auth:settings:write", "auth:sessions:revoke_all"],
+  AUTH: ["auth:settings:write", "auth:sessions:revoke_all", "tokens:read", "tokens:write"],
   PAGES: ["pages:read:draft", "pages:write"],
+  NAVIGATION: ["navigation:read", "navigation:write"],
   BLOG: ["blog:read:draft", "blog:write"],
   FORMS: ["forms:read", "forms:write"],
   MEDIA: ["media:read", "media:write"],
+  VAULT: ["vault:read", "vault:write"],
+  MCP: ["mcp:read", "mcp:write"],
   SYSTEM: [
     "system:settings:read",
     "system:settings:write",
     "system:plugins:read",
     "system:plugins:write",
-    "system:feature-flags:read",
-    "system:feature-flags:write",
     "system:audit-log:read",
   ],
 };

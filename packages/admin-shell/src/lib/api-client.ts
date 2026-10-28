@@ -249,16 +249,30 @@ async function executeRequest<T = unknown>(
     setCsrfToken((data as Record<string, unknown>)["csrfToken"] as string);
   }
 
-  // 401 Session Expiration Interceptor: Auto-redirect to login
+  // 401 Session Expiration & 403 Account Suspension Interceptor: Auto-redirect to login
+  const isSuspended =
+    response.status === 403 &&
+    typeof data === "object" &&
+    data !== null &&
+    String(
+      (data as Record<string, unknown>)["error"] ||
+        (data as Record<string, unknown>)["message"] ||
+        (data as Record<string, unknown>)["code"] ||
+        "",
+    )
+      .toLowerCase()
+      .includes("suspended");
+
   if (
-    response.status === 401 &&
+    (response.status === 401 || isSuspended) &&
     !isExternal &&
     !skipAuthRedirect &&
     typeof window !== "undefined"
   ) {
     const currentPath = window.location.pathname;
     if (currentPath !== "/login" && currentPath !== "/setup") {
-      const redirectUrl = `/login?redirect=${encodeURIComponent(currentPath + window.location.search)}&expired=true`;
+      const param = isSuspended ? "suspended=true" : "expired=true";
+      const redirectUrl = `/login?redirect=${encodeURIComponent(currentPath + window.location.search)}&${param}`;
       setTimeout(() => {
         window.location.href = redirectUrl;
       }, 100);

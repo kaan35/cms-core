@@ -4,14 +4,23 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
 import { Skeleton } from "./ui/skeleton";
+import { AccessDenied } from "./AccessDenied";
 
 export interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredRole?: string | string[];
+  requiredPermission?: string | string[];
+  fallback?: React.ReactNode;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  requiredRole,
+  requiredPermission,
+  fallback,
+}: ProtectedRouteProps) {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   React.useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -37,8 +46,30 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return null;
+  }
+
+  // Admin role bypasses granular permission checks
+  const isAdmin = user.role === "admin";
+
+  let hasRoleAccess = true;
+  if (requiredRole && !isAdmin) {
+    const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    hasRoleAccess = roles.includes(user.role);
+  }
+
+  let hasPermissionAccess = true;
+  if (requiredPermission && !isAdmin) {
+    const permissions = Array.isArray(requiredPermission)
+      ? requiredPermission
+      : [requiredPermission];
+    const userPerms = user.permissions || [];
+    hasPermissionAccess = permissions.some((p) => userPerms.includes(p));
+  }
+
+  if (!hasRoleAccess || !hasPermissionAccess) {
+    return fallback ? <>{fallback}</> : <AccessDenied />;
   }
 
   return <>{children}</>;

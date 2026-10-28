@@ -6,11 +6,51 @@ import type { UserController } from "../controllers/UserController.js";
 export function registerUserRoutes(
   app: FastifyInstance,
   userCtrl: UserController,
-  authCtrl: AuthController,
+  _authCtrl: AuthController,
 ): void {
   const { authenticate, checkPermission, verifyCsrf } = app;
 
-  // Admin User Session Revocation
+  // Admin User Sessions Management
+  app.get(
+    "/users/:id/sessions",
+    {
+      schema: {
+        tags: ["Auth"],
+        summary: "List all active and past sessions for a user (Admin)",
+        security: [{ cookieAuth: [] }],
+      },
+      preHandler: [authenticate, checkPermission(PERMISSIONS.AUTH.USERS_READ)],
+    },
+    userCtrl.listUserSessions.bind(userCtrl),
+  );
+
+  app.delete(
+    "/users/:id/sessions/:sessionId",
+    {
+      schema: {
+        tags: ["Auth"],
+        summary: "Revoke a specific session for a user (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
+      preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.USERS_WRITE)],
+    },
+    userCtrl.revokeUserSession.bind(userCtrl),
+  );
+
+  app.post(
+    "/users/:id/sessions/revoke-all",
+    {
+      schema: {
+        tags: ["Auth"],
+        summary: "Revoke all active sessions for a specific user (Admin)",
+        security: [{ cookieAuth: [] }, { csrfToken: [] }],
+      },
+      preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.USERS_WRITE)],
+    },
+    userCtrl.revokeAllUserSessions.bind(userCtrl),
+  );
+
+  // Backward compatible DELETE /users/:id/sessions
   app.delete(
     "/users/:id/sessions",
     {
@@ -21,7 +61,7 @@ export function registerUserRoutes(
       },
       preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.USERS_WRITE)],
     },
-    authCtrl.revokeAllUserSessions.bind(authCtrl),
+    userCtrl.revokeAllUserSessions.bind(userCtrl),
   );
 
   // User Management

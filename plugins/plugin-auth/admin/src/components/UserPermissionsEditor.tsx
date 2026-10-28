@@ -1,7 +1,19 @@
 "use client";
 
-import { api, Button, Skeleton, toast, useApi, useSaveShortcut } from "@cms/admin-shell";
-import { ArrowLeft, Save, User } from "lucide-react";
+import {
+  api,
+  Button,
+  cn,
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  toast,
+  useApi,
+  useSaveShortcut,
+} from "@cms/admin-shell";
+import { ArrowLeft, Laptop, Save, ShieldCheck, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import {
@@ -12,6 +24,7 @@ import {
 import { PermissionMatrixCard } from "./permissions/PermissionMatrixCard";
 import { computeInitialPermissions, type UserDetailResponse } from "./permissions/permissionsUtils";
 import { UserProfileCard } from "./permissions/UserProfileCard";
+import { UserSessionsCard } from "./permissions/UserSessionsCard";
 
 export function UserPermissionsEditor({ userId }: { userId: string }) {
   const router = useRouter();
@@ -213,26 +226,60 @@ export function UserPermissionsEditor({ userId }: { userId: string }) {
         </div>
       </div>
 
-      <UserProfileCard
-        isNew={isNew}
-        email={inputData.email}
-        name={inputData.name}
-        password={inputData.password}
-        role={inputData.role}
-        status={inputData.status}
-        rolesData={rolesData}
-        onEmailChange={(email) => setInputData((prev) => ({ ...prev, email }))}
-        onNameChange={(name) => setInputData((prev) => ({ ...prev, name }))}
-        onPasswordChange={(password) => setInputData((prev) => ({ ...prev, password }))}
-        onRoleChange={handleRoleTemplateChange}
-        onStatusChange={(status) => setInputData((prev) => ({ ...prev, status }))}
-      />
+      <Tabs defaultValue="profile" className="space-y-6">
+        <TabsList
+          className={cn("grid w-full p-1", isNew ? "max-w-xs grid-cols-2" : "max-w-md grid-cols-3")}
+        >
+          <TabsTrigger value="profile" className="flex items-center gap-2 px-3.5 py-1.5 text-xs">
+            <User className="size-3.5" />
+            Profile & Role
+          </TabsTrigger>
+          <TabsTrigger
+            value="permissions"
+            className="flex items-center gap-2 px-3.5 py-1.5 text-xs"
+          >
+            <ShieldCheck className="size-3.5" />
+            Permissions
+          </TabsTrigger>
+          {!isNew && (
+            <TabsTrigger value="sessions" className="flex items-center gap-2 px-3.5 py-1.5 text-xs">
+              <Laptop className="size-3.5" />
+              Devices & Sessions
+            </TabsTrigger>
+          )}
+        </TabsList>
 
-      <PermissionMatrixCard
-        permissions={inputData.permissions}
-        onTogglePermission={togglePermission}
-        onGroupSelectAll={handleGroupSelectAll}
-      />
+        <TabsContent value="profile" className="space-y-6 focus-visible:outline-none">
+          <UserProfileCard
+            isNew={isNew}
+            email={inputData.email}
+            name={inputData.name}
+            password={inputData.password}
+            role={inputData.role}
+            status={inputData.status}
+            rolesData={rolesData}
+            onEmailChange={(email) => setInputData((prev) => ({ ...prev, email }))}
+            onNameChange={(name) => setInputData((prev) => ({ ...prev, name }))}
+            onPasswordChange={(password) => setInputData((prev) => ({ ...prev, password }))}
+            onRoleChange={handleRoleTemplateChange}
+            onStatusChange={(status) => setInputData((prev) => ({ ...prev, status }))}
+          />
+        </TabsContent>
+
+        <TabsContent value="permissions" className="space-y-6 focus-visible:outline-none">
+          <PermissionMatrixCard
+            permissions={inputData.permissions}
+            onTogglePermission={togglePermission}
+            onGroupSelectAll={handleGroupSelectAll}
+          />
+        </TabsContent>
+
+        {!isNew && (
+          <TabsContent value="sessions" className="space-y-6 focus-visible:outline-none">
+            <UserSessionsCard userId={userId} userEmail={inputData.email} />
+          </TabsContent>
+        )}
+      </Tabs>
     </form>
   );
 }

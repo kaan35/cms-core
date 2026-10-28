@@ -5,7 +5,6 @@ import type {
   BlogPostDoc,
   BlogPostStatus,
   ClientConfig,
-  FeatureFlagDoc,
   FormDoc,
   FormField,
   FormSubmissionDoc,
@@ -157,15 +156,6 @@ describe("Client SDK Types", () => {
       installedAt: "2026-01-01T00:00:00.000Z",
     };
     assert.equal(plugin.enabled, true);
-
-    const flag: FeatureFlagDoc = {
-      id: "flag-1",
-      key: "dark-mode",
-      enabled: true,
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    assert.equal(flag.key, "dark-mode");
 
     const audit: AuditLogDoc = {
       id: "audit-1",

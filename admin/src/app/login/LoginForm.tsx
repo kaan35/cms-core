@@ -1,10 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Flame, Lock, LogIn, Mail } from "lucide-react";
+import { AlertCircle, Flame, Lock, LogIn, Mail } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { api, Button, InputField, setCsrfToken, toast, useApi, useAuth } from "@cms/admin-shell";
 
-export function LoginForm() {
+function LoginFormContent() {
+  const searchParams = useSearchParams();
+  const isSuspended = searchParams.get("suspended") === "true";
   const { isAuthenticated, isLoading, mutate } = useAuth();
 
   const { data: rawSettings } = useApi<
@@ -31,6 +34,7 @@ export function LoginForm() {
 
   // Automatically restore session if active cookie exists (e.g. after container restart)
   React.useEffect(() => {
+    if (isSuspended) return;
     mutate()
       .then((data) => {
         if (data?.user) {
@@ -38,13 +42,14 @@ export function LoginForm() {
         }
       })
       .catch(() => {});
-  }, [mutate]);
+  }, [mutate, isSuspended]);
 
   React.useEffect(() => {
+    if (isSuspended) return;
     if (!isLoading && isAuthenticated) {
       window.location.href = "/dashboard";
     }
-  }, [isLoading, isAuthenticated]);
+  }, [isLoading, isAuthenticated, isSuspended]);
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -85,12 +90,33 @@ export function LoginForm() {
         </div>
 
         {/* Card */}
-        <div className="w-full rounded-2xl border border-border/80 bg-card p-6 shadow-xl">
-          <form onSubmit={handleSubmit} method="post" autoComplete="on" className="space-y-4">
+        <div className="w-full rounded-2xl border border-border/80 bg-card p-6 shadow-xl space-y-4">
+          {isSuspended && (
+            <div
+              role="alert"
+              className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-destructive text-xs flex items-start gap-2.5"
+            >
+              <AlertCircle className="size-4 shrink-0 mt-0.5 text-destructive" />
+              <div className="space-y-0.5">
+                <p className="font-semibold">Account Suspended</p>
+                <p className="text-destructive/90 leading-relaxed">
+                  Your account has been suspended. Please contact an administrator for assistance.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <form
+            onSubmit={handleSubmit}
+            action="/api/auth/login"
+            method="post"
+            autoComplete="on"
+            className="space-y-4"
+          >
             <InputField
               id="email"
               name="email"
-              autoComplete="username"
+              autoComplete="username email"
               label="Email"
               type="email"
               placeholder="admin@cms.com"
@@ -125,5 +151,13 @@ export function LoginForm() {
         </div>
       </div>
     </div>
+  );
+}
+
+export function LoginForm() {
+  return (
+    <React.Suspense fallback={null}>
+      <LoginFormContent />
+    </React.Suspense>
   );
 }

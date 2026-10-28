@@ -6,13 +6,8 @@ import type {
   AuditLogRepository,
   AuditLogSearchContext,
 } from "../repositories/auditLogRepository.js";
-import type {
-  FeatureFlagDoc,
-  FeatureFlagsRepository,
-} from "../repositories/featureFlagsRepository.js";
 import type { PluginDoc, PluginsRepository } from "../repositories/pluginsRepository.js";
 import { BrandSettingsService } from "./BrandSettingsService.js";
-import { FeatureFlagService } from "./FeatureFlagService.js";
 
 export class SystemService {
   private readonly pluginsRepo: PluginsRepository;
@@ -22,11 +17,9 @@ export class SystemService {
   private readonly db: IDatabase;
   private readonly logger: ILogger;
   private readonly brandSettingsService: BrandSettingsService;
-  private readonly featureFlagService: FeatureFlagService;
 
   constructor(
     pluginsRepo: PluginsRepository,
-    featureFlagsRepo: FeatureFlagsRepository,
     auditLogRepo: AuditLogRepository,
     settingsService: ISettingsService,
     pluginLoader: PluginLoader,
@@ -34,7 +27,6 @@ export class SystemService {
     db: IDatabase,
     logger: ILogger,
     brandSettingsService?: BrandSettingsService,
-    featureFlagService?: FeatureFlagService,
   ) {
     this.pluginsRepo = pluginsRepo;
     this.auditLogRepo = auditLogRepo;
@@ -44,8 +36,6 @@ export class SystemService {
     this.logger = logger;
     this.brandSettingsService =
       brandSettingsService ?? new BrandSettingsService(settingsService, hooks, logger);
-    this.featureFlagService =
-      featureFlagService ?? new FeatureFlagService(featureFlagsRepo, hooks, logger);
   }
 
   async listPlugins(): Promise<PluginDoc[]> {
@@ -79,31 +69,6 @@ export class SystemService {
 
   async updateSettings(patch: unknown, actorId?: string) {
     return this.brandSettingsService.updateSettings(patch, actorId);
-  }
-
-  // Feature Flag delegation
-  async listFeatureFlags() {
-    return this.featureFlagService.listFeatureFlags();
-  }
-
-  async getFeatureFlag(key: string) {
-    return this.featureFlagService.getFeatureFlag(key);
-  }
-
-  async createFeatureFlag(input: unknown, actorId?: string): Promise<FeatureFlagDoc> {
-    return this.featureFlagService.createFeatureFlag(input, actorId);
-  }
-
-  async updateFeatureFlag(key: string, patch: unknown, actorId?: string) {
-    return this.featureFlagService.updateFeatureFlag(key, patch, actorId);
-  }
-
-  async deleteFeatureFlag(key: string, actorId?: string) {
-    return this.featureFlagService.deleteFeatureFlag(key, actorId);
-  }
-
-  async evaluateFeatureFlag(key: string, defaultValue = false) {
-    return this.featureFlagService.evaluateFeatureFlag(key, defaultValue);
   }
 
   private async buildAuditSearchContext(
@@ -284,7 +249,10 @@ export class SystemService {
       EVENTS.AUTH.ROLE_CREATED,
       EVENTS.AUTH.ROLE_UPDATED,
       EVENTS.AUTH.ROLE_DELETED,
+      EVENTS.AUTH.SESSION_REFRESHED,
       EVENTS.AUTH.SESSION_REVOKED,
+      EVENTS.AUTH.USER_SUSPENDED,
+      EVENTS.AUTH.USER_ACTIVATED,
       EVENTS.MEDIA.FILE_UPLOADED,
       EVENTS.MEDIA.FILE_DELETED,
       EVENTS.PAGE.CREATED,
@@ -299,9 +267,6 @@ export class SystemService {
       EVENTS.FORMS.SUBMITTED,
       EVENTS.SYSTEM.PLUGIN_TOGGLED,
       EVENTS.SYSTEM.SETTINGS_UPDATED,
-      EVENTS.SYSTEM.FEATURE_FLAG_CREATED,
-      EVENTS.SYSTEM.FEATURE_FLAG_UPDATED,
-      EVENTS.SYSTEM.FEATURE_FLAG_DELETED,
       EVENTS.VAULT.CREATED,
       EVENTS.VAULT.UPDATED,
       EVENTS.VAULT.DELETED,

@@ -13,7 +13,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createAuthenticateMiddleware } from "../middleware/authenticate.js";
 import { RolesRepository } from "../repositories/rolesRepository.js";
-import { SessionsRepository } from "../repositories/sessionsRepository.js";
+import {
+  SessionsRepository,
+  type SessionRevokeReason,
+} from "../repositories/sessionsRepository.js";
 import { UsersRepository } from "../repositories/usersRepository.js";
 import { SessionService } from "../sessionService.js";
 import { AuthService } from "./AuthService.js";
@@ -185,12 +188,20 @@ describe("User Suspension Specifications and Adversarial QA Suite", () => {
       const otherSessionsBefore = await sessionsRepo.findByUserId(otherUser.id);
       assert.equal(otherSessionsBefore.length, 1);
 
-      // Track deleteByUserId call
-      let deleteByUserIdCalledWith: string | null = null;
-      const originalDeleteByUserId = sessionsRepo.deleteByUserId.bind(sessionsRepo);
-      sessionsRepo.deleteByUserId = async (id: string) => {
-        deleteByUserIdCalledWith = id;
-        return originalDeleteByUserId(id);
+      // Track revokeByUserId call
+      let revokeByUserIdCalledWith: {
+        id: string;
+        actorId?: string | undefined;
+        reason?: SessionRevokeReason | undefined;
+      } | null = null;
+      const originalRevokeByUserId = sessionsRepo.revokeByUserId.bind(sessionsRepo);
+      sessionsRepo.revokeByUserId = async (
+        id: string,
+        actorId?: string,
+        reason?: SessionRevokeReason,
+      ) => {
+        revokeByUserIdCalledWith = { id, actorId, reason };
+        return originalRevokeByUserId(id, actorId, reason);
       };
 
       // Track emitted events
@@ -207,18 +218,38 @@ describe("User Suspension Specifications and Adversarial QA Suite", () => {
       const fetched = await userService.getUserById(user.id);
       assert.equal(fetched.status, "suspended");
 
-      // 2. Verify SessionsRepository.deleteByUserId was called immediately
-      assert.equal(deleteByUserIdCalledWith, user.id);
+      // 2. Verify SessionsRepository.revokeByUserId was called immediately with user_suspended
+      assert.equal(
+        (revokeByUserIdCalledWith as { id: string; reason?: string } | null)?.id,
+        user.id,
+      );
+      assert.equal(
+        (revokeByUserIdCalledWith as { id: string; reason?: string } | null)?.reason,
+        "user_suspended",
+      );
 
-      // 3. Verify user sessions were revoked
+      // 3. Verify user active sessions count is 0, but history retains revoked sessions
       const sessionsAfter = await sessionsRepo.findByUserId(user.id);
       assert.equal(sessionsAfter.length, 0);
 
-      // 4. Verify other user's session was NOT revoked
+      const historyAfter = await sessionsRepo.findByUserId(user.id, { includeRevoked: true });
+      assert.equal(historyAfter.length, 2);
+      assert.equal(historyAfter[0]?.status, "revoked");
+      assert.equal(historyAfter[0]?.revokeReason, "user_suspended");
+      assert.equal(historyAfter[1]?.status, "revoked");
+      assert.equal(historyAfter[1]?.revokeReason, "user_suspended");
+
+      // 4. Verify validateAndSlideSession fails closed
+      await assert.rejects(
+        () => sessionService.validateAndSlideSession(targetSession1.token),
+        UnauthorizedError,
+      );
+
+      // 5. Verify other user's session was NOT revoked
       const otherSessionsAfter = await sessionsRepo.findByUserId(otherUser.id);
       assert.equal(otherSessionsAfter.length, 1);
 
-      // 5. Verify EVENTS.AUTH.USER_UPDATED was emitted with { userId, status: "suspended" }
+      // 6. Verify EVENTS.AUTH.USER_UPDATED was emitted with { userId, status: "suspended" }
       assert.equal(emittedEvents.length, 1);
       assert.deepEqual(emittedEvents[0]?.payload, {
         userId: user.id,

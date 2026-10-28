@@ -67,14 +67,7 @@ export function createAuthenticateMiddleware(
     let permissions = initialPermissions;
     let roleNames: string[] = [];
     if (rolesRepo) {
-      let roleIds = userDoc.roleIds || [];
-      if (roleIds.length === 0) {
-        const adminRole = await rolesRepo.findByName("admin");
-        if (adminRole) {
-          roleIds = [adminRole.id];
-          await usersRepo.update(userDoc.id, { roleIds });
-        }
-      }
+      const roleIds = userDoc.roleIds || [];
       const roles = await rolesRepo.findByIds(roleIds);
       roleNames = roles.map((r) => r.name);
       const rolePermissions = roles.flatMap((r) => r.permissions || []);

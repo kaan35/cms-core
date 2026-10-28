@@ -1,5 +1,7 @@
 import { Globe, Laptop, Smartphone } from "lucide-react";
 
+export type SessionStatus = "active" | "revoked" | "expired";
+
 export interface SessionItem {
   id: string;
   userId?: string;
@@ -8,9 +10,14 @@ export interface SessionItem {
   current?: boolean;
   isCurrent?: boolean;
   isActive?: boolean;
+  status?: SessionStatus;
   expiresAt: string;
   createdAt: string;
   lastActiveAt?: string;
+  refreshCount?: number;
+  revokedAt?: string;
+  revokedBy?: string;
+  revokeReason?: string;
 }
 
 export const formatDeviceName = (ua = "") => {
@@ -45,6 +52,7 @@ export const getDeviceIcon = (userAgent = "") => {
 };
 
 export const isSessionActive = (session: SessionItem) => {
+  if (session.status) return session.status === "active";
   if (session.isActive !== undefined) return session.isActive;
   return new Date(session.expiresAt).getTime() > Date.now();
 };

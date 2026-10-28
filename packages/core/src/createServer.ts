@@ -57,7 +57,7 @@ export async function createServer(
         },
       ],
       tags: [
-        { name: "System", description: "Healthcheck, settings, audit logs, and feature flags" },
+        { name: "System", description: "Healthcheck, settings, and audit logs" },
         { name: "Auth", description: "Authentication, user profiles, sessions, and RBAC" },
         { name: "Pages", description: "Dynamic block-based CMS pages and version history" },
         { name: "Blog", description: "Editorial blog articles and publication workflows" },

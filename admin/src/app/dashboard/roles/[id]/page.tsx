@@ -1,6 +1,11 @@
+import { ProtectedRoute } from "@cms/admin-shell";
 import { RoleEditor } from "@cms/plugin-auth-admin";
 
 export default async function RoleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <RoleEditor id={id} />;
+  return (
+    <ProtectedRoute requiredPermission={["roles:read", "roles:write"]}>
+      <RoleEditor id={id} />
+    </ProtectedRoute>
+  );
 }

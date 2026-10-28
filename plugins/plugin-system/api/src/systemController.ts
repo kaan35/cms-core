@@ -2,9 +2,7 @@ import { parsePaginationQuery } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import {
   SYSTEM_PERMISSIONS,
-  validateCreateFeatureFlag,
   validateTogglePlugin,
-  validateUpdateFeatureFlag,
   validateUpdateSettings,
 } from "./domain/system.rules.js";
 import type { AuditLogFilterOptions } from "./repositories/auditLogRepository.js";
@@ -47,34 +45,6 @@ export class SystemController {
     const validated = validateUpdateSettings(request.body);
     const updated = await this.systemService.updateSettings(validated, getActorId(request));
     return reply.send({ settings: updated });
-  }
-
-  async listFeatureFlags(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const flags = await this.systemService.listFeatureFlags();
-    return reply.send({ flags });
-  }
-
-  async createFeatureFlag(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const validated = validateCreateFeatureFlag(request.body);
-    const flag = await this.systemService.createFeatureFlag(validated, getActorId(request));
-    return reply.status(201).send({ flag });
-  }
-
-  async updateFeatureFlag(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const params = request.params as { key: string };
-    const validated = validateUpdateFeatureFlag(request.body);
-    const updated = await this.systemService.updateFeatureFlag(
-      params.key,
-      validated,
-      getActorId(request),
-    );
-    return reply.send({ flag: updated });
-  }
-
-  async deleteFeatureFlag(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const params = request.params as { key: string };
-    await this.systemService.deleteFeatureFlag(params.key, getActorId(request));
-    return reply.send({ ok: true });
   }
 
   async listAuditLogs(request: FastifyRequest, reply: FastifyReply): Promise<void> {

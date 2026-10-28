@@ -20,6 +20,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import { useApi } from "../hooks/useApi";
+import { useAuth } from "../hooks/useAuth";
 import { cn } from "../lib/utils";
 import { UserMenu } from "./UserMenu";
 
@@ -29,6 +30,7 @@ export interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
   pluginId?: string;
+  requiredPermissions?: string[];
 }
 
 export interface NavSection {
@@ -43,58 +45,100 @@ export const defaultNavSections: NavSection[] = [
   {
     title: "CONTENT",
     items: [
-      { name: "Pages", href: "/dashboard/pages", icon: FileText, pluginId: "plugin-pages" },
-      { name: "Blog Posts", href: "/dashboard/blog", icon: BookOpen, pluginId: "plugin-blog" },
+      {
+        name: "Pages",
+        href: "/dashboard/pages",
+        icon: FileText,
+        pluginId: "plugin-pages",
+        requiredPermissions: ["pages:read:draft", "pages:write"],
+      },
+      {
+        name: "Blog Posts",
+        href: "/dashboard/blog",
+        icon: BookOpen,
+        pluginId: "plugin-blog",
+        requiredPermissions: ["blog:read:draft", "blog:write"],
+      },
       {
         name: "Navigation",
         href: "/dashboard/navigation",
         icon: Compass,
         pluginId: "plugin-pages",
+        requiredPermissions: ["navigation:read", "navigation:write"],
       },
       {
         name: "Media Library",
         href: "/dashboard/media",
         icon: ImageIcon,
         pluginId: "plugin-media",
+        requiredPermissions: ["media:read", "media:write"],
       },
       {
         name: "Forms & Submissions",
         href: "/dashboard/forms",
         icon: ClipboardList,
         pluginId: "plugin-forms",
+        requiredPermissions: ["forms:read", "forms:write"],
       },
       {
         name: "Password Vault",
         href: "/dashboard/vault",
         icon: KeyRound,
         pluginId: "plugin-vault",
+        requiredPermissions: ["vault:read", "vault:write"],
       },
     ],
   },
   {
     title: "ADMINISTRATION",
     items: [
-      { name: "Users & RBAC", href: "/dashboard/users", icon: Users, pluginId: "plugin-auth" },
-      { name: "Role Templates", href: "/dashboard/roles", icon: Shield, pluginId: "plugin-auth" },
+      {
+        name: "Users & RBAC",
+        href: "/dashboard/users",
+        icon: Users,
+        pluginId: "plugin-auth",
+        requiredPermissions: ["users:read", "users:write"],
+      },
+      {
+        name: "Role Templates",
+        href: "/dashboard/roles",
+        icon: Shield,
+        pluginId: "plugin-auth",
+        requiredPermissions: ["roles:read", "roles:write"],
+      },
       {
         name: "API & Agent Tokens",
         href: "/dashboard/tokens",
         icon: Key,
         pluginId: "plugin-auth",
+        requiredPermissions: ["tokens:read", "tokens:write", "users:read", "auth:tokens:read"],
       },
       {
         name: "Audit Trail",
         href: "/dashboard/audit",
         icon: History,
         pluginId: "plugin-system",
+        requiredPermissions: ["system:audit-log:read"],
       },
     ],
   },
   {
     title: "SYSTEM",
     items: [
-      { name: "Settings", href: "/dashboard/settings", icon: Settings, pluginId: "plugin-system" },
-      { name: "Plugins", href: "/dashboard/plugins", icon: Plug, pluginId: "plugin-system" },
+      {
+        name: "Settings",
+        href: "/dashboard/settings",
+        icon: Settings,
+        pluginId: "plugin-system",
+        requiredPermissions: ["system:settings:write", "system:settings:read"],
+      },
+      {
+        name: "Plugins",
+        href: "/dashboard/plugins",
+        icon: Plug,
+        pluginId: "plugin-system",
+        requiredPermissions: ["system:plugins:read", "system:plugins:write"],
+      },
     ],
   },
 ];
@@ -107,6 +151,9 @@ export interface SidebarProps {
 
 export function Sidebar({ className, sections, brandTitle: propBrandTitle }: SidebarProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const userPerms = React.useMemo(() => user?.permissions || [], [user?.permissions]);
 
   const { data: rawSettings } = useApi<
     | { settings?: { adminTitle?: string; siteTitle?: string } }
@@ -150,12 +197,17 @@ export function Sidebar({ className, sections, brandTitle: propBrandTitle }: Sid
     return base
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) =>
-          item.pluginId ? Boolean(activePlugins?.has(item.pluginId)) : true,
-        ),
+        items: section.items.filter((item) => {
+          const pluginActive = item.pluginId ? Boolean(activePlugins?.has(item.pluginId)) : true;
+          if (!pluginActive) return false;
+
+          if (isAdmin) return true;
+          if (!item.requiredPermissions || item.requiredPermissions.length === 0) return true;
+          return item.requiredPermissions.some((perm) => userPerms.includes(perm));
+        }),
       }))
       .filter((section) => section.items.length > 0);
-  }, [sections, activePlugins]);
+  }, [sections, activePlugins, isAdmin, userPerms]);
 
   const isItemActive = (item: NavItem) => {
     if (item.exact) {

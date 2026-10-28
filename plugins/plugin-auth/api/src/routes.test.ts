@@ -3,6 +3,7 @@ import {
   ConfigService,
   HookManager,
   LogService,
+  PERMISSIONS,
   RedirectsService,
   SettingsService,
 } from "@cms/core";
@@ -462,14 +463,27 @@ describe("plugin-auth routes & workflows", () => {
     });
     assert.equal(meBefore.statusCode, 200);
 
-    // Admin revokes user sessions
-    const revokeRes = await app.inject({
-      method: "DELETE",
+    // Admin lists user sessions
+    const listRes = await app.inject({
+      method: "GET",
       url: `/users/${userObj.user.id}/sessions`,
+      cookies: { token: adminToken },
+    });
+    assert.equal(listRes.statusCode, 200);
+    const sessionsList = JSON.parse(listRes.body) as {
+      sessions: Array<{ id: string; status: string }>;
+    };
+    assert.equal(sessionsList.sessions.length, 1);
+    assert.equal(sessionsList.sessions[0]?.status, "active");
+
+    // Admin revokes specific user session
+    const revokeSingleRes = await app.inject({
+      method: "DELETE",
+      url: `/users/${userObj.user.id}/sessions/${sessionsList.sessions[0]!.id}`,
       cookies: { token: adminToken, csrfToken: adminCsrf },
       headers: { "x-csrf-token": adminCsrf },
     });
-    assert.equal(revokeRes.statusCode, 200);
+    assert.equal(revokeSingleRes.statusCode, 200);
 
     // User token now rejected with 401
     const meAfter = await app.inject({
@@ -478,6 +492,269 @@ describe("plugin-auth routes & workflows", () => {
       cookies: { token: userToken },
     });
     assert.equal(meAfter.statusCode, 401);
+
+    // Admin checks history: session is now listed as revoked with admin_revoked
+    const listHistoryRes = await app.inject({
+      method: "GET",
+      url: `/users/${userObj.user.id}/sessions`,
+      cookies: { token: adminToken },
+    });
+    assert.equal(listHistoryRes.statusCode, 200);
+    const historyList = JSON.parse(listHistoryRes.body) as {
+      sessions: Array<{ id: string; status: string; revokeReason?: string }>;
+    };
+    assert.equal(historyList.sessions.length, 1);
+    assert.equal(historyList.sessions[0]?.status, "revoked");
+    assert.equal(historyList.sessions[0]?.revokeReason, "admin_revoked");
+
+    await app.close();
+  });
+
+  it("audit: GET /users/:id/sessions allows admin to view sessions and rejects unauthorized users with 403", async () => {
+    const { app } = await setupTestApp();
+
+    const setupRes = await app.inject({
+      method: "POST",
+      url: "/auth/setup",
+      payload: { email: "admin@example.com", password: "AdminPassword123" },
+    });
+    const adminToken = setupRes.cookies.find((c) => c.name === "token")!.value;
+
+    // Register regular user Bob (has active session)
+    const bobRes = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: { email: "bob@example.com", password: "BobPassword123" },
+    });
+    const bobObj = JSON.parse(bobRes.body) as { user: { id: string } };
+
+    // Register regular user Alice (unauthorized, permissions: [])
+    const aliceRes = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: { email: "alice@example.com", password: "AlicePassword123" },
+    });
+    const aliceToken = aliceRes.cookies.find((c) => c.name === "token")!.value;
+
+    // 1. Unauthenticated request -> 401 Unauthorized
+    const unauthRes = await app.inject({
+      method: "GET",
+      url: `/users/${bobObj.user.id}/sessions`,
+    });
+    assert.equal(unauthRes.statusCode, 401);
+
+    // 2. Unauthorized request (Alice lacking users:read) -> 403 Forbidden
+    const forbiddenRes = await app.inject({
+      method: "GET",
+      url: `/users/${bobObj.user.id}/sessions`,
+      cookies: { token: aliceToken },
+    });
+    assert.equal(forbiddenRes.statusCode, 403);
+    assert.match(forbiddenRes.body, /missing required permission 'users:read'/);
+
+    // 3. Admin request -> 200 OK with active sessions
+    const adminRes = await app.inject({
+      method: "GET",
+      url: `/users/${bobObj.user.id}/sessions`,
+      cookies: { token: adminToken },
+    });
+    assert.equal(adminRes.statusCode, 200);
+    const body = JSON.parse(adminRes.body) as {
+      sessions: Array<{ id: string; status: string }>;
+    };
+    assert.equal(body.sessions.length, 1);
+    assert.equal(body.sessions[0]?.status, "active");
+
+    await app.close();
+  });
+
+  it("audit: DELETE /users/:id/sessions/:sessionId terminates single session with admin_revoked and rejects unauthorized users with 403", async () => {
+    const { app } = await setupTestApp();
+
+    const setupRes = await app.inject({
+      method: "POST",
+      url: "/auth/setup",
+      payload: { email: "admin@example.com", password: "AdminPassword123" },
+    });
+    const adminToken = setupRes.cookies.find((c) => c.name === "token")!.value;
+    const adminCsrf = setupRes.cookies.find((c) => c.name === "csrfToken")!.value;
+
+    const bobRes = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: { email: "bob@example.com", password: "BobPassword123" },
+    });
+    const bobObj = JSON.parse(bobRes.body) as { user: { id: string } };
+    const bobToken = bobRes.cookies.find((c) => c.name === "token")!.value;
+
+    const aliceRes = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: { email: "alice@example.com", password: "AlicePassword123" },
+    });
+    const aliceToken = aliceRes.cookies.find((c) => c.name === "token")!.value;
+    const aliceCsrf = aliceRes.cookies.find((c) => c.name === "csrfToken")!.value;
+
+    // Bob can authenticate
+    const meBefore = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      cookies: { token: bobToken },
+    });
+    assert.equal(meBefore.statusCode, 200);
+
+    // Get Bob's sessionId
+    const listRes = await app.inject({
+      method: "GET",
+      url: `/users/${bobObj.user.id}/sessions`,
+      cookies: { token: adminToken },
+    });
+    const bobSessionId = (JSON.parse(listRes.body) as { sessions: Array<{ id: string }> })
+      .sessions[0]!.id;
+
+    // 1. Unauthorized user (Alice lacking users:write) -> 403 Forbidden
+    const forbiddenRes = await app.inject({
+      method: "DELETE",
+      url: `/users/${bobObj.user.id}/sessions/${bobSessionId}`,
+      cookies: { token: aliceToken, csrfToken: aliceCsrf },
+      headers: { "x-csrf-token": aliceCsrf },
+    });
+    assert.equal(forbiddenRes.statusCode, 403);
+    assert.match(forbiddenRes.body, /missing required permission 'users:write'/);
+
+    // 2. Admin terminates Bob's session -> 200 OK
+    const deleteRes = await app.inject({
+      method: "DELETE",
+      url: `/users/${bobObj.user.id}/sessions/${bobSessionId}`,
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+    });
+    assert.equal(deleteRes.statusCode, 200);
+
+    // 3. Bob's terminated token now fails with 401 Unauthorized
+    const meAfter = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      cookies: { token: bobToken },
+    });
+    assert.equal(meAfter.statusCode, 401);
+
+    // 4. Admin inspects history: status is "revoked" and revokeReason is "admin_revoked"
+    const historyRes = await app.inject({
+      method: "GET",
+      url: `/users/${bobObj.user.id}/sessions`,
+      cookies: { token: adminToken },
+    });
+    const historyBody = JSON.parse(historyRes.body) as {
+      sessions: Array<{ id: string; status: string; revokeReason?: string }>;
+    };
+    assert.equal(historyBody.sessions.length, 1);
+    assert.equal(historyBody.sessions[0]?.id, bobSessionId);
+    assert.equal(historyBody.sessions[0]?.status, "revoked");
+    assert.equal(historyBody.sessions[0]?.revokeReason, "admin_revoked");
+
+    await app.close();
+  });
+
+  it("audit: POST /users/:id/sessions/revoke-all terminates all sessions for user and rejects unauthorized users with 403", async () => {
+    const { app } = await setupTestApp();
+
+    const setupRes = await app.inject({
+      method: "POST",
+      url: "/auth/setup",
+      payload: { email: "admin@example.com", password: "AdminPassword123" },
+    });
+    const adminToken = setupRes.cookies.find((c) => c.name === "token")!.value;
+    const adminCsrf = setupRes.cookies.find((c) => c.name === "csrfToken")!.value;
+
+    // Register Bob
+    const bobRes = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: { email: "bob@example.com", password: "BobPassword123" },
+    });
+    const bobObj = JSON.parse(bobRes.body) as { user: { id: string } };
+    const bobToken1 = bobRes.cookies.find((c) => c.name === "token")!.value;
+
+    // Bob logs in a second time -> second session
+    const bobLogin2 = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { email: "bob@example.com", password: "BobPassword123" },
+    });
+    const bobToken2 = bobLogin2.cookies.find((c) => c.name === "token")!.value;
+
+    // Register Alice (unauthorized)
+    const aliceRes = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: { email: "alice@example.com", password: "AlicePassword123" },
+    });
+    const aliceToken = aliceRes.cookies.find((c) => c.name === "token")!.value;
+    const aliceCsrf = aliceRes.cookies.find((c) => c.name === "csrfToken")!.value;
+
+    // Verify Bob's both sessions active
+    const me1 = await app.inject({ method: "GET", url: "/auth/me", cookies: { token: bobToken1 } });
+    assert.equal(me1.statusCode, 200);
+    const me2 = await app.inject({ method: "GET", url: "/auth/me", cookies: { token: bobToken2 } });
+    assert.equal(me2.statusCode, 200);
+
+    // 1. Unauthorized caller (Alice lacking users:write) -> 403 Forbidden
+    const forbiddenRes = await app.inject({
+      method: "POST",
+      url: `/users/${bobObj.user.id}/sessions/revoke-all`,
+      cookies: { token: aliceToken, csrfToken: aliceCsrf },
+      headers: { "x-csrf-token": aliceCsrf },
+    });
+    assert.equal(forbiddenRes.statusCode, 403);
+    assert.match(forbiddenRes.body, /missing required permission 'users:write'/);
+
+    // 2. Admin revokes all of Bob's sessions -> 200 OK
+    const revokeAllRes = await app.inject({
+      method: "POST",
+      url: `/users/${bobObj.user.id}/sessions/revoke-all`,
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+    });
+    assert.equal(revokeAllRes.statusCode, 200);
+
+    // 3. Both of Bob's tokens now return 401 Unauthorized
+    const me1After = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      cookies: { token: bobToken1 },
+    });
+    assert.equal(me1After.statusCode, 401);
+
+    const me2After = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      cookies: { token: bobToken2 },
+    });
+    assert.equal(me2After.statusCode, 401);
+
+    // 4. Admin's session is unaffected
+    const adminCheck = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      cookies: { token: adminToken },
+    });
+    assert.equal(adminCheck.statusCode, 200);
+
+    // 5. Admin lists history: all Bob's sessions are revoked with admin_revoked
+    const historyRes = await app.inject({
+      method: "GET",
+      url: `/users/${bobObj.user.id}/sessions`,
+      cookies: { token: adminToken },
+    });
+    const historyBody = JSON.parse(historyRes.body) as {
+      sessions: Array<{ id: string; status: string; revokeReason?: string }>;
+    };
+    assert.equal(historyBody.sessions.length, 2);
+    for (const session of historyBody.sessions) {
+      assert.equal(session.status, "revoked");
+      assert.equal(session.revokeReason, "admin_revoked");
+    }
 
     await app.close();
   });
@@ -534,5 +811,215 @@ describe("plugin-auth routes & workflows", () => {
         delete process.env["JWT_SECRET"];
       }
     }
+  });
+
+  it("audit: schemeless or malformed Authorization header fails closed with 401 Unauthorized", async () => {
+    const { app } = await setupTestApp();
+
+    // 1. Basic auth scheme
+    const basicRes = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: { authorization: "Basic dXNlcjpwYXNz" },
+    });
+    assert.equal(basicRes.statusCode, 401);
+
+    // 2. Token auth scheme
+    const tokenRes = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: { authorization: "Token some-opaque-token" },
+    });
+    assert.equal(tokenRes.statusCode, 401);
+
+    // 3. Bare Bearer without token
+    const bareBearerRes = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: { authorization: "Bearer" },
+    });
+    assert.equal(bareBearerRes.statusCode, 401);
+
+    // 4. Bearer with whitespace only
+    const whitespaceBearerRes = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: { authorization: "Bearer    " },
+    });
+    assert.equal(whitespaceBearerRes.statusCode, 401);
+
+    // 5. Raw token without scheme prefix
+    const rawTokenRes = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: { authorization: "raw-token-without-bearer-prefix" },
+    });
+    assert.equal(rawTokenRes.statusCode, 401);
+
+    await app.close();
+  });
+
+  it("audit: BOLA / IDOR defense: DELETE /auth/sessions/:id blocks regular user from revoking another user's session with 403", async () => {
+    const { app } = await setupTestApp();
+
+    // Admin setup
+    await app.inject({
+      method: "POST",
+      url: "/auth/setup",
+      payload: { email: "admin@example.com", password: "AdminPassword123" },
+    });
+
+    // Register User Bob
+    const bobRes = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: { email: "bob@example.com", password: "BobPassword123" },
+    });
+    const bobToken = bobRes.cookies.find((c) => c.name === "token")!.value;
+
+    // Bob inspects his session ID
+    const bobSessionsRes = await app.inject({
+      method: "GET",
+      url: "/auth/sessions",
+      cookies: { token: bobToken },
+    });
+    const bobSessions = JSON.parse(bobSessionsRes.body) as { sessions: Array<{ id: string }> };
+    const bobSessionId = bobSessions.sessions[0]!.id;
+
+    // Register User Alice (attacker)
+    const aliceRes = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: { email: "alice@example.com", password: "AlicePassword123" },
+    });
+    const aliceToken = aliceRes.cookies.find((c) => c.name === "token")!.value;
+    const aliceCsrf = aliceRes.cookies.find((c) => c.name === "csrfToken")!.value;
+
+    // Alice inspects her own session ID
+    const aliceSessionsRes = await app.inject({
+      method: "GET",
+      url: "/auth/sessions",
+      cookies: { token: aliceToken },
+    });
+    const aliceSessions = JSON.parse(aliceSessionsRes.body) as { sessions: Array<{ id: string }> };
+    const aliceSessionId = aliceSessions.sessions[0]!.id;
+
+    // 1. Adversarial BOLA: Alice attempts to DELETE Bob's session via /auth/sessions/:id
+    const bolaAttackRes = await app.inject({
+      method: "DELETE",
+      url: `/auth/sessions/${bobSessionId}`,
+      cookies: { token: aliceToken, csrfToken: aliceCsrf },
+      headers: { "x-csrf-token": aliceCsrf },
+    });
+    assert.equal(bolaAttackRes.statusCode, 403);
+    assert.match(bolaAttackRes.body, /You can only delete your own sessions/);
+
+    // Bob's session is still active and valid
+    const bobMeCheck = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      cookies: { token: bobToken },
+    });
+    assert.equal(bobMeCheck.statusCode, 200);
+
+    // 2. Alice CAN legitimately delete her OWN session
+    const aliceSelfDeleteRes = await app.inject({
+      method: "DELETE",
+      url: `/auth/sessions/${aliceSessionId}`,
+      cookies: { token: aliceToken, csrfToken: aliceCsrf },
+      headers: { "x-csrf-token": aliceCsrf },
+    });
+    assert.equal(aliceSelfDeleteRes.statusCode, 200);
+
+    // Alice's token is now revoked
+    const aliceMeCheck = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      cookies: { token: aliceToken },
+    });
+    assert.equal(aliceMeCheck.statusCode, 401);
+
+    await app.close();
+  });
+
+  it("audit: Granular RBAC boundary check: user with pages permissions CANNOT access navigation or user management routes", async () => {
+    const { app } = await setupTestApp();
+
+    // Attach dummy navigation route to test RBAC boundary BEFORE first inject
+    app.get(
+      "/navigation",
+      {
+        preHandler: [app.authenticate, app.checkPermission(PERMISSIONS.NAVIGATION.READ)],
+      },
+      async () => ({ items: [] }),
+    );
+
+    // Setup admin
+    const setupRes = await app.inject({
+      method: "POST",
+      url: "/auth/setup",
+      payload: { email: "admin@example.com", password: "AdminPassword123" },
+    });
+    const adminToken = setupRes.cookies.find((c) => c.name === "token")!.value;
+    const adminCsrf = setupRes.cookies.find((c) => c.name === "csrfToken")!.value;
+
+    // Create role with only pages:read and pages:write
+    const roleRes = await app.inject({
+      method: "POST",
+      url: "/roles",
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+      payload: { name: "page-author", permissions: ["pages:read", "pages:write"] },
+    });
+    const roleObj = JSON.parse(roleRes.body) as { role: { id: string } };
+
+    // Create user with page-author role
+    await app.inject({
+      method: "POST",
+      url: "/users",
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+      payload: {
+        email: "author@example.com",
+        password: "AuthorPassword123",
+        roleIds: [roleObj.role.id],
+      },
+    });
+
+    // Author logs in
+    const loginRes = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { email: "author@example.com", password: "AuthorPassword123" },
+    });
+    const authorToken = loginRes.cookies.find((c) => c.name === "token")!.value;
+
+    // 1. Author attempting GET /navigation -> 403 Forbidden
+    const navRes = await app.inject({
+      method: "GET",
+      url: "/navigation",
+      cookies: { token: authorToken },
+    });
+    assert.equal(navRes.statusCode, 403);
+    assert.match(navRes.body, /missing required permission 'navigation:read'/);
+
+    // 2. Author attempting GET /users -> 403 Forbidden
+    const usersRes = await app.inject({
+      method: "GET",
+      url: "/users",
+      cookies: { token: authorToken },
+    });
+    assert.equal(usersRes.statusCode, 403);
+    assert.match(usersRes.body, /missing required permission 'users:read'/);
+
+    // 3. Admin attempting GET /navigation -> 200 OK
+    const adminNavRes = await app.inject({
+      method: "GET",
+      url: "/navigation",
+      cookies: { token: adminToken },
+    });
+    assert.equal(adminNavRes.statusCode, 200);
+
+    await app.close();
   });
 });
