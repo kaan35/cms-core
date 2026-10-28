@@ -153,5 +153,63 @@ describe("Page Routes & Workflows", () => {
     const homeJson = getHomeRes.json() as { title: string; pageType: string };
     assert.equal(homeJson.title, "Home Showcase");
     assert.equal(homeJson.pageType, "home");
+
+    // 10. List pages with ?search= query
+    const searchPagesRes = await app.inject({
+      method: "GET",
+      url: "/pages?search=Landing",
+    });
+    assert.equal(searchPagesRes.statusCode, 200);
+    const searchPagesJson = searchPagesRes.json() as { data: Array<{ title: string }> };
+    assert.ok(searchPagesJson.data.length >= 1);
+    assert.ok(searchPagesJson.data.some((p) => p.title.includes("Landing")));
+  });
+
+  it("rejects unauthorized access to draft pages via ID fallback", async () => {
+    const { app } = await buildTestApp();
+
+    // 1. Create a draft page
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/pages",
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "pages:write",
+      },
+      payload: {
+        title: "Confidential Draft Page",
+        slug: "confidential-draft",
+        blocks: [{ type: "hero", title: "Secret" }],
+        status: "draft",
+      },
+    });
+    assert.equal(createRes.statusCode, 201);
+    const draft = createRes.json() as { id: string };
+
+    // 2. Anonymous visitor tries to fetch draft by slug -> 404
+    const anonSlugRes = await app.inject({
+      method: "GET",
+      url: "/pages/confidential-draft",
+    });
+    assert.equal(anonSlugRes.statusCode, 404);
+
+    // 3. Anonymous visitor tries ID fallback -> MUST return 404
+    const anonIdRes = await app.inject({
+      method: "GET",
+      url: `/pages/${draft.id}`,
+    });
+    assert.equal(anonIdRes.statusCode, 404);
+
+    // 4. Authorized user with pages:read:draft can access by ID
+    const authIdRes = await app.inject({
+      method: "GET",
+      url: `/pages/${draft.id}`,
+      headers: {
+        "x-test-user": "editor-1",
+        "x-test-perms": "pages:read:draft",
+      },
+    });
+    assert.equal(authIdRes.statusCode, 200);
+    assert.equal((authIdRes.json() as { id: string }).id, draft.id);
   });
 });

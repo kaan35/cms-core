@@ -7,6 +7,7 @@ import {
   DialogDeleteConfirm,
   InputSearchField,
   PageHeader,
+  type PaginatedMeta,
   SelectFilter,
   Skeleton,
   StatCard,
@@ -15,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   toast,
   Tooltip,
@@ -37,6 +39,10 @@ interface RoleItem {
 
 export function RoleList() {
   const router = useRouter();
+  const [search, setSearch] = React.useState("");
+  const [roleTypeFilter, setRoleTypeFilter] = React.useState<"all" | "system" | "custom">("all");
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(10);
 
   // Deletion alert dialog state
   const [deleteModal, setDeleteModal] = React.useState<{
@@ -47,22 +53,25 @@ export function RoleList() {
     isDeleting: false,
   });
 
-  const { data: rawData, isLoading, mutate } = useApi<{ roles: RoleItem[] } | RoleItem[]>("/roles");
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (search.trim()) queryParams.set("search", search.trim());
+  if (roleTypeFilter !== "all") queryParams.set("type", roleTypeFilter);
+  const endpoint = `/roles?${queryParams.toString()}`;
 
-  const [search, setSearch] = React.useState("");
+  const {
+    data: rawData,
+    isLoading,
+    mutate,
+  } = useApi<{
+    roles?: RoleItem[];
+    data?: RoleItem[];
+    meta?: PaginatedMeta;
+  }>(endpoint);
 
-  const rawObj = rawData as { roles?: RoleItem[]; data?: RoleItem[]; items?: RoleItem[] } | null;
-  const roles: RoleItem[] = Array.isArray(rawData)
-    ? rawData
-    : Array.isArray(rawObj?.roles)
-      ? rawObj.roles
-      : Array.isArray(rawObj?.data)
-        ? rawObj.data
-        : Array.isArray(rawObj?.items)
-          ? rawObj.items
-          : [];
-
-  const [roleTypeFilter, setRoleTypeFilter] = React.useState<"all" | "system" | "custom">("all");
+  const roles: RoleItem[] = rawData?.data || rawData?.roles || [];
+  const meta = rawData?.meta;
 
   const systemCount = React.useMemo(() => {
     return roles.filter((r) => r.isSystem).length;
@@ -71,20 +80,6 @@ export function RoleList() {
   const customCount = React.useMemo(() => {
     return roles.filter((r) => !r.isSystem).length;
   }, [roles]);
-
-  const filteredRoles = React.useMemo(() => {
-    return roles.filter((r) => {
-      if (roleTypeFilter === "system" && !r.isSystem) return false;
-      if (roleTypeFilter === "custom" && r.isSystem) return false;
-
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return (
-        r.name.toLowerCase().includes(q) ||
-        (r.description && r.description.toLowerCase().includes(q))
-      );
-    });
-  }, [roles, search, roleTypeFilter]);
 
   const handleConfirmDelete = async () => {
     if (!deleteModal.target) return;
@@ -122,7 +117,7 @@ export function RoleList() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Roles"
-          value={roles.length}
+          value={meta?.total ?? roles.length}
           description="Configured role templates"
           icon={Shield}
         />
@@ -148,7 +143,10 @@ export function RoleList() {
             <InputSearchField
               placeholder="Filter roles by name or description..."
               value={search}
-              onSearchChange={setSearch}
+              onSearchChange={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
               containerClassName="w-full sm:max-w-sm"
               className="bg-card w-full"
             />
@@ -156,7 +154,10 @@ export function RoleList() {
             <div className="w-36">
               <SelectFilter
                 value={roleTypeFilter}
-                onValueChange={setRoleTypeFilter}
+                onValueChange={(val) => {
+                  setRoleTypeFilter(val);
+                  setPage(1);
+                }}
                 options={[
                   { value: "all", label: "All Roles" },
                   { value: "system", label: "System Roles" },
@@ -190,7 +191,7 @@ export function RoleList() {
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
             </div>
-          ) : filteredRoles.length === 0 ? (
+          ) : roles.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
               <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
                 <Shield className="size-6 opacity-80" />
@@ -203,94 +204,113 @@ export function RoleList() {
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                  <TableHead className="font-semibold">Role Name</TableHead>
-                  <TableHead className="font-semibold">Description</TableHead>
-                  <TableHead className="w-40 font-semibold">Policies</TableHead>
-                  <TableHead className="w-24 text-right font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRoles.map((r) => (
-                  <TableRow key={r.id} className="text-xs hover:bg-muted/30 transition-colors">
-                    <TableCell>
-                      <div className="flex items-center gap-3 font-medium text-foreground">
-                        <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
-                          {r.isSystem ? <Lock className="size-4" /> : <Shield className="size-4" />}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/dashboard/roles/${r.id}`}
-                              className="hover:text-primary transition-colors font-semibold"
-                            >
-                              {r.name === "admin"
-                                ? "Administrator"
-                                : r.name === "editor"
-                                  ? "Editor"
-                                  : r.name === "user"
-                                    ? "User"
-                                    : r.name}
-                            </Link>
-                            {r.isSystem && (
-                              <Badge variant="secondary" className="text-[10px] gap-1 py-0 h-4">
-                                <Lock className="size-2.5" /> System
-                              </Badge>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                    <TableHead className="font-semibold">Role Name</TableHead>
+                    <TableHead className="font-semibold">Description</TableHead>
+                    <TableHead className="w-40 font-semibold">Policies</TableHead>
+                    <TableHead className="w-24 text-right font-semibold">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {roles.map((r) => (
+                    <TableRow key={r.id} className="text-xs hover:bg-muted/30 transition-colors">
+                      <TableCell>
+                        <div className="flex items-center gap-3 font-medium text-foreground">
+                          <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                            {r.isSystem ? (
+                              <Lock className="size-4" />
+                            ) : (
+                              <Shield className="size-4" />
                             )}
                           </div>
-                          <span className="text-[10px] font-mono text-muted-foreground/80 block">
-                            {r.name}
-                          </span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/dashboard/roles/${r.id}`}
+                                className="hover:text-primary transition-colors font-semibold"
+                              >
+                                {r.name === "admin"
+                                  ? "Administrator"
+                                  : r.name === "editor"
+                                    ? "Editor"
+                                    : r.name === "user"
+                                      ? "User"
+                                      : r.name}
+                              </Link>
+                              {r.isSystem && (
+                                <Badge variant="secondary" className="text-[10px] gap-1 py-0 h-4">
+                                  <Lock className="size-2.5" /> System
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-mono text-muted-foreground/80 block">
+                              {r.name}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-[11px]">
-                      {r.description || "—"}
-                    </TableCell>
-                    <TableCell>
-                      {r.permissions?.includes("*") ||
-                      r.permissions?.length === ALL_FLAT_PERMISSIONS.length ? (
-                        <Badge
-                          variant="default"
-                          className="text-[11px] font-medium gap-1 bg-primary/15 text-primary border-primary/20 hover:bg-primary/20"
-                        >
-                          <ShieldCheck className="size-3" />
-                          All Permissions ({ALL_FLAT_PERMISSIONS.length})
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[11px]">
-                          {r.permissions?.length || 0}{" "}
-                          {r.permissions?.length === 1 ? "permission" : "permissions"}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Tooltip content="Edit Role Template">
-                          <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(r)}>
-                            <Pencil className="size-4 text-muted-foreground hover:text-foreground" />
-                          </Button>
-                        </Tooltip>
-                        {!r.isSystem && (
-                          <Tooltip content="Delete Role">
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => setDeleteModal({ target: r, isDeleting: false })}
-                              className="hover:text-destructive"
-                            >
-                              <Trash2 className="size-4 text-muted-foreground" />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-[11px]">
+                        {r.description || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {r.permissions?.includes("*") ||
+                        r.permissions?.length === ALL_FLAT_PERMISSIONS.length ? (
+                          <Badge
+                            variant="default"
+                            className="text-[11px] font-medium gap-1 bg-primary/15 text-primary border-primary/20 hover:bg-primary/20"
+                          >
+                            <ShieldCheck className="size-3" />
+                            All Permissions ({ALL_FLAT_PERMISSIONS.length})
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[11px]">
+                            {r.permissions?.length || 0}{" "}
+                            {r.permissions?.length === 1 ? "permission" : "permissions"}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Tooltip content="Edit Role Template">
+                            <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(r)}>
+                              <Pencil className="size-4 text-muted-foreground hover:text-foreground" />
                             </Button>
                           </Tooltip>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                          {!r.isSystem && (
+                            <Tooltip content="Delete Role">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => setDeleteModal({ target: r, isDeleting: false })}
+                                className="hover:text-destructive"
+                              >
+                                <Trash2 className="size-4 text-muted-foreground" />
+                              </Button>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={page}
+                totalPages={
+                  meta?.totalPages ?? Math.max(1, Math.ceil((meta?.total ?? roles.length) / limit))
+                }
+                totalCount={meta?.total ?? roles.length}
+                limit={limit}
+                onPageChange={setPage}
+                onLimitChange={(newLimit) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }}
+              />
+            </>
           )}
         </div>
       </div>

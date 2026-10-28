@@ -180,4 +180,65 @@ describe("FormsService", () => {
     assert.ok(csvResult.data.includes("Full Name"));
     assert.ok(csvResult.data.includes("Ayşe Yılmaz"));
   });
+
+  it("supports server-side pagination and search in listForms and listSubmissions", async () => {
+    const db = createInMemoryDb();
+    const repo = new FormsRepository(db);
+    const registry = new CaptchaRegistry(TEST_CAPTCHA_SECRET);
+    const hooks = new HookManager();
+    const service = new FormsService(repo, registry, hooks, stubLogger);
+
+    // Create 3 forms
+    const f1 = await service.createForm({
+      title: "Contact Form",
+      slug: "contact",
+      fields: [{ name: "name", label: "Name", type: "text" }],
+      captchaProvider: "none",
+    });
+    await service.createForm({
+      title: "Newsletter Signup",
+      slug: "newsletter",
+      fields: [{ name: "email", label: "Email", type: "email" }],
+      captchaProvider: "none",
+    });
+    await service.createForm({
+      title: "Survey Feedback",
+      slug: "survey",
+      fields: [{ name: "rating", label: "Rating", type: "number" }],
+      captchaProvider: "none",
+    });
+
+    // Test listForms search
+    const searchRes = await service.listForms({ search: "Newsletter" });
+    assert.equal(searchRes.data.length, 1);
+    assert.equal(searchRes.data[0]?.title, "Newsletter Signup");
+    assert.equal(searchRes.meta.total, 1);
+
+    // Test listForms pagination
+    const paginatedRes = await service.listForms({ page: 2, limit: 2 });
+    assert.equal(paginatedRes.meta.page, 2);
+    assert.equal(paginatedRes.meta.limit, 2);
+    assert.equal(paginatedRes.meta.total, 3);
+    assert.equal(paginatedRes.meta.totalPages, 2);
+    assert.equal(paginatedRes.data.length, 1);
+
+    // Add submissions to f1
+    await service.submitForm(f1.id, { name: "Alice" }, { ip: "10.0.0.1", userAgent: "Chrome" });
+    await service.submitForm(f1.id, { name: "Bob" }, { ip: "192.168.1.1", userAgent: "Firefox" });
+    await service.submitForm(f1.id, { name: "Charlie" }, { ip: "10.0.0.2", userAgent: "Safari" });
+
+    // Test listSubmissions pagination
+    const subPage1 = await service.listSubmissions(f1.id, { page: 1, limit: 2 });
+    assert.equal(subPage1.meta.page, 1);
+    assert.equal(subPage1.meta.limit, 2);
+    assert.equal(subPage1.meta.total, 3);
+    assert.equal(subPage1.meta.totalPages, 2);
+    assert.equal(subPage1.data.length, 2);
+
+    // Test listSubmissions search by IP
+    const subSearch = await service.listSubmissions(f1.id, { search: "192.168" });
+    assert.equal(subSearch.data.length, 1);
+    assert.equal(subSearch.meta.total, 1);
+    assert.equal(subSearch.data[0]?.ip, "192.168.1.1");
+  });
 });

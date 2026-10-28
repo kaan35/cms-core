@@ -1,7 +1,12 @@
 import path from "node:path";
 import process from "node:process";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { ForbiddenError, UnauthorizedError, ValidationError } from "@cms/core";
+import {
+  ForbiddenError,
+  UnauthorizedError,
+  ValidationError,
+  parsePaginationQuery,
+} from "@cms/core";
 import type { ApiTokenService } from "../services/ApiTokenService.js";
 
 export class ApiTokenController {
@@ -87,9 +92,23 @@ export class ApiTokenController {
       throw new ForbiddenError("API tokens cannot list API tokens");
     }
 
-    const tokens = await this.apiTokenService.listUserTokens(user.id);
+    const { page, limit } = parsePaginationQuery(request.query);
+    const query = (request.query || {}) as Record<string, string | undefined>;
+    const search = query["search"]?.trim();
+    const scopeVal = query["scope"];
+    const scope = scopeVal === "full" || scopeVal === "scoped" ? scopeVal : undefined;
+
+    const paginated = await this.apiTokenService.listUserTokensPaginated(user.id, page, limit, {
+      search,
+      scope,
+    });
     const mcpServerPath = path.resolve(process.cwd(), "packages/mcp-server/dist/index.js");
-    return reply.send({ tokens, mcpServerPath });
+    return reply.send({
+      tokens: paginated.data,
+      data: paginated.data,
+      meta: paginated.meta,
+      mcpServerPath,
+    });
   }
 
   async deleteToken(request: FastifyRequest, reply: FastifyReply): Promise<void> {

@@ -1,3 +1,4 @@
+import { parsePaginationQuery } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RoleService } from "../services/RoleService.js";
 
@@ -8,9 +9,18 @@ export class RoleController {
     this.roleService = roleService;
   }
 
-  async listRoles(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const roles = await this.roleService.listRoles();
-    return reply.send({ roles });
+  async listRoles(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const query = (request.query || {}) as Record<string, string | undefined>;
+    const { page, limit } = parsePaginationQuery(request.query);
+    const search = query["search"]?.trim();
+    const typeVal = query["type"];
+    const isSystem = typeVal === "system" ? true : typeVal === "custom" ? false : undefined;
+    const paginated = await this.roleService.listRolesPaginated(page, limit, { search, isSystem });
+    return reply.send({
+      roles: paginated.data,
+      data: paginated.data,
+      meta: paginated.meta,
+    });
   }
 
   async getRoleById(request: FastifyRequest, reply: FastifyReply): Promise<void> {

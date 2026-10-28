@@ -59,6 +59,28 @@ export class FormsRepository {
     return this.formsCol.find({}, { sort: { createdAt: -1 } });
   }
 
+  async findPaginated(
+    page = 1,
+    limit = 20,
+    search?: string,
+  ): Promise<{ items: FormDoc[]; total: number }> {
+    const filter: Record<string, unknown> = {};
+    if (search && search.trim() !== "") {
+      const s = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter["$or"] = [
+        { title: { $regex: s, $options: "i" } },
+        { slug: { $regex: s, $options: "i" } },
+        { description: { $regex: s, $options: "i" } },
+      ];
+    }
+    const skip = Math.max(0, (page - 1) * limit);
+    const [items, total] = await Promise.all([
+      this.formsCol.find(filter, { skip, limit, sort: { createdAt: -1 } }),
+      this.formsCol.countDocuments(filter),
+    ]);
+    return { items, total };
+  }
+
   async update(id: string, input: UpdateFormInput): Promise<FormDoc> {
     const existing = await this.findById(id);
     if (!existing) {
@@ -130,17 +152,22 @@ export class FormsRepository {
     formId: string,
     page: number,
     limit: number,
+    search?: string,
   ): Promise<PaginatedResult<FormSubmissionDoc>> {
-    const filter = { formId };
-    const total = await this.submissionsCol.countDocuments(filter);
-    const skip = (page - 1) * limit;
-
-    const items = await this.submissionsCol.find(filter, {
-      sort: { createdAt: -1 },
-      skip,
-      limit,
-    });
-
+    const filter: Record<string, unknown> = { formId };
+    if (search && search.trim() !== "") {
+      const s = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter["$or"] = [
+        { ip: { $regex: s, $options: "i" } },
+        { userAgent: { $regex: s, $options: "i" } },
+        { id: { $regex: s, $options: "i" } },
+      ];
+    }
+    const skip = Math.max(0, (page - 1) * limit);
+    const [items, total] = await Promise.all([
+      this.submissionsCol.find(filter, { skip, limit, sort: { createdAt: -1 } }),
+      this.submissionsCol.countDocuments(filter),
+    ]);
     return buildPaginatedResult(items, total, page, limit);
   }
 

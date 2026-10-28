@@ -23,16 +23,16 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   toast,
   Tooltip,
   useApi,
+  type PaginatedMeta,
 } from "@cms/admin-shell";
 import {
   Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Copy,
   Download,
   Eye,
@@ -71,13 +71,19 @@ function cleanIp(ip?: string): string {
 
 export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTableProps) {
   const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(20);
   const [search, setSearch] = React.useState("");
   const [selectedSubmission, setSelectedSubmission] = React.useState<FormSubmissionItem | null>(
     null,
   );
   const [copiedJson, setCopiedJson] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState<"xlsx" | "csv" | null>(null);
-  const limit = 20;
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (search.trim()) queryParams.set("search", search.trim());
+  const endpoint = `/api/forms/${formId}/submissions?${queryParams.toString()}`;
 
   const {
     data: rawData,
@@ -85,29 +91,36 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
     mutate,
   } = useApi<
     | {
-        data: FormSubmissionItem[];
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
+        data?: FormSubmissionItem[];
+        items?: FormSubmissionItem[];
+        meta?: PaginatedMeta;
+        total?: number;
+        page?: number;
+        limit?: number;
+        totalPages?: number;
       }
     | FormSubmissionItem[]
-  >(`/api/forms/${formId}/submissions?page=${page}&limit=${limit}`);
+  >(endpoint);
+
+  const rawObj = rawData && !Array.isArray(rawData) ? rawData : null;
 
   const submissions: FormSubmissionItem[] = React.useMemo(() => {
     if (Array.isArray(rawData)) return rawData;
-    if (rawData && Array.isArray(rawData.data)) return rawData.data;
+    if (rawObj && Array.isArray(rawObj.data)) return rawObj.data;
+    if (rawObj && Array.isArray(rawObj.items)) return rawObj.items;
     return [];
-  }, [rawData]);
+  }, [rawData, rawObj]);
+
+  const meta = rawObj?.meta;
 
   const totalCount = React.useMemo(() => {
-    if (rawData && !Array.isArray(rawData) && typeof rawData.total === "number") {
-      return rawData.total;
-    }
+    if (meta && typeof meta.total === "number") return meta.total;
+    if (rawObj && typeof rawObj.total === "number") return rawObj.total;
     return submissions.length;
-  }, [rawData, submissions]);
+  }, [meta, rawObj, submissions.length]);
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+  const totalPages =
+    meta?.totalPages ?? (rawObj?.totalPages || Math.max(1, Math.ceil(totalCount / limit)));
 
   // Dynamically extract all unique keys from submission payload data
   const dataColumns = React.useMemo(() => {
@@ -122,22 +135,10 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
     return Array.from(keySet);
   }, [submissions]);
 
-  // Real-time search filter across all fields, IP, and submission ID
-  const filteredSubmissions = React.useMemo(() => {
-    if (!search.trim()) return submissions;
-    const q = search.toLowerCase();
-    return submissions.filter((sub) => {
-      if (sub.id.toLowerCase().includes(q)) return true;
-      if (sub.ip && sub.ip.toLowerCase().includes(q)) return true;
-      if (sub.data && typeof sub.data === "object") {
-        return Object.values(sub.data).some((val) => {
-          if (val === null || val === undefined) return false;
-          return String(val).toLowerCase().includes(q);
-        });
-      }
-      return false;
-    });
-  }, [submissions, search]);
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1);
+  };
 
   // Server-side Full Submissions Export
   const handleExport = async (format: "xlsx" | "csv") => {
@@ -218,7 +219,7 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
         <div className="flex flex-col sm:flex-row flex-1 sm:items-center gap-3">
           <InputSearchField
             value={search}
-            onSearchChange={setSearch}
+            onSearchChange={handleSearchChange}
             placeholder="Search submissions by text or email..."
             containerClassName="w-full sm:max-w-sm"
             className="bg-card w-full"
@@ -226,7 +227,7 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
           <Badge variant="outline" className="text-xs shrink-0 py-1 px-2.5 self-start sm:self-auto">
             {search ? (
               <span>
-                {filteredSubmissions.length} of {totalCount}
+                {submissions.length} of {totalCount}
               </span>
             ) : (
               <span>
@@ -308,134 +309,126 @@ export function FormSubmissionsTable({ formId, formTitle }: FormSubmissionsTable
             <Skeleton className="h-9 w-full" />
           </div>
         ) : submissions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
-              <Inbox className="size-6 opacity-80" />
+          search ? (
+            <div className="flex flex-col items-center justify-center p-10 text-center">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground mb-2.5">
+                <Search className="size-5 opacity-70" />
+              </div>
+              <h4 className="text-xs font-semibold text-foreground">No matching submissions</h4>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                No entries found matching &ldquo;{search}&rdquo;. Try another search term.
+              </p>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => {
+                  setSearch("");
+                  setPage(1);
+                }}
+                className="mt-3 text-xs"
+              >
+                Clear Search
+              </Button>
             </div>
-            <h3 className="text-sm font-semibold text-foreground">No submissions yet</h3>
-            <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
-              When users complete and submit this form on your website, responses will appear here
-              in real-time.
-            </p>
-          </div>
-        ) : filteredSubmissions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-10 text-center">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground mb-2.5">
-              <Search className="size-5 opacity-70" />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
+                <Inbox className="size-6 opacity-80" />
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">No submissions yet</h3>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
+                When users complete and submit this form on your website, responses will appear here
+                in real-time.
+              </p>
             </div>
-            <h4 className="text-xs font-semibold text-foreground">No matching submissions</h4>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              No entries found matching &ldquo;{search}&rdquo;. Try another search term.
-            </p>
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={() => setSearch("")}
-              className="mt-3 text-xs"
-            >
-              Clear Search
-            </Button>
-          </div>
+          )
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                  <TableHead className="w-40 whitespace-nowrap">Submitted At</TableHead>
-                  {dataColumns.map((col) => (
-                    <TableHead key={col} className="capitalize whitespace-nowrap">
-                      {col.replace(/[_-]/g, " ")}
-                    </TableHead>
-                  ))}
-                  <TableHead className="w-28 text-right whitespace-nowrap">IP / Origin</TableHead>
-                  <TableHead className="w-16 text-right whitespace-nowrap">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSubmissions.map((sub) => (
-                  <TableRow
-                    key={sub.id}
-                    onClick={() => setSelectedSubmission(sub)}
-                    className="text-xs hover:bg-muted/40 cursor-pointer transition-colors group"
-                  >
-                    <TableCell className="font-mono text-[11px] text-muted-foreground whitespace-nowrap">
-                      {formatDateTime(sub.createdAt)}
-                    </TableCell>
-                    {dataColumns.map((col) => {
-                      const val = sub.data?.[col];
-                      const isEmail = typeof val === "string" && val.includes("@");
-                      return (
-                        <TableCell key={col} className="max-w-xs truncate text-foreground">
-                          {val === null || val === undefined ? (
-                            "—"
-                          ) : typeof val === "boolean" ? (
-                            <Badge
-                              variant={val ? "secondary" : "outline"}
-                              className="text-[10px] py-0"
-                            >
-                              {val ? "Yes" : "No"}
-                            </Badge>
-                          ) : isEmail ? (
-                            <span className="text-primary hover:underline font-medium">
-                              {String(val)}
-                            </span>
-                          ) : typeof val === "object" ? (
-                            JSON.stringify(val)
-                          ) : (
-                            String(val)
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-right font-mono text-[10px] text-muted-foreground whitespace-nowrap">
-                      {cleanIp(sub.ip)}
-                    </TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="opacity-60 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedSubmission(sub);
-                        }}
-                        title="View Full Submission"
-                      >
-                        <Eye className="size-3.5" />
-                      </Button>
-                    </TableCell>
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                    <TableHead className="w-40 whitespace-nowrap">Submitted At</TableHead>
+                    {dataColumns.map((col) => (
+                      <TableHead key={col} className="capitalize whitespace-nowrap">
+                        {col.replace(/[_-]/g, " ")}
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-28 text-right whitespace-nowrap">IP / Origin</TableHead>
+                    <TableHead className="w-16 text-right whitespace-nowrap">Action</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-
-        {/* Pagination controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border/60 text-xs">
-            <span className="text-muted-foreground">
-              Page {page} of {totalPages}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="icon-xs"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-              >
-                <ChevronLeft className="size-3.5" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-xs"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-              >
-                <ChevronRight className="size-3.5" />
-              </Button>
+                </TableHeader>
+                <TableBody>
+                  {submissions.map((sub) => (
+                    <TableRow
+                      key={sub.id}
+                      onClick={() => setSelectedSubmission(sub)}
+                      className="text-xs hover:bg-muted/40 cursor-pointer transition-colors group"
+                    >
+                      <TableCell className="font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                        {formatDateTime(sub.createdAt)}
+                      </TableCell>
+                      {dataColumns.map((col) => {
+                        const val = sub.data?.[col];
+                        const isEmail = typeof val === "string" && val.includes("@");
+                        return (
+                          <TableCell key={col} className="max-w-xs truncate text-foreground">
+                            {val === null || val === undefined ? (
+                              "—"
+                            ) : typeof val === "boolean" ? (
+                              <Badge
+                                variant={val ? "secondary" : "outline"}
+                                className="text-[10px] py-0"
+                              >
+                                {val ? "Yes" : "No"}
+                              </Badge>
+                            ) : isEmail ? (
+                              <span className="text-primary hover:underline font-medium">
+                                {String(val)}
+                              </span>
+                            ) : typeof val === "object" ? (
+                              JSON.stringify(val)
+                            ) : (
+                              String(val)
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className="text-right font-mono text-[10px] text-muted-foreground whitespace-nowrap">
+                        {cleanIp(sub.ip)}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          className="opacity-60 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSubmission(sub);
+                          }}
+                          title="View Full Submission"
+                        >
+                          <Eye className="size-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          </div>
+
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              limit={limit}
+              onPageChange={setPage}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
+          </>
         )}
       </div>
 

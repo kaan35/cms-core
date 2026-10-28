@@ -1,13 +1,15 @@
 import type { CoreServices } from "@cms/core";
-import { ConfigService, HookManager, stubLogger } from "@cms/core";
+import { ConfigService, decorateTestAuth, HookManager, PERMISSIONS, stubLogger } from "@cms/core";
 import { createInMemoryDb } from "@cms/db";
 import Fastify from "fastify";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { VaultController } from "./controllers/vaultController.js";
 import { VAULT_EVENTS, type VaultItemDoc } from "./domain/vault.rules.js";
 import { registerVaultPlugin } from "./index.js";
 import { initVaultMigration } from "./migrations/202601070000_init_vault.js";
 import { VaultRepository } from "./repositories/vaultRepository.js";
+import { registerVaultRoutes } from "./routes.js";
 import { VaultService } from "./services/vaultService.js";
 import { parseVaultCsv } from "./utils/vaultExportUtils.js";
 
@@ -456,5 +458,162 @@ Line 2 after newline"`;
     assert.equal(parsedComplex[0]?.["title"], "Complex Service");
     assert.ok(parsedComplex[0]?.["notes"]?.includes('with comma and "quotes"'));
     assert.ok(parsedComplex[0]?.["notes"]?.includes("Line 2 after newline"));
+  });
+
+  it("supports server-side pagination, search, and category filtering in VaultService and VaultRepository", async () => {
+    const db = createInMemoryDb();
+    await initVaultMigration.up(db);
+    const repo = new VaultRepository(db);
+    const hooks = new HookManager();
+    const service = new VaultService(repo, hooks, stubLogger, TEST_VAULT_SECRET);
+
+    await service.create({
+      title: "Production Database",
+      username: "dbadmin",
+      password: "pwd-1",
+      category: "Database",
+    });
+    await service.create({
+      title: "Staging Database",
+      username: "dbstaging",
+      password: "pwd-2",
+      category: "Database",
+    });
+    await service.create({
+      title: "Production Redis",
+      username: "redisadmin",
+      password: "pwd-3",
+      category: "DevOps",
+    });
+    await service.create({
+      title: "GitHub Enterprise",
+      username: "gitadmin",
+      password: "pwd-4",
+      category: "DevOps",
+    });
+
+    // Test getCategories
+    const categories = await service.getCategories();
+    assert.ok(categories.includes("Database"));
+    assert.ok(categories.includes("DevOps"));
+
+    // Page 1, limit 2
+    const p1 = await service.listPaginated(1, 2);
+    assert.equal(p1.data.length, 2);
+    assert.equal(p1.meta.total, 4);
+    assert.equal(p1.meta.totalPages, 2);
+
+    // Filter by category
+    const dbOnly = await service.listPaginated(1, 10, "Database");
+    assert.equal(dbOnly.data.length, 2);
+    assert.equal(dbOnly.meta.total, 2);
+    assert.ok(dbOnly.data.every((it) => it.category === "Database"));
+
+    // Filter by search
+    const redisSearch = await service.listPaginated(1, 10, undefined, "redis");
+    assert.equal(redisSearch.data.length, 1);
+    assert.equal(redisSearch.data[0]?.title, "Production Redis");
+  });
+
+  it("enforces RBAC permissions on vault HTTP routes (vault:read and vault:write)", async () => {
+    const app = Fastify();
+    const db = createInMemoryDb();
+    await initVaultMigration.up(db);
+    const repo = new VaultRepository(db);
+    const hooks = new HookManager();
+    const service = new VaultService(repo, hooks, stubLogger, TEST_VAULT_SECRET);
+    const controller = new VaultController(service);
+
+    decorateTestAuth(app);
+    registerVaultRoutes(app, controller);
+    await app.ready();
+
+    // 1. Unauthenticated request -> 401
+    const unauthRes = await app.inject({
+      method: "GET",
+      url: "/vault/items",
+    });
+    assert.equal(unauthRes.statusCode, 401);
+
+    // 2. Authenticated user without vault:read permission -> 403
+    const noPermRes = await app.inject({
+      method: "GET",
+      url: "/vault/items",
+      headers: {
+        "x-test-user": "user-without-perms",
+        "x-test-perms": "blog:read",
+      },
+    });
+    assert.equal(noPermRes.statusCode, 403);
+
+    // 3. User without vault:write cannot create items -> 403
+    const noWriteCreateRes = await app.inject({
+      method: "POST",
+      url: "/vault/items",
+      headers: {
+        "x-test-user": "read-only-user",
+        "x-test-perms": "vault:read",
+      },
+      payload: {
+        title: "Test DB",
+        username: "root",
+        password: "secretpassword123",
+      },
+    });
+    assert.equal(noWriteCreateRes.statusCode, 403);
+
+    // 4. Authorized user with vault:write creates item -> 201
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/vault/items",
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": `${PERMISSIONS.VAULT.READ},${PERMISSIONS.VAULT.WRITE}`,
+      },
+      payload: {
+        title: "Test DB",
+        username: "root",
+        password: "secretpassword123",
+      },
+    });
+    assert.equal(createRes.statusCode, 201);
+    const item = (createRes.json() as { item: { id: string } }).item;
+
+    // 5. Authorized user with vault:read lists items -> 200 with masked password
+    const listRes = await app.inject({
+      method: "GET",
+      url: "/vault/items",
+      headers: {
+        "x-test-user": "auditor-1",
+        "x-test-perms": PERMISSIONS.VAULT.READ,
+      },
+    });
+    assert.equal(listRes.statusCode, 200);
+    const listData = (listRes.json() as { data: Array<{ password: string }> }).data;
+    assert.equal(listData.length, 1);
+    assert.equal(listData[0]?.password, "••••••••");
+
+    // 6. User with only vault:read cannot reveal password -> 403
+    const readOnlyRevealRes = await app.inject({
+      method: "POST",
+      url: `/vault/items/${item.id}/reveal`,
+      headers: {
+        "x-test-user": "auditor-1",
+        "x-test-perms": PERMISSIONS.VAULT.READ,
+      },
+    });
+    assert.equal(readOnlyRevealRes.statusCode, 403);
+
+    // 7. User with vault:write reveals password -> 200 with decrypted secret
+    const writeRevealRes = await app.inject({
+      method: "POST",
+      url: `/vault/items/${item.id}/reveal`,
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": PERMISSIONS.VAULT.WRITE,
+      },
+    });
+    assert.equal(writeRevealRes.statusCode, 200);
+    assert.equal((writeRevealRes.json() as { password: string }).password, "secretpassword123");
   });
 });

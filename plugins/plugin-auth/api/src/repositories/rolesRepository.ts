@@ -11,6 +11,11 @@ export interface RoleDoc extends Record<string, unknown> {
   updatedAt: Date;
 }
 
+export interface RoleFilter {
+  search?: string | undefined;
+  isSystem?: boolean | undefined;
+}
+
 export class RolesRepository {
   private readonly collection: ICollection<RoleDoc>;
 
@@ -91,6 +96,30 @@ export class RolesRepository {
 
   async findAll(): Promise<RoleDoc[]> {
     return this.list();
+  }
+
+  async findPaginated(
+    page = 1,
+    limit = 50,
+    filter?: RoleFilter,
+  ): Promise<{ items: RoleDoc[]; total: number }> {
+    const query: Record<string, unknown> = {};
+    if (filter?.isSystem !== undefined) {
+      query["isSystem"] = filter.isSystem;
+    }
+    if (filter?.search?.trim()) {
+      const s = filter.search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      query["$or"] = [
+        { name: { $regex: s, $options: "i" } },
+        { description: { $regex: s, $options: "i" } },
+      ];
+    }
+    const skip = Math.max(0, (page - 1) * limit);
+    const [items, total] = await Promise.all([
+      this.collection.find(query, { skip, limit, sort: { createdAt: 1 } }),
+      this.collection.countDocuments(query),
+    ]);
+    return { items, total };
   }
 
   async list(): Promise<RoleDoc[]> {

@@ -14,7 +14,12 @@ export class UserController {
 
   async listUsers(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const { page, limit } = parsePaginationQuery(request.query);
-    const result = await this.userService.listUsers(page, limit);
+    const query = (request.query || {}) as Record<string, string | undefined>;
+    const search = query["search"]?.trim();
+    const statusVal = query["status"];
+    const status = statusVal === "active" || statusVal === "suspended" ? statusVal : undefined;
+    const role = query["role"]?.trim();
+    const result = await this.userService.listUsers(page, limit, { search, status, role });
     return reply.send(result);
   }
 

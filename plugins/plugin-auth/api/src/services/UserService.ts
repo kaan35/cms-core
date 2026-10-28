@@ -41,8 +41,31 @@ export class UserService {
     this.saltRounds = saltRounds;
   }
 
-  async listUsers(page = 1, limit = 20) {
-    const { items, total } = await this.usersRepo.findPaginated(page, limit);
+  async listUsers(
+    page = 1,
+    limit = 20,
+    filter?:
+      | {
+          search?: string | undefined;
+          status?: "active" | "suspended" | undefined;
+          roleId?: string | undefined;
+          role?: string | undefined;
+        }
+      | undefined,
+  ) {
+    let roleId = filter?.roleId;
+    if (!roleId && filter?.role && filter.role !== "all") {
+      const roleDoc = await this.rolesRepo.findByName(filter.role);
+      if (roleDoc) {
+        roleId = roleDoc.id;
+      }
+    }
+    const repoFilter = {
+      search: filter?.search,
+      status: filter?.status,
+      roleId,
+    };
+    const { items, total } = await this.usersRepo.findPaginated(page, limit, repoFilter);
     const allRoles = await this.rolesRepo.findAll();
     const roleMap = new Map(allRoles.map((r) => [r.id, r.name]));
 

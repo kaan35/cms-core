@@ -1,6 +1,6 @@
 import type { IHookManager, ILogger, PaginatedResult } from "@cms/core";
 import { NotFoundError } from "@cms/core";
-import type { BlogPostDoc, BlogPostVersionDoc } from "./domain/blogPost.rules.js";
+import type { BlogPostDoc, BlogPostStatus, BlogPostVersionDoc } from "./domain/blogPost.rules.js";
 import {
   BLOG_EVENTS,
   validateCreateBlogPost,
@@ -74,8 +74,26 @@ export class BlogPostService {
     query?: unknown,
     canViewDraft = false,
   ): Promise<PaginatedResult<BlogPostDoc>> {
-    const filter = canViewDraft ? {} : { status: "published" as const };
-    return this.blogRepo.list(query, filter);
+    const raw =
+      typeof query === "object" && query !== null ? (query as Record<string, unknown>) : {};
+    const filter: { status?: BlogPostStatus; search?: string } = {};
+
+    if (!canViewDraft) {
+      filter.status = "published";
+    } else if (raw["status"] === "draft" || raw["status"] === "published") {
+      filter.status = raw["status"];
+    }
+
+    if (typeof raw["search"] === "string" && raw["search"].trim()) {
+      filter.search = raw["search"].trim();
+    }
+
+    const cleanQuery = {
+      ...raw,
+      ...(filter.status ? { status: filter.status } : {}),
+    };
+
+    return this.blogRepo.list(cleanQuery, filter);
   }
 
   async searchBlogPosts(

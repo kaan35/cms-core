@@ -123,5 +123,130 @@ describe("Blog Routes & Workflows", () => {
     assert.equal(searchRes.statusCode, 200);
     const searchJson = searchRes.json() as { data: unknown[] };
     assert.equal(searchJson.data.length, 1);
+
+    // 9. List blog posts with ?search= and ?status= filtering
+    // Anonymous user list -> only published posts
+    const anonListRes = await app.inject({
+      method: "GET",
+      url: "/blog",
+    });
+    assert.equal(anonListRes.statusCode, 200);
+    const anonListJson = anonListRes.json() as { data: Array<{ status: string }> };
+    assert.equal(anonListJson.data.length, 1);
+    assert.equal(anonListJson.data[0]?.status, "published");
+
+    // List with ?search= query matching title
+    const searchFilterRes = await app.inject({
+      method: "GET",
+      url: "/blog?search=Launch",
+    });
+    assert.equal(searchFilterRes.statusCode, 200);
+    const searchFilterJson = searchFilterRes.json() as { data: Array<{ title: string }> };
+    assert.equal(searchFilterJson.data.length, 1);
+    assert.ok(searchFilterJson.data[0]?.title.includes("Launch"));
+
+    // List with ?search= query matching summary
+    const summaryFilterRes = await app.inject({
+      method: "GET",
+      url: "/blog?search=details",
+    });
+    assert.equal(summaryFilterRes.statusCode, 200);
+    const summaryFilterJson = summaryFilterRes.json() as { data: Array<{ summary: string }> };
+    assert.equal(summaryFilterJson.data.length, 1);
+
+    // List with ?search= that yields no matches
+    const noMatchRes = await app.inject({
+      method: "GET",
+      url: "/blog?search=nonexistentterm123",
+    });
+    assert.equal(noMatchRes.statusCode, 200);
+    const noMatchJson = noMatchRes.json() as { data: unknown[] };
+    assert.equal(noMatchJson.data.length, 0);
+
+    // Anonymous user attempts ?status=draft -> fail-closed: must only return published posts
+    const anonDraftAttempt = await app.inject({
+      method: "GET",
+      url: "/blog?status=draft",
+    });
+    assert.equal(anonDraftAttempt.statusCode, 200);
+    const anonDraftJson = anonDraftAttempt.json() as { data: Array<{ status: string }> };
+    assert.ok(anonDraftJson.data.every((p) => p.status === "published"));
+
+    // Authenticated user with draft access lists with ?status=draft
+    const authDraftRes = await app.inject({
+      method: "GET",
+      url: "/blog?status=draft",
+      headers: {
+        "x-test-user": "author-1",
+        "x-test-perms": "blog:read:draft",
+      },
+    });
+    assert.equal(authDraftRes.statusCode, 200);
+    const authDraftJson = authDraftRes.json() as { data: Array<{ status: string }> };
+    assert.equal(authDraftJson.data.length, 1);
+    assert.equal(authDraftJson.data[0]?.status, "draft");
+
+    // Authenticated user lists with ?status=published
+    const authPubRes = await app.inject({
+      method: "GET",
+      url: "/blog?status=published",
+      headers: {
+        "x-test-user": "author-1",
+        "x-test-perms": "blog:read:draft",
+      },
+    });
+    assert.equal(authPubRes.statusCode, 200);
+    const authPubJson = authPubRes.json() as { data: Array<{ status: string }> };
+    assert.equal(authPubJson.data.length, 1);
+    assert.equal(authPubJson.data[0]?.status, "published");
+  });
+
+  it("rejects unauthorized access to draft blog posts via ID fallback", async () => {
+    const { app } = await buildTestApp();
+
+    // 1. Create a draft post
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/blog",
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "blog:write",
+      },
+      payload: {
+        title: "Secret Draft Post",
+        slug: "secret-draft",
+        summary: "Draft summary",
+        content: "Draft content that must not leak",
+        status: "draft",
+      },
+    });
+    assert.equal(createRes.statusCode, 201);
+    const draft = createRes.json() as { id: string };
+
+    // 2. Anonymous visitor tries to fetch draft by slug -> 404
+    const anonSlugRes = await app.inject({
+      method: "GET",
+      url: "/blog/secret-draft",
+    });
+    assert.equal(anonSlugRes.statusCode, 404);
+
+    // 3. Anonymous visitor tries ID fallback -> MUST return 404
+    const anonIdRes = await app.inject({
+      method: "GET",
+      url: `/blog/${draft.id}`,
+    });
+    assert.equal(anonIdRes.statusCode, 404);
+
+    // 4. Authorized user with blog:read:draft can access by ID
+    const authIdRes = await app.inject({
+      method: "GET",
+      url: `/blog/${draft.id}`,
+      headers: {
+        "x-test-user": "editor-1",
+        "x-test-perms": "blog:read:draft",
+      },
+    });
+    assert.equal(authIdRes.statusCode, 200);
+    assert.equal((authIdRes.json() as { id: string }).id, draft.id);
   });
 });

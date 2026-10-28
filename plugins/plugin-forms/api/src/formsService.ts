@@ -1,6 +1,7 @@
 import {
   NotFoundError,
   ValidationError,
+  buildPaginatedResult,
   parsePaginationQuery,
   type IHookManager,
   type ILogger,
@@ -87,10 +88,26 @@ export class FormsService {
     };
   }
 
-  async listForms(): Promise<(FormDoc & { submissionCount: number })[]> {
-    const forms = await this.repo.list();
-    return Promise.all(
-      forms.map(async (form) => {
+  async listForms(
+    pageOrQuery: number | { page?: number; limit?: number; search?: string } = 1,
+    limitParam = 20,
+    searchParam?: string,
+  ): Promise<PaginatedResult<FormDoc & { submissionCount: number }>> {
+    let page = 1;
+    let limit = limitParam;
+    let search = searchParam;
+
+    if (typeof pageOrQuery === "object" && pageOrQuery !== null) {
+      page = Number(pageOrQuery.page) || 1;
+      limit = Number(pageOrQuery.limit) || limitParam;
+      search = pageOrQuery.search;
+    } else if (typeof pageOrQuery === "number") {
+      page = pageOrQuery;
+    }
+
+    const { items, total } = await this.repo.findPaginated(page, limit, search);
+    const withCounts = await Promise.all(
+      items.map(async (form) => {
         const submissionCount = await this.repo.countSubmissions(form.id);
         return {
           ...form,
@@ -98,6 +115,7 @@ export class FormsService {
         };
       }),
     );
+    return buildPaginatedResult(withCounts, total, page, limit);
   }
 
   async updateForm(id: string, input: unknown): Promise<FormDoc> {
@@ -196,10 +214,11 @@ export class FormsService {
     formId: string,
     query: unknown,
   ): Promise<PaginatedResult<FormSubmissionDoc>> {
-    // Verify form exists
     await this.getForm(formId);
     const { page, limit } = parsePaginationQuery(query);
-    return this.repo.listSubmissions(formId, page, limit);
+    const q = (query || {}) as Record<string, string | undefined>;
+    const search = q["search"]?.trim();
+    return this.repo.listSubmissions(formId, page, limit, search);
   }
 
   async exportSubmissions(

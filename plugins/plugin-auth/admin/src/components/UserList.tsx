@@ -8,6 +8,7 @@ import {
   DialogDeleteConfirm,
   InputSearchField,
   PageHeader,
+  type PaginatedResult,
   SelectFilter,
   Skeleton,
   StatCard,
@@ -16,6 +17,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   toast,
   Tooltip,
@@ -48,6 +50,10 @@ interface UserItem {
 export function UserList() {
   const router = useRouter();
   const [search, setSearch] = React.useState("");
+  const [roleFilter, setRoleFilter] = React.useState<"all" | "admin" | "member">("all");
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "suspended">("all");
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(10);
 
   // Deletion modal state
   const [deleteModal, setDeleteModal] = React.useState<{
@@ -69,18 +75,17 @@ export function UserList() {
     isSubmitting: false,
   });
 
-  const { data: rawData, isLoading, mutate } = useApi<{ data: UserItem[] } | UserItem[]>("/users");
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (search.trim()) queryParams.set("search", search.trim());
+  if (roleFilter !== "all") queryParams.set("role", roleFilter);
+  if (statusFilter !== "all") queryParams.set("status", statusFilter);
+  const endpoint = `/users?${queryParams.toString()}`;
 
-  const rawObj = rawData as { data?: UserItem[]; users?: UserItem[]; items?: UserItem[] } | null;
-  const users: UserItem[] = Array.isArray(rawData)
-    ? rawData
-    : Array.isArray(rawObj?.data)
-      ? rawObj.data
-      : Array.isArray(rawObj?.users)
-        ? rawObj.users
-        : Array.isArray(rawObj?.items)
-          ? rawObj.items
-          : [];
+  const { data: rawData, isLoading, mutate } = useApi<PaginatedResult<UserItem>>(endpoint);
+  const users: UserItem[] = rawData?.data || [];
+  const meta = rawData?.meta;
 
   const adminCount = React.useMemo(() => {
     return users.filter((u) => u.role === "admin").length;
@@ -89,27 +94,6 @@ export function UserList() {
   const activeCount = React.useMemo(() => {
     return users.filter((u) => u.status !== "suspended").length;
   }, [users]);
-
-  const [roleFilter, setRoleFilter] = React.useState<"all" | "admin" | "member">("all");
-  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "suspended">("all");
-
-  const filteredUsers = React.useMemo(() => {
-    return users.filter((u) => {
-      if (roleFilter === "admin" && u.role !== "admin") return false;
-      if (roleFilter === "member" && u.role === "admin") return false;
-
-      if (statusFilter === "active" && u.status === "suspended") return false;
-      if (statusFilter === "suspended" && u.status !== "suspended") return false;
-
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return (
-        u.email.toLowerCase().includes(q) ||
-        (u.name && u.name.toLowerCase().includes(q)) ||
-        u.role.toLowerCase().includes(q)
-      );
-    });
-  }, [users, search, roleFilter, statusFilter]);
 
   const handleConfirmDelete = async () => {
     if (!deleteModal.target) return;
@@ -161,7 +145,7 @@ export function UserList() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Users"
-          value={users.length}
+          value={meta?.total ?? users.length}
           description="Registered user accounts"
           icon={Users}
         />
@@ -187,7 +171,10 @@ export function UserList() {
             <InputSearchField
               placeholder="Filter users by email, name, or role..."
               value={search}
-              onSearchChange={setSearch}
+              onSearchChange={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
               containerClassName="w-full sm:max-w-sm"
               className="bg-card w-full"
             />
@@ -195,7 +182,10 @@ export function UserList() {
             <div className="w-32">
               <SelectFilter
                 value={roleFilter}
-                onValueChange={setRoleFilter}
+                onValueChange={(val) => {
+                  setRoleFilter(val);
+                  setPage(1);
+                }}
                 options={[
                   { value: "all", label: "All Roles" },
                   { value: "admin", label: "Admins" },
@@ -209,7 +199,10 @@ export function UserList() {
             <div className="w-32">
               <SelectFilter
                 value={statusFilter}
-                onValueChange={setStatusFilter}
+                onValueChange={(val) => {
+                  setStatusFilter(val);
+                  setPage(1);
+                }}
                 options={[
                   { value: "all", label: "All Statuses" },
                   { value: "active", label: "Active" },
@@ -248,7 +241,7 @@ export function UserList() {
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
             </div>
-          ) : filteredUsers.length === 0 ? (
+          ) : users.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
               <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
                 <Users className="size-6 opacity-80" />
@@ -261,115 +254,130 @@ export function UserList() {
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                  <TableHead className="font-semibold">User</TableHead>
-                  <TableHead className="w-36 font-semibold">Role</TableHead>
-                  <TableHead className="w-28 font-semibold">Status</TableHead>
-                  <TableHead className="w-28 text-right font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((u) => (
-                  <TableRow
-                    key={u.id}
-                    className="text-xs group hover:bg-muted/30 transition-colors"
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
-                          <Users className="size-4" />
-                        </div>
-                        <Link
-                          href={`/dashboard/users/${u.id}`}
-                          className="font-medium text-foreground hover:text-primary transition-colors block"
-                        >
-                          <div className="font-semibold">{u.email}</div>
-                          {u.name && (
-                            <div className="text-[11px] text-muted-foreground">{u.name}</div>
-                          )}
-                        </Link>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-[11px] capitalize">
-                        {u.role || "User"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {u.status === "suspended" ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-rose-500 font-medium">
-                          <span className="size-1.5 rounded-full bg-rose-500" />
-                          Suspended
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
-                          <span className="size-1.5 rounded-full bg-emerald-500" />
-                          Active
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {u.status === "suspended" ? (
-                          <Tooltip content="Activate User">
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() =>
-                                setSuspendModal({
-                                  target: u,
-                                  action: "activate",
-                                  isSubmitting: false,
-                                })
-                              }
-                              className="text-emerald-500 hover:text-emerald-400"
-                            >
-                              <UserCheck className="size-4" />
-                            </Button>
-                          </Tooltip>
-                        ) : (
-                          <Tooltip content="Suspend User">
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() =>
-                                setSuspendModal({
-                                  target: u,
-                                  action: "suspend",
-                                  isSubmitting: false,
-                                })
-                              }
-                              className="text-muted-foreground hover:text-rose-500"
-                            >
-                              <UserX className="size-4" />
-                            </Button>
-                          </Tooltip>
-                        )}
-                        <Tooltip content="Edit User & Permissions">
-                          <Link href={`/dashboard/users/${u.id}`}>
-                            <Button variant="ghost" size="icon-sm">
-                              <Pencil className="size-4 text-muted-foreground hover:text-foreground" />
-                            </Button>
-                          </Link>
-                        </Tooltip>
-                        <Tooltip content="Delete User">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setDeleteModal({ target: u, isDeleting: false })}
-                            className="hover:text-destructive"
-                          >
-                            <Trash2 className="size-4 text-muted-foreground" />
-                          </Button>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                    <TableHead className="font-semibold">User</TableHead>
+                    <TableHead className="w-36 font-semibold">Role</TableHead>
+                    <TableHead className="w-28 font-semibold">Status</TableHead>
+                    <TableHead className="w-28 text-right font-semibold">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u) => (
+                    <TableRow
+                      key={u.id}
+                      className="text-xs group hover:bg-muted/30 transition-colors"
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                            <Users className="size-4" />
+                          </div>
+                          <Link
+                            href={`/dashboard/users/${u.id}`}
+                            className="font-medium text-foreground hover:text-primary transition-colors block"
+                          >
+                            <div className="font-semibold">{u.email}</div>
+                            {u.name && (
+                              <div className="text-[11px] text-muted-foreground">{u.name}</div>
+                            )}
+                          </Link>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[11px] capitalize">
+                          {u.role || "User"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {u.status === "suspended" ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-rose-500 font-medium">
+                            <span className="size-1.5 rounded-full bg-rose-500" />
+                            Suspended
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
+                            <span className="size-1.5 rounded-full bg-emerald-500" />
+                            Active
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {u.status === "suspended" ? (
+                            <Tooltip content="Activate User">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() =>
+                                  setSuspendModal({
+                                    target: u,
+                                    action: "activate",
+                                    isSubmitting: false,
+                                  })
+                                }
+                                className="text-emerald-500 hover:text-emerald-400"
+                              >
+                                <UserCheck className="size-4" />
+                              </Button>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip content="Suspend User">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() =>
+                                  setSuspendModal({
+                                    target: u,
+                                    action: "suspend",
+                                    isSubmitting: false,
+                                  })
+                                }
+                                className="text-muted-foreground hover:text-rose-500"
+                              >
+                                <UserX className="size-4" />
+                              </Button>
+                            </Tooltip>
+                          )}
+                          <Tooltip content="Edit User & Permissions">
+                            <Link href={`/dashboard/users/${u.id}`}>
+                              <Button variant="ghost" size="icon-sm">
+                                <Pencil className="size-4 text-muted-foreground hover:text-foreground" />
+                              </Button>
+                            </Link>
+                          </Tooltip>
+                          <Tooltip content="Delete User">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setDeleteModal({ target: u, isDeleting: false })}
+                              className="hover:text-destructive"
+                            >
+                              <Trash2 className="size-4 text-muted-foreground" />
+                            </Button>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={page}
+                totalPages={
+                  meta?.totalPages ?? Math.max(1, Math.ceil((meta?.total ?? users.length) / limit))
+                }
+                totalCount={meta?.total ?? users.length}
+                limit={limit}
+                onPageChange={setPage}
+                onLimitChange={(newLimit) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }}
+              />
+            </>
           )}
         </div>
       </div>

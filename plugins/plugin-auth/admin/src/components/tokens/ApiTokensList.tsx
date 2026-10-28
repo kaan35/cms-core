@@ -9,6 +9,7 @@ import {
   formatRelativeTime,
   InputSearchField,
   PageHeader,
+  type PaginatedMeta,
   SelectFilter,
   Skeleton,
   StatCard,
@@ -17,6 +18,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   toast,
   Tooltip,
@@ -78,12 +80,6 @@ function getAgentMeta(name: string) {
 }
 
 export function ApiTokensList() {
-  const {
-    data: rawData,
-    isLoading,
-    mutate,
-  } = useApi<{ tokens: ApiTokenItem[] } | ApiTokenItem[]>("/auth/tokens");
-
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [selectedTokenForDetail, setSelectedTokenForDetail] = React.useState<ApiTokenItem | null>(
     null,
@@ -92,17 +88,29 @@ export function ApiTokensList() {
   const [tokenToRevoke, setTokenToRevoke] = React.useState<ApiTokenItem | null>(null);
   const [isRevoking, setIsRevoking] = React.useState(false);
   const [search, setSearch] = React.useState("");
-
   const [scopeFilter, setScopeFilter] = React.useState<"all" | "full" | "scoped">("all");
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(10);
 
-  const rawObj = rawData as { tokens?: ApiTokenItem[]; data?: ApiTokenItem[] } | null;
-  const tokens: ApiTokenItem[] = Array.isArray(rawData)
-    ? rawData
-    : Array.isArray(rawObj?.tokens)
-      ? rawObj.tokens
-      : Array.isArray(rawObj?.data)
-        ? rawObj.data
-        : [];
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (search.trim()) queryParams.set("search", search.trim());
+  if (scopeFilter !== "all") queryParams.set("scope", scopeFilter);
+  const endpoint = `/auth/tokens?${queryParams.toString()}`;
+
+  const {
+    data: rawData,
+    isLoading,
+    mutate,
+  } = useApi<{
+    tokens?: ApiTokenItem[];
+    data?: ApiTokenItem[];
+    meta?: PaginatedMeta;
+  }>(endpoint);
+
+  const tokens: ApiTokenItem[] = rawData?.data || rawData?.tokens || [];
+  const meta = rawData?.meta;
 
   const activeCount = React.useMemo(() => {
     return tokens.filter((t) => t.lastUsedAt).length;
@@ -111,22 +119,6 @@ export function ApiTokensList() {
   const fullAccessCount = React.useMemo(() => {
     return tokens.filter((t) => t.scopes.includes("*")).length;
   }, [tokens]);
-
-  const filteredTokens = React.useMemo(() => {
-    return tokens.filter((t) => {
-      const isFull = t.scopes.includes("*");
-      if (scopeFilter === "full" && !isFull) return false;
-      if (scopeFilter === "scoped" && isFull) return false;
-
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return (
-        t.name.toLowerCase().includes(q) ||
-        t.tokenPrefix.toLowerCase().includes(q) ||
-        t.scopes.some((s) => s.toLowerCase().includes(q))
-      );
-    });
-  }, [tokens, search, scopeFilter]);
 
   const handleConfirmRevoke = async () => {
     if (!tokenToRevoke) return;
@@ -157,7 +149,7 @@ export function ApiTokensList() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Tokens"
-          value={tokens.length}
+          value={meta?.total ?? tokens.length}
           description="Configured API & agent keys"
           icon={Key}
         />
@@ -183,7 +175,10 @@ export function ApiTokensList() {
             <InputSearchField
               placeholder="Search tokens by name, prefix, or scope..."
               value={search}
-              onSearchChange={setSearch}
+              onSearchChange={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
               containerClassName="w-full sm:max-w-sm"
               className="bg-card w-full"
             />
@@ -191,7 +186,10 @@ export function ApiTokensList() {
             <div className="w-36">
               <SelectFilter
                 value={scopeFilter}
-                onValueChange={setScopeFilter}
+                onValueChange={(val) => {
+                  setScopeFilter(val);
+                  setPage(1);
+                }}
                 options={[
                   { value: "all", label: "All Scopes" },
                   { value: "full", label: "Full Access" },
@@ -277,166 +275,183 @@ export function ApiTokensList() {
               </div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                  <TableHead className="w-[35%]">Token & Key</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Last Used</TableHead>
-                  <TableHead>Created & Expires</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTokens.map((token) => {
-                  const isExpired = token.expiresAt
-                    ? new Date(token.expiresAt).getTime() < Date.now()
-                    : false;
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                    <TableHead className="w-[35%]">Token & Key</TableHead>
+                    <TableHead>Permissions</TableHead>
+                    <TableHead>Last Used</TableHead>
+                    <TableHead>Created & Expires</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tokens.map((token) => {
+                    const isExpired = token.expiresAt
+                      ? new Date(token.expiresAt).getTime() < Date.now()
+                      : false;
 
-                  const agentMeta = getAgentMeta(token.name);
-                  const Icon = agentMeta ? agentMeta.icon : Key;
+                    const agentMeta = getAgentMeta(token.name);
+                    const Icon = agentMeta ? agentMeta.icon : Key;
 
-                  return (
-                    <TableRow
-                      key={token.id}
-                      className="text-xs hover:bg-muted/20 transition-colors group/row"
-                    >
-                      {/* Token Name, Icon & Key Identifier */}
-                      <TableCell className="py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`flex size-9 shrink-0 items-center justify-center rounded-xl border transition-colors ${
-                              agentMeta
-                                ? "bg-muted/80 " + agentMeta.color
-                                : "bg-muted/60 border-border/60 text-muted-foreground"
-                            }`}
-                          >
-                            <Icon className="size-4" />
-                          </div>
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedTokenForDetail(token);
-                                  setDetailModalOpen(true);
-                                }}
-                                className="font-semibold text-foreground hover:text-primary transition-colors truncate max-w-55 text-left cursor-pointer focus:outline-none"
-                              >
-                                {token.name}
-                              </button>
-                              {agentMeta && (
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] px-1.5 py-0 ${agentMeta.color}`}
-                                >
-                                  {agentMeta.label}
-                                </Badge>
-                              )}
-                              {isExpired && (
-                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                                  Expired
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-                              <span>{token.tokenPrefix || "cms_token_••••"}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      {/* Permissions / Scopes */}
-                      <TableCell className="py-3.5">
-                        <div className="flex flex-wrap gap-1">
-                          {!token.scopes ||
-                          token.scopes.length === 0 ||
-                          token.scopes.includes("*") ? (
-                            <Badge
-                              variant="secondary"
-                              className="text-[11px] px-2 py-0.5 font-medium bg-primary/10 text-primary border border-primary/20"
+                    return (
+                      <TableRow
+                        key={token.id}
+                        className="text-xs hover:bg-muted/20 transition-colors group/row"
+                      >
+                        {/* Token Name, Icon & Key Identifier */}
+                        <TableCell className="py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`flex size-9 shrink-0 items-center justify-center rounded-xl border transition-colors ${
+                                agentMeta
+                                  ? "bg-muted/80 " + agentMeta.color
+                                  : "bg-muted/60 border-border/60 text-muted-foreground"
+                              }`}
                             >
-                              Full Access (*)
-                            </Badge>
-                          ) : (
-                            token.scopes.map((scope) => (
+                              <Icon className="size-4" />
+                            </div>
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedTokenForDetail(token);
+                                    setDetailModalOpen(true);
+                                  }}
+                                  className="font-semibold text-foreground hover:text-primary transition-colors truncate max-w-55 text-left cursor-pointer focus:outline-none"
+                                >
+                                  {token.name}
+                                </button>
+                                {agentMeta && (
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] px-1.5 py-0 ${agentMeta.color}`}
+                                  >
+                                    {agentMeta.label}
+                                  </Badge>
+                                )}
+                                {isExpired && (
+                                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                    Expired
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                                <span>{token.tokenPrefix || "cms_token_••••"}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Permissions / Scopes */}
+                        <TableCell className="py-3.5">
+                          <div className="flex flex-wrap gap-1">
+                            {!token.scopes ||
+                            token.scopes.length === 0 ||
+                            token.scopes.includes("*") ? (
                               <Badge
-                                key={scope}
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0.5 font-mono text-muted-foreground"
+                                variant="secondary"
+                                className="text-[11px] px-2 py-0.5 font-medium bg-primary/10 text-primary border border-primary/20"
                               >
-                                {scope}
+                                Full Access (*)
                               </Badge>
-                            ))
-                          )}
-                        </div>
-                      </TableCell>
-
-                      {/* Last Used */}
-                      <TableCell className="py-3.5 text-muted-foreground whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <Clock className="size-3.5 opacity-60 shrink-0" />
-                          <span>
-                            {token.lastUsedAt ? formatRelativeTime(token.lastUsedAt) : "Never used"}
-                          </span>
-                        </div>
-                      </TableCell>
-
-                      {/* Created & Expires */}
-                      <TableCell className="py-3.5 whitespace-nowrap">
-                        <div className="flex flex-col text-xs space-y-0.5">
-                          <span className="text-foreground font-medium">
-                            {formatDate(token.createdAt)}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {token.expiresAt ? (
-                              isExpired ? (
-                                <span className="text-destructive font-medium">
-                                  Expired {formatDate(token.expiresAt)}
-                                </span>
-                              ) : (
-                                <span>Expires {formatDate(token.expiresAt)}</span>
-                              )
                             ) : (
-                              <span>Never expires</span>
+                              token.scopes.map((scope) => (
+                                <Badge
+                                  key={scope}
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0.5 font-mono text-muted-foreground"
+                                >
+                                  {scope}
+                                </Badge>
+                              ))
                             )}
-                          </span>
-                        </div>
-                      </TableCell>
+                          </div>
+                        </TableCell>
 
-                      {/* Actions Cell */}
-                      <TableCell className="py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            onClick={() => {
-                              setSelectedTokenForDetail(token);
-                              setDetailModalOpen(true);
-                            }}
-                            iconStart={<Code2 className="size-3.5 text-primary" />}
-                            tooltip="View IDE Setup & Decrypted Raw Key"
-                            className="font-medium"
-                          >
-                            Setup & Copy
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setTokenToRevoke(token)}
-                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            tooltip="Revoke API Token"
-                          >
-                            <Trash2 className="size-3.5" />
-                            <span className="sr-only">Revoke</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        {/* Last Used */}
+                        <TableCell className="py-3.5 text-muted-foreground whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <Clock className="size-3.5 opacity-60 shrink-0" />
+                            <span>
+                              {token.lastUsedAt
+                                ? formatRelativeTime(token.lastUsedAt)
+                                : "Never used"}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {/* Created & Expires */}
+                        <TableCell className="py-3.5 whitespace-nowrap">
+                          <div className="flex flex-col text-xs space-y-0.5">
+                            <span className="text-foreground font-medium">
+                              {formatDate(token.createdAt)}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {token.expiresAt ? (
+                                isExpired ? (
+                                  <span className="text-destructive font-medium">
+                                    Expired {formatDate(token.expiresAt)}
+                                  </span>
+                                ) : (
+                                  <span>Expires {formatDate(token.expiresAt)}</span>
+                                )
+                              ) : (
+                                <span>Never expires</span>
+                              )}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {/* Actions Cell */}
+                        <TableCell className="py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => {
+                                setSelectedTokenForDetail(token);
+                                setDetailModalOpen(true);
+                              }}
+                              iconStart={<Code2 className="size-3.5 text-primary" />}
+                              tooltip="View IDE Setup & Decrypted Raw Key"
+                              className="font-medium"
+                            >
+                              Setup & Copy
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setTokenToRevoke(token)}
+                              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              tooltip="Revoke API Token"
+                            >
+                              <Trash2 className="size-3.5" />
+                              <span className="sr-only">Revoke</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={page}
+                totalPages={
+                  meta?.totalPages ?? Math.max(1, Math.ceil((meta?.total ?? tokens.length) / limit))
+                }
+                totalCount={meta?.total ?? tokens.length}
+                limit={limit}
+                onPageChange={setPage}
+                onLimitChange={(newLimit) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }}
+              />
+            </>
           )}
         </div>
       </div>

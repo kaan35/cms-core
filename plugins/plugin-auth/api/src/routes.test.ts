@@ -56,6 +56,12 @@ function makeInMemoryDb(): IDatabase {
                       const ids = (v as { $in: string[] })["$in"];
                       return ids.includes(doc[k] as string);
                     }
+                    if (typeof v === "object" && v !== null && "$regex" in v) {
+                      const pattern = (v as { $regex: string }).$regex;
+                      const options = (v as { $options?: string }).$options || "";
+                      const reg = new RegExp(pattern, options);
+                      return typeof doc[k] === "string" && reg.test(doc[k] as string);
+                    }
                     return doc[k] === v;
                   });
                 });
@@ -64,6 +70,11 @@ function makeInMemoryDb(): IDatabase {
                 if (typeof v === "object" && v !== null && "$in" in v) {
                   const ids = (v as { $in: string[] })["$in"];
                   if (!ids.includes(doc[k] as string)) return false;
+                } else if (typeof v === "object" && v !== null && "$regex" in v) {
+                  const pattern = (v as { $regex: string }).$regex;
+                  const options = (v as { $options?: string }).$options || "";
+                  const reg = new RegExp(pattern, options);
+                  if (typeof doc[k] !== "string" || !reg.test(doc[k] as string)) return false;
                 } else if (doc[k] !== v) {
                   return false;
                 }
@@ -133,7 +144,44 @@ function makeInMemoryDb(): IDatabase {
             }
           }
         },
-        countDocuments: async () => store.size,
+        countDocuments: async (filter: Record<string, unknown> = {}) => {
+          if (!filter || Object.keys(filter).length === 0) return store.size;
+          let docs = Array.from(store.values());
+          docs = docs.filter((doc) => {
+            if (Array.isArray(filter["$or"])) {
+              return (filter["$or"] as Record<string, unknown>[]).some((subFilter) => {
+                return Object.entries(subFilter).every(([k, v]) => {
+                  if (typeof v === "object" && v !== null && "$in" in v) {
+                    const ids = (v as { $in: string[] })["$in"];
+                    return ids.includes(doc[k] as string);
+                  }
+                  if (typeof v === "object" && v !== null && "$regex" in v) {
+                    const pattern = (v as { $regex: string }).$regex;
+                    const options = (v as { $options?: string }).$options || "";
+                    const reg = new RegExp(pattern, options);
+                    return typeof doc[k] === "string" && reg.test(doc[k] as string);
+                  }
+                  return doc[k] === v;
+                });
+              });
+            }
+            for (const [k, v] of Object.entries(filter)) {
+              if (typeof v === "object" && v !== null && "$in" in v) {
+                const ids = (v as { $in: string[] })["$in"];
+                if (!ids.includes(doc[k] as string)) return false;
+              } else if (typeof v === "object" && v !== null && "$regex" in v) {
+                const pattern = (v as { $regex: string }).$regex;
+                const options = (v as { $options?: string }).$options || "";
+                const reg = new RegExp(pattern, options);
+                if (typeof doc[k] !== "string" || !reg.test(doc[k] as string)) return false;
+              } else if (doc[k] !== v) {
+                return false;
+              }
+            }
+            return true;
+          });
+          return docs.length;
+        },
         createIndex: async () => {},
       };
     },
@@ -1019,6 +1067,84 @@ describe("plugin-auth routes & workflows", () => {
       cookies: { token: adminToken },
     });
     assert.equal(adminNavRes.statusCode, 200);
+
+    await app.close();
+  });
+
+  it("supports server-side pagination and filtering for /users, /roles, and /auth/tokens", async () => {
+    const { app } = await setupTestApp();
+    const setupRes = await app.inject({
+      method: "POST",
+      url: "/auth/setup",
+      payload: { email: "admin@example.com", password: "AdminPassword123" },
+    });
+    const adminToken = setupRes.cookies.find((c) => c.name === "token")!.value;
+    const adminCsrf = setupRes.cookies.find((c) => c.name === "csrfToken")!.value;
+
+    // Create another user
+    await app.inject({
+      method: "POST",
+      url: "/users",
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+      payload: {
+        email: "bob@example.com",
+        name: "Bob Builder",
+        password: "BobPassword123",
+      },
+    });
+
+    // 1. GET /users with pagination and search
+    const usersRes = await app.inject({
+      method: "GET",
+      url: "/users?page=1&limit=1&search=bob",
+      cookies: { token: adminToken },
+    });
+    assert.equal(usersRes.statusCode, 200);
+    const usersJson = usersRes.json() as {
+      data: Array<{ email: string }>;
+      meta: { total: number; page: number; limit: number };
+    };
+    assert.equal(usersJson.data.length, 1);
+    assert.equal(usersJson.data[0]?.email, "bob@example.com");
+    assert.equal(usersJson.meta.total, 1);
+
+    // 2. GET /roles with pagination
+    const rolesRes = await app.inject({
+      method: "GET",
+      url: "/roles?page=1&limit=5",
+      cookies: { token: adminToken },
+    });
+    assert.equal(rolesRes.statusCode, 200);
+    const rolesJson = rolesRes.json() as {
+      roles: Array<{ name: string }>;
+      meta: { total: number };
+    };
+    assert.ok(rolesJson.roles.length > 0);
+    assert.ok(rolesJson.meta.total > 0);
+
+    // 3. Create a token and GET /auth/tokens with pagination
+    await app.inject({
+      method: "POST",
+      url: "/auth/tokens",
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+      payload: { name: "Agent Alpha", scopes: ["*"] },
+    });
+
+    const tokensRes = await app.inject({
+      method: "GET",
+      url: "/auth/tokens?page=1&limit=10&search=Alpha",
+      cookies: { token: adminToken },
+    });
+    assert.equal(tokensRes.statusCode, 200);
+    const tokensJson = tokensRes.json() as {
+      tokens: Array<{ name: string }>;
+      meta: { total: number };
+    };
+    assert.equal(tokensJson.tokens.length, 1);
+    assert.equal(tokensJson.tokens[0]?.name, "Agent Alpha");
+    assert.equal(tokensJson.meta.total, 1);
 
     await app.close();
   });

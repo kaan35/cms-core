@@ -192,4 +192,70 @@ describe("plugin-forms routes & workflows", () => {
     });
     assert.equal(deleteRes.statusCode, 200);
   });
+
+  it("supports server-side pagination and search for forms and submissions via REST API", async () => {
+    const { app, service } = await buildTestApp();
+
+    const f1 = await service.createForm({
+      title: "Alpha Feedback Form",
+      slug: "alpha-feedback",
+      fields: [{ name: "msg", label: "Message", type: "text" }],
+      captchaProvider: "none",
+    });
+    await service.createForm({
+      title: "Beta Newsletter Form",
+      slug: "beta-newsletter",
+      fields: [{ name: "email", label: "Email", type: "email" }],
+      captchaProvider: "none",
+    });
+
+    // 1. Search forms by title
+    const searchRes = await app.inject({
+      method: "GET",
+      url: "/forms?search=Newsletter",
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "forms:read",
+      },
+    });
+    assert.equal(searchRes.statusCode, 200);
+    const searchBody = JSON.parse(searchRes.body);
+    assert.equal(searchBody.meta.total, 1);
+    assert.equal(searchBody.data[0].slug, "beta-newsletter");
+
+    // 2. Paginate forms
+    const pagedRes = await app.inject({
+      method: "GET",
+      url: "/forms?page=1&limit=1",
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "forms:read",
+      },
+    });
+    assert.equal(pagedRes.statusCode, 200);
+    const pagedBody = JSON.parse(pagedRes.body);
+    assert.equal(pagedBody.meta.page, 1);
+    assert.equal(pagedBody.meta.limit, 1);
+    assert.equal(pagedBody.meta.total, 2);
+    assert.equal(pagedBody.meta.totalPages, 2);
+    assert.equal(pagedBody.data.length, 1);
+
+    // 3. Add submissions
+    await service.submitForm(f1.id, { msg: "Hello" }, { ip: "192.168.1.50" });
+    await service.submitForm(f1.id, { msg: "World" }, { ip: "10.0.0.99" });
+
+    // 4. Paginate and search submissions
+    const subRes = await app.inject({
+      method: "GET",
+      url: `/forms/${f1.id}/submissions?search=192.168`,
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "forms:read",
+      },
+    });
+    assert.equal(subRes.statusCode, 200);
+    const subBody = JSON.parse(subRes.body);
+    assert.equal(subBody.meta.total, 1);
+    assert.equal(subBody.data[0].ip, "192.168.1.50");
+  });
 });

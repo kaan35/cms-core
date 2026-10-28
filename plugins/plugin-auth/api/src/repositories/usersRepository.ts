@@ -13,6 +13,12 @@ export interface UserDoc extends Record<string, unknown> {
   updatedAt: Date;
 }
 
+export interface UserFilter {
+  search?: string | undefined;
+  status?: "active" | "suspended" | undefined;
+  roleId?: string | undefined;
+}
+
 export class UsersRepository {
   private readonly collection: ICollection<UserDoc>;
 
@@ -83,11 +89,33 @@ export class UsersRepository {
     return this.collection.find({ roleIds: roleId });
   }
 
-  async findPaginated(page = 1, limit = 50): Promise<{ items: UserDoc[]; total: number }> {
+  async countFilter(filter: Record<string, unknown>): Promise<number> {
+    return this.collection.countDocuments(filter);
+  }
+
+  async findPaginated(
+    page = 1,
+    limit = 50,
+    filter?: UserFilter,
+  ): Promise<{ items: UserDoc[]; total: number }> {
+    const query: Record<string, unknown> = {};
+    if (filter?.status) {
+      query["status"] = filter.status;
+    }
+    if (filter?.roleId) {
+      query["roleIds"] = filter.roleId;
+    }
+    if (filter?.search?.trim()) {
+      const s = filter.search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      query["$or"] = [
+        { email: { $regex: s, $options: "i" } },
+        { name: { $regex: s, $options: "i" } },
+      ];
+    }
     const skip = Math.max(0, (page - 1) * limit);
     const [items, total] = await Promise.all([
-      this.collection.find({}, { skip, limit, sort: { createdAt: -1 } }),
-      this.collection.countDocuments(),
+      this.collection.find(query, { skip, limit, sort: { createdAt: -1 } }),
+      this.collection.countDocuments(query),
     ]);
     return { items, total };
   }

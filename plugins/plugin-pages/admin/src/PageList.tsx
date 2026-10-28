@@ -2,12 +2,14 @@
 
 import {
   api,
+  type PaginatedResult,
   Skeleton,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   toast,
   useApi,
@@ -33,6 +35,8 @@ export interface PageListItem {
 export function PageList() {
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"all" | "published" | "draft">("all");
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(10);
   const [deleteModal, setDeleteModal] = React.useState<{
     target: PageListItem | null;
     isDeleting: boolean;
@@ -41,34 +45,36 @@ export function PageList() {
     isDeleting: false,
   });
 
-  const {
-    data: rawData,
-    isLoading,
-    mutate,
-  } = useApi<
-    | {
-        data: PageListItem[];
-        total: number;
-      }
-    | PageListItem[]
-  >("/pages");
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (status: "all" | "published" | "draft") => {
+    setStatusFilter(status);
+    setPage(1);
+  };
+
+  const apiUrl = React.useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", String(limit));
+    if (search.trim()) params.set("search", search.trim());
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    return `/api/pages?${params.toString()}`;
+  }, [page, limit, search, statusFilter]);
+
+  const { data: rawData, isLoading, mutate } = useApi<PaginatedResult<PageListItem>>(apiUrl);
 
   const pages: PageListItem[] = React.useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData.data)) return rawData.data;
     if (Array.isArray(rawData)) return rawData;
-    if (rawData && Array.isArray(rawData.data)) return rawData.data;
     return [];
   }, [rawData]);
 
-  const filteredPages = React.useMemo(() => {
-    return pages.filter((page) => {
-      const matchSearch =
-        page.title.toLowerCase().includes(search.toLowerCase()) ||
-        page.slug.toLowerCase().includes(search.toLowerCase());
-      if (!matchSearch) return false;
-      if (statusFilter !== "all" && page.status !== statusFilter) return false;
-      return true;
-    });
-  }, [pages, search, statusFilter]);
+  const totalCount = rawData?.meta?.total ?? pages.length;
+  const totalPages = rawData?.meta?.totalPages ?? Math.max(1, Math.ceil(totalCount / limit));
 
   const handleConfirmDelete = async () => {
     if (!deleteModal.target) return;
@@ -89,9 +95,9 @@ export function PageList() {
     <div className="space-y-4">
       <PageListToolbar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={handleSearchChange}
         statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
+        onStatusFilterChange={handleStatusFilterChange}
         onRefresh={() => mutate()}
       />
 
@@ -134,7 +140,7 @@ export function PageList() {
               ))}
             </TableBody>
           </Table>
-        ) : filteredPages.length === 0 ? (
+        ) : pages.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
               <FileText className="size-6 opacity-80" />
@@ -147,27 +153,42 @@ export function PageList() {
             </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                <TableHead className="font-semibold">Page Title</TableHead>
-                <TableHead className="font-semibold">URL Slug</TableHead>
-                <TableHead className="font-semibold">Status</TableHead>
-                <TableHead className="font-semibold">Blocks</TableHead>
-                <TableHead className="font-semibold">Last Updated</TableHead>
-                <TableHead className="text-right font-semibold">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPages.map((page) => (
-                <PageTableRow
-                  key={page.id}
-                  page={page}
-                  onDeleteRequest={(target) => setDeleteModal({ target, isDeleting: false })}
-                />
-              ))}
-            </TableBody>
-          </Table>
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                  <TableHead className="font-semibold">Page Title</TableHead>
+                  <TableHead className="font-semibold">URL Slug</TableHead>
+                  <TableHead className="font-semibold">Status</TableHead>
+                  <TableHead className="font-semibold">Blocks</TableHead>
+                  <TableHead className="font-semibold">Last Updated</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pages.map((pageItem) => (
+                  <PageTableRow
+                    key={pageItem.id}
+                    page={pageItem}
+                    onDeleteRequest={(target) => setDeleteModal({ target, isDeleting: false })}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+            {(pages.length > 0 || totalCount > 0) && (
+              <TablePagination
+                page={page}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                limit={limit}
+                onPageChange={setPage}
+                onLimitChange={(newLimit) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }}
+              />
+            )}
+          </>
         )}
       </div>
 

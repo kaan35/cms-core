@@ -2,11 +2,13 @@
 
 import {
   api,
+  type PaginatedResult,
   Skeleton,
   Table,
   TableBody,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   toast,
   useApi,
@@ -23,6 +25,8 @@ export type { BlogPostListItem };
 export function BlogPostList() {
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"all" | "published" | "draft">("all");
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(10);
   const [deleteModal, setDeleteModal] = React.useState<{
     target: BlogPostListItem | null;
     isDeleting: boolean;
@@ -31,36 +35,36 @@ export function BlogPostList() {
     isDeleting: false,
   });
 
-  const {
-    data: rawData,
-    isLoading,
-    mutate,
-  } = useApi<
-    | {
-        data: BlogPostListItem[];
-        total: number;
-      }
-    | BlogPostListItem[]
-  >("/blog");
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (status: "all" | "published" | "draft") => {
+    setStatusFilter(status);
+    setPage(1);
+  };
+
+  const apiUrl = React.useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", String(limit));
+    if (search.trim()) params.set("search", search.trim());
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    return `/api/blog?${params.toString()}`;
+  }, [page, limit, search, statusFilter]);
+
+  const { data: rawData, isLoading, mutate } = useApi<PaginatedResult<BlogPostListItem>>(apiUrl);
 
   const posts: BlogPostListItem[] = React.useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData.data)) return rawData.data;
     if (Array.isArray(rawData)) return rawData;
-    if (rawData && Array.isArray(rawData.data)) return rawData.data;
     return [];
   }, [rawData]);
 
-  const filteredPosts = React.useMemo(() => {
-    return posts.filter((post) => {
-      const matchSearch =
-        post.title.toLowerCase().includes(search.toLowerCase()) ||
-        post.slug.toLowerCase().includes(search.toLowerCase()) ||
-        (post.summary && post.summary.toLowerCase().includes(search.toLowerCase()));
-
-      const matchStatus = statusFilter === "all" || post.status === statusFilter;
-
-      return matchSearch && matchStatus;
-    });
-  }, [posts, search, statusFilter]);
+  const totalCount = rawData?.meta?.total ?? posts.length;
+  const totalPages = rawData?.meta?.totalPages ?? Math.max(1, Math.ceil(totalCount / limit));
 
   const handleDeleteConfirm = async () => {
     if (!deleteModal.target) return;
@@ -80,9 +84,9 @@ export function BlogPostList() {
     <div className="space-y-4">
       <BlogPostListToolbar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={handleSearchChange}
         statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
+        onStatusFilterChange={handleStatusFilterChange}
         onRefresh={() => mutate()}
       />
 
@@ -93,7 +97,7 @@ export function BlogPostList() {
             <Skeleton className="h-9 w-full" />
             <Skeleton className="h-9 w-full" />
           </div>
-        ) : filteredPosts.length === 0 ? (
+        ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
               <BookOpen className="size-6 opacity-80" />
@@ -106,25 +110,40 @@ export function BlogPostList() {
             </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                <TableHead className="font-semibold">Post Details</TableHead>
-                <TableHead className="w-32 font-semibold">Status</TableHead>
-                <TableHead className="w-44 font-semibold">Last Modified</TableHead>
-                <TableHead className="w-24 text-right font-semibold">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPosts.map((post) => (
-                <BlogPostTableRow
-                  key={post.id}
-                  post={post}
-                  onDeleteClick={(target) => setDeleteModal({ target, isDeleting: false })}
-                />
-              ))}
-            </TableBody>
-          </Table>
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                  <TableHead className="font-semibold">Post Details</TableHead>
+                  <TableHead className="w-32 font-semibold">Status</TableHead>
+                  <TableHead className="w-44 font-semibold">Last Modified</TableHead>
+                  <TableHead className="w-24 text-right font-semibold">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {posts.map((post) => (
+                  <BlogPostTableRow
+                    key={post.id}
+                    post={post}
+                    onDeleteClick={(target) => setDeleteModal({ target, isDeleting: false })}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+            {(posts.length > 0 || totalCount > 0) && (
+              <TablePagination
+                page={page}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                limit={limit}
+                onPageChange={setPage}
+                onLimitChange={(newLimit) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }}
+              />
+            )}
+          </>
         )}
       </div>
 

@@ -1,3 +1,4 @@
+import { PERMISSIONS } from "@cms/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { VaultController } from "./controllers/vaultController.js";
 
@@ -11,8 +12,13 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
   };
 
   const authenticate = (req: FastifyRequest, reply: FastifyReply) =>
-    customApp.authenticate(req, reply);
-  const verifyCsrf = (req: FastifyRequest, reply: FastifyReply) => customApp.verifyCsrf(req, reply);
+    customApp.authenticate ? customApp.authenticate(req, reply) : Promise.resolve();
+  const verifyCsrf = (req: FastifyRequest, reply: FastifyReply) =>
+    customApp.verifyCsrf ? customApp.verifyCsrf(req, reply) : Promise.resolve();
+  const checkPermission = (permission: string) => (req: FastifyRequest, reply: FastifyReply) =>
+    customApp.checkPermission
+      ? customApp.checkPermission(permission)(req, reply)
+      : Promise.resolve();
 
   // List vault credentials
   app.get(
@@ -23,7 +29,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "List all vault credentials (masked passwords)",
         security: [{ cookieAuth: [] }],
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, checkPermission(PERMISSIONS.VAULT.READ)],
     },
     controller.list.bind(controller),
   );
@@ -37,7 +43,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Get vault item details by ID",
         security: [{ cookieAuth: [] }],
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, checkPermission(PERMISSIONS.VAULT.READ)],
     },
     controller.getById.bind(controller),
   );
@@ -51,7 +57,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Create a new vault credential",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
       },
-      preHandler: [authenticate, verifyCsrf],
+      preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.VAULT.WRITE)],
     },
     controller.create.bind(controller),
   );
@@ -65,7 +71,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Update existing vault credential",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
       },
-      preHandler: [authenticate, verifyCsrf],
+      preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.VAULT.WRITE)],
     },
     controller.update.bind(controller),
   );
@@ -79,7 +85,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Delete vault credential by ID",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
       },
-      preHandler: [authenticate, verifyCsrf],
+      preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.VAULT.WRITE)],
     },
     controller.delete.bind(controller),
   );
@@ -93,7 +99,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Reveal plaintext password for vault item (audited)",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
       },
-      preHandler: [authenticate, verifyCsrf],
+      preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.VAULT.WRITE)],
     },
     controller.reveal.bind(controller),
   );
@@ -107,7 +113,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Generate a cryptographically secure random password",
         security: [{ cookieAuth: [] }],
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, checkPermission(PERMISSIONS.VAULT.WRITE)],
     },
     controller.generatePassword.bind(controller),
   );
@@ -121,7 +127,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Download blank template for vault credentials import (.xlsx or .csv)",
         security: [{ cookieAuth: [] }],
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, checkPermission(PERMISSIONS.VAULT.READ)],
     },
     controller.template.bind(controller),
   );
@@ -135,7 +141,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Export vault credentials to Excel or CSV file (decrypted & audited)",
         security: [{ cookieAuth: [] }],
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, checkPermission(PERMISSIONS.VAULT.READ)],
     },
     controller.export.bind(controller),
   );
@@ -149,7 +155,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Parse and preview vault credentials from Excel, CSV, or raw text",
         security: [{ cookieAuth: [] }],
       },
-      preHandler: [authenticate],
+      preHandler: [authenticate, checkPermission(PERMISSIONS.VAULT.WRITE)],
     },
     controller.preview.bind(controller),
   );
@@ -163,7 +169,7 @@ export function registerVaultRoutes(app: FastifyInstance, controller: VaultContr
         summary: "Import vault credentials from JSON array, raw CSV, or base64 file",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
       },
-      preHandler: [authenticate, verifyCsrf],
+      preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.VAULT.WRITE)],
     },
     controller.import.bind(controller),
   );

@@ -35,6 +35,7 @@ export * from "./components/ProtectedRoute";
 export * from "./components/Sidebar";
 export * from "./components/StatCard";
 export * from "./components/StatusBadge";
+export * from "./components/TablePagination";
 export * from "./components/UserMenu";
 
 // Pages

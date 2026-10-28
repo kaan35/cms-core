@@ -1,4 +1,4 @@
-import { NotFoundError, type IHookManager, type ILogger } from "@cms/core";
+import { NotFoundError, buildPaginatedResult, type IHookManager, type ILogger } from "@cms/core";
 import { randomInt } from "node:crypto";
 import {
   VAULT_EVENTS,
@@ -69,12 +69,26 @@ export class VaultService {
     return password;
   }
 
-  async list(category?: string, search?: string): Promise<VaultItemDoc[]> {
-    const items = await this.repo.list(category, search);
-    return items.map((item) => ({
+  private maskItem(item: VaultItemDoc): VaultItemDoc {
+    return {
       ...item,
       password: "••••••••",
-    }));
+    };
+  }
+
+  async list(category?: string, search?: string): Promise<VaultItemDoc[]> {
+    const items = await this.repo.list(category, search);
+    return items.map((item) => this.maskItem(item));
+  }
+
+  async listPaginated(page = 1, limit = 20, category?: string, search?: string) {
+    const { items, total } = await this.repo.findPaginated(page, limit, category, search);
+    const masked = items.map((it) => this.maskItem(it));
+    return buildPaginatedResult(masked, total, page, limit);
+  }
+
+  async getCategories(): Promise<string[]> {
+    return this.repo.getCategories();
   }
 
   async getById(id: string): Promise<VaultItemDoc> {

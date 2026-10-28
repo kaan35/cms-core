@@ -53,6 +53,9 @@ export class BlogPostController {
 
       // Fallback: check if param is an ID
       post = await this.blogService.getBlogPostById(slug);
+      if (post && post.status === "draft" && !canViewDraft) {
+        post = null;
+      }
     }
 
     if (post) {

@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
   InputSearchField,
   PageHeader,
+  type PaginatedMeta,
   SelectFilter,
   Skeleton,
   StatCard,
@@ -18,6 +19,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TablePagination,
   TableRow,
   Tooltip,
   api,
@@ -42,14 +44,11 @@ import { VaultImportModal } from "./components/VaultImportModal";
 import { VaultItemModal, isPasswordStale, type VaultItem } from "./components/VaultItemModal";
 import { VaultTableRow } from "./components/VaultTableRow";
 
-interface VaultApiResponse {
-  items: VaultItem[];
-}
-
 export function VaultListPage() {
   const [search, setSearch] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState<string>("all");
-  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "stale">("all");
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(10);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState<"xlsx" | "csv" | null>(null);
@@ -57,21 +56,30 @@ export function VaultListPage() {
   const [deleteCandidate, setDeleteCandidate] = React.useState<VaultItem | null>(null);
   const [revealedPasswords, setRevealedPasswords] = React.useState<Record<string, string>>({});
 
-  const { data, isLoading, mutate } = useApi<VaultApiResponse>("/vault/items");
-  const items = data?.items || [];
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (search.trim()) queryParams.set("search", search.trim());
+  if (selectedCategory && selectedCategory !== "all") queryParams.set("category", selectedCategory);
+  const endpoint = `/vault/items?${queryParams.toString()}`;
 
-  const categories = React.useMemo(() => {
-    const set = new Set<string>();
+  const { data, isLoading, mutate } = useApi<{
+    items?: VaultItem[];
+    data?: VaultItem[];
+    meta?: PaginatedMeta;
+    categories?: string[];
+  }>(endpoint);
+
+  const items = data?.data || data?.items || [];
+  const meta = data?.meta;
+
+  const availableCategories = React.useMemo(() => {
+    const set = new Set<string>(data?.categories || []);
     items.forEach((it) => {
       if (it.category) set.add(it.category.trim());
     });
-    return ["all", ...Array.from(set)];
-  }, [items]);
-
-  const availableCategories = React.useMemo(
-    () => categories.filter((c) => c !== "all"),
-    [categories],
-  );
+    return Array.from(set);
+  }, [data?.categories, items]);
 
   const staleCount = React.useMemo(() => {
     return items.filter((it) => isPasswordStale(it.passwordChangedAt || it.createdAt)).length;
@@ -81,25 +89,7 @@ export function VaultListPage() {
     return items.filter((it) => !isPasswordStale(it.passwordChangedAt || it.createdAt)).length;
   }, [items]);
 
-  const filteredItems = React.useMemo(() => {
-    return items.filter((it) => {
-      const matchesCategory = selectedCategory === "all" || it.category === selectedCategory;
-      const isStale = isPasswordStale(it.passwordChangedAt || it.createdAt);
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && !isStale) ||
-        (statusFilter === "stale" && isStale);
-      if (!matchesCategory || !matchesStatus) return false;
-
-      const q = search.toLowerCase();
-      const matchesSearch =
-        !search ||
-        it.title.toLowerCase().includes(q) ||
-        it.username.toLowerCase().includes(q) ||
-        it.url?.toLowerCase().includes(q);
-      return matchesSearch;
-    });
-  }, [items, selectedCategory, statusFilter, search]);
+  const displayItems = items;
 
   const handleReveal = async (id: string) => {
     if (revealedPasswords[id]) {
@@ -212,7 +202,7 @@ export function VaultListPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Credentials"
-          value={items.length}
+          value={meta?.total ?? displayItems.length}
           description="Stored encrypted credentials"
           icon={KeyRound}
         />
@@ -240,30 +230,22 @@ export function VaultListPage() {
             <InputSearchField
               placeholder="Filter credentials by title, username, or URL..."
               value={search}
-              onSearchChange={setSearch}
+              onSearchChange={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
               containerClassName="w-full sm:max-w-sm"
               className="bg-card w-full"
             />
-
-            <div className="w-32">
-              <SelectFilter
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-                options={[
-                  { value: "all", label: "All Statuses" },
-                  { value: "active", label: "Active" },
-                  { value: "stale", label: "Stale" },
-                ]}
-                placeholder="All Statuses"
-                className="h-8 text-xs min-w-32 w-full bg-card"
-              />
-            </div>
 
             {availableCategories.length > 0 && (
               <div className="w-36">
                 <SelectFilter
                   value={selectedCategory}
-                  onValueChange={setSelectedCategory}
+                  onValueChange={(val) => {
+                    setSelectedCategory(val);
+                    setPage(1);
+                  }}
                   options={[
                     { value: "all", label: "All Categories" },
                     ...availableCategories.map((cat) => ({
@@ -439,22 +421,22 @@ export function VaultListPage() {
                 ))}
               </TableBody>
             </Table>
-          ) : filteredItems.length === 0 ? (
+          ) : displayItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 py-16 text-center">
               <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/70 border border-border/80 text-muted-foreground mb-3.5 shadow-2xs">
                 <KeyRound className="size-6 opacity-80" />
               </div>
               <h3 className="text-sm font-semibold text-foreground">
-                {search || selectedCategory !== "all" || statusFilter !== "all"
+                {search || selectedCategory !== "all"
                   ? "No credentials found"
                   : "No credentials stored yet"}
               </h3>
               <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
-                {search || selectedCategory !== "all" || statusFilter !== "all"
+                {search || selectedCategory !== "all"
                   ? "No credentials match your search or filter criteria."
                   : "Securely store your first website login, database secret, or server credential."}
               </p>
-              {!search && selectedCategory === "all" && statusFilter === "all" && (
+              {!search && selectedCategory === "all" && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -470,33 +452,49 @@ export function VaultListPage() {
               )}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                  <TableHead className="font-semibold">Account / Title</TableHead>
-                  <TableHead className="font-semibold">Username / Email</TableHead>
-                  <TableHead className="font-semibold">Password</TableHead>
-                  <TableHead className="font-semibold">URL</TableHead>
-                  <TableHead className="text-right font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredItems.map((item) => (
-                  <VaultTableRow
-                    key={item.id}
-                    item={item}
-                    revealedPassword={item.id ? revealedPasswords[item.id] : undefined}
-                    onReveal={handleReveal}
-                    onCopy={handleCopy}
-                    onEdit={(it) => {
-                      setEditingItem(it);
-                      setIsModalOpen(true);
-                    }}
-                    onDelete={setDeleteCandidate}
-                  />
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
+                    <TableHead className="font-semibold">Account / Title</TableHead>
+                    <TableHead className="font-semibold">Username / Email</TableHead>
+                    <TableHead className="font-semibold">Password</TableHead>
+                    <TableHead className="font-semibold">URL</TableHead>
+                    <TableHead className="text-right font-semibold">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayItems.map((item) => (
+                    <VaultTableRow
+                      key={item.id}
+                      item={item}
+                      revealedPassword={item.id ? revealedPasswords[item.id] : undefined}
+                      onReveal={handleReveal}
+                      onCopy={handleCopy}
+                      onEdit={(it) => {
+                        setEditingItem(it);
+                        setIsModalOpen(true);
+                      }}
+                      onDelete={setDeleteCandidate}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={page}
+                totalPages={
+                  meta?.totalPages ??
+                  Math.max(1, Math.ceil((meta?.total ?? displayItems.length) / limit))
+                }
+                totalCount={meta?.total ?? displayItems.length}
+                limit={limit}
+                onPageChange={setPage}
+                onLimitChange={(newLimit) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }}
+              />
+            </>
           )}
         </div>
       </div>

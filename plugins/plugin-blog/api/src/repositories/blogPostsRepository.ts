@@ -127,14 +127,27 @@ export class BlogPostsRepository {
 
   async list(
     query?: unknown,
-    filter: { status?: BlogPostStatus } = {},
+    filter: { status?: BlogPostStatus; search?: string } = {},
   ): Promise<PaginatedResult<BlogPostDoc>> {
     const { page, limit } = parsePaginationQuery(query);
     const skip = (page - 1) * limit;
 
+    const raw =
+      typeof query === "object" && query !== null ? (query as Record<string, unknown>) : {};
+    const search = typeof raw["search"] === "string" ? raw["search"].trim() : filter.search?.trim();
+    const status = filter.status || (raw["status"] as BlogPostStatus);
+
     const mongoFilter: Record<string, unknown> = {};
-    if (filter.status) {
-      mongoFilter["status"] = filter.status;
+    if (status) {
+      mongoFilter["status"] = status;
+    }
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      mongoFilter["$or"] = [
+        { title: { $regex: escaped, $options: "i" } },
+        { slug: { $regex: escaped, $options: "i" } },
+        { summary: { $regex: escaped, $options: "i" } },
+      ];
     }
 
     const [data, total] = await Promise.all([

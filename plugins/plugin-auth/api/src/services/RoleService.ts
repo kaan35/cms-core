@@ -1,5 +1,12 @@
 import type { IHookManager, ILogger } from "@cms/core";
-import { ConflictError, EVENTS, ForbiddenError, NotFoundError, ValidationError } from "@cms/core";
+import {
+  ConflictError,
+  EVENTS,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+  buildPaginatedResult,
+} from "@cms/core";
 import {
   type CreateRoleInput,
   type UpdateRoleInput,
@@ -30,6 +37,15 @@ export class RoleService {
 
   async listRoles(): Promise<RoleDoc[]> {
     return this.rolesRepo.findAll();
+  }
+
+  async listRolesPaginated(
+    page = 1,
+    limit = 50,
+    filter?: { search?: string | undefined; isSystem?: boolean | undefined } | undefined,
+  ) {
+    const { items, total } = await this.rolesRepo.findPaginated(page, limit, filter);
+    return buildPaginatedResult(items, total, page, limit);
   }
 
   async getRoleById(id: string): Promise<RoleDoc> {

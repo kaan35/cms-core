@@ -69,6 +69,9 @@ export class PageController {
 
       // Fallback: check if param is an ID
       page = await this.pageService.getPageById(slug);
+      if (page && page.status === "draft" && !canViewDraft) {
+        page = null;
+      }
     }
 
     if (page) {

@@ -1,5 +1,11 @@
 import crypto from "node:crypto";
-import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from "@cms/core";
+import {
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+  buildPaginatedResult,
+} from "@cms/core";
 import type { ApiTokenDoc, ApiTokensRepository } from "../repositories/apiTokensRepository.js";
 import { decryptTokenString, encryptTokenString } from "./tokenCipher.js";
 
@@ -90,6 +96,31 @@ export class ApiTokenService {
       lastUsedAt: t.lastUsedAt,
       createdAt: t.createdAt,
     }));
+  }
+
+  async listUserTokensPaginated(
+    userId: string,
+    page = 1,
+    limit = 20,
+    filter?:
+      { search?: string | undefined; scope?: "all" | "full" | "scoped" | undefined } | undefined,
+  ) {
+    const { items, total } = await this.tokensRepo.findPaginatedByUserId(
+      userId,
+      page,
+      limit,
+      filter,
+    );
+    const masked = items.map((t) => ({
+      id: t.id,
+      name: t.name,
+      tokenPrefix: t.tokenPrefix,
+      scopes: t.scopes,
+      expiresAt: t.expiresAt,
+      lastUsedAt: t.lastUsedAt,
+      createdAt: t.createdAt,
+    }));
+    return buildPaginatedResult(masked, total, page, limit);
   }
 
   async revokeToken(id: string, user: AuthenticatedUserContext): Promise<void> {

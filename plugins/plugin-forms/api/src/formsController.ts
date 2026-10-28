@@ -1,3 +1,4 @@
+import { parsePaginationQuery } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { FormsService } from "./formsService.js";
 
@@ -8,9 +9,16 @@ export class FormsController {
     this.service = service;
   }
 
-  async listForms(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const forms = await this.service.listForms();
-    return reply.status(200).send({ forms });
+  async listForms(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const { page, limit } = parsePaginationQuery(request.query);
+    const q = (request.query || {}) as Record<string, string | undefined>;
+    const search = q["search"]?.trim();
+    const paginated = await this.service.listForms(page, limit, search);
+    return reply.status(200).send({
+      forms: paginated.data,
+      data: paginated.data,
+      meta: paginated.meta,
+    });
   }
 
   async getForm(request: FastifyRequest, reply: FastifyReply): Promise<void> {

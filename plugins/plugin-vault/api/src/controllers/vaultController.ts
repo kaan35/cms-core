@@ -1,3 +1,4 @@
+import { parsePaginationQuery } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import {
   validateCreateVaultItem,
@@ -19,9 +20,18 @@ export class VaultController {
   }
 
   async list(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const query = request.query as { category?: string; search?: string };
-    const items = await this.service.list(query.category, query.search);
-    return reply.status(200).send({ items });
+    const { page, limit } = parsePaginationQuery(request.query);
+    const query = (request.query || {}) as { category?: string; search?: string };
+    const [paginated, categories] = await Promise.all([
+      this.service.listPaginated(page, limit, query.category, query.search),
+      this.service.getCategories(),
+    ]);
+    return reply.status(200).send({
+      items: paginated.data,
+      data: paginated.data,
+      meta: paginated.meta,
+      categories,
+    });
   }
 
   async getById(request: FastifyRequest, reply: FastifyReply): Promise<void> {

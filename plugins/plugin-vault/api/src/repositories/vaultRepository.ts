@@ -97,19 +97,58 @@ export class VaultRepository {
     if (filterCategory && filterCategory !== "all") {
       filter["category"] = filterCategory;
     }
-    const all = await this.col.find(filter, { sort: { createdAt: -1 } });
-    const normalized = all.map((item) => this.normalizeDoc(item));
-    if (!search || search.trim() === "") {
-      return normalized;
+    if (search && search.trim() !== "") {
+      const s = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter["$or"] = [
+        { title: { $regex: s, $options: "i" } },
+        { username: { $regex: s, $options: "i" } },
+        { url: { $regex: s, $options: "i" } },
+        { category: { $regex: s, $options: "i" } },
+      ];
     }
-    const q = search.toLowerCase();
-    return normalized.filter(
-      (item) =>
-        item.title.toLowerCase().includes(q) ||
-        item.username.toLowerCase().includes(q) ||
-        item.url.toLowerCase().includes(q) ||
-        item.category.toLowerCase().includes(q),
-    );
+    const all = await this.col.find(filter, { sort: { createdAt: -1 } });
+    return all.map((item) => this.normalizeDoc(item));
+  }
+
+  async findPaginated(
+    page = 1,
+    limit = 20,
+    filterCategory?: string,
+    search?: string,
+  ): Promise<{ items: VaultItemDoc[]; total: number }> {
+    const filter: Record<string, unknown> = {};
+    if (filterCategory && filterCategory !== "all") {
+      filter["category"] = filterCategory;
+    }
+    if (search && search.trim() !== "") {
+      const s = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter["$or"] = [
+        { title: { $regex: s, $options: "i" } },
+        { username: { $regex: s, $options: "i" } },
+        { url: { $regex: s, $options: "i" } },
+        { category: { $regex: s, $options: "i" } },
+      ];
+    }
+    const skip = Math.max(0, (page - 1) * limit);
+    const [items, total] = await Promise.all([
+      this.col.find(filter, { skip, limit, sort: { createdAt: -1 } }),
+      this.col.countDocuments(filter),
+    ]);
+    return {
+      items: items.map((item) => this.normalizeDoc(item)),
+      total,
+    };
+  }
+
+  async getCategories(): Promise<string[]> {
+    const items = await this.col.find({});
+    const set = new Set<string>();
+    for (const it of items) {
+      if (it.category && it.category.trim()) {
+        set.add(it.category.trim());
+      }
+    }
+    return Array.from(set);
   }
 
   async update(id: string, input: UpdateVaultItemInput): Promise<VaultItemDoc | null> {

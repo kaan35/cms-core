@@ -98,7 +98,13 @@ export class PageService {
   }
 
   async listPages(
-    query?: { page?: unknown; limit?: unknown; status?: unknown; pageType?: unknown },
+    query?: {
+      page?: unknown;
+      limit?: unknown;
+      status?: unknown;
+      pageType?: unknown;
+      search?: unknown;
+    },
     canViewDraft = false,
   ): Promise<PaginatedResult<PageDoc>> {
     const filter: Record<string, unknown> = {};
@@ -111,6 +117,14 @@ export class PageService {
 
     if (query?.pageType && (query.pageType === "standard" || query.pageType === "home")) {
       filter["pageType"] = query.pageType;
+    }
+
+    if (typeof query?.search === "string" && query.search.trim()) {
+      const escaped = query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter["$or"] = [
+        { title: { $regex: escaped, $options: "i" } },
+        { slug: { $regex: escaped, $options: "i" } },
+      ];
     }
 
     return this.pagesRepo.list(filter, query);

@@ -25,6 +25,11 @@ export interface CreateApiTokenData {
   encryptedToken?: string | undefined;
 }
 
+export interface ApiTokenFilter {
+  search?: string | undefined;
+  scope?: "all" | "full" | "scoped" | undefined;
+}
+
 export class ApiTokensRepository {
   private readonly collection: ICollection<ApiTokenDoc>;
 
@@ -42,6 +47,34 @@ export class ApiTokensRepository {
 
   async findByUserId(userId: string): Promise<ApiTokenDoc[]> {
     return this.collection.find({ userId }, { sort: { createdAt: -1 } });
+  }
+
+  async findPaginatedByUserId(
+    userId: string,
+    page = 1,
+    limit = 20,
+    filter?: ApiTokenFilter,
+  ): Promise<{ items: ApiTokenDoc[]; total: number }> {
+    const query: Record<string, unknown> = { userId };
+    if (filter?.scope === "full") {
+      query["scopes"] = "*";
+    } else if (filter?.scope === "scoped") {
+      query["scopes"] = { $ne: "*" };
+    }
+    if (filter?.search?.trim()) {
+      const s = filter.search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      query["$or"] = [
+        { name: { $regex: s, $options: "i" } },
+        { tokenPrefix: { $regex: s, $options: "i" } },
+        { scopes: { $regex: s, $options: "i" } },
+      ];
+    }
+    const skip = Math.max(0, (page - 1) * limit);
+    const [items, total] = await Promise.all([
+      this.collection.find(query, { skip, limit, sort: { createdAt: -1 } }),
+      this.collection.countDocuments(query),
+    ]);
+    return { items, total };
   }
 
   async create(data: CreateApiTokenData): Promise<ApiTokenDoc> {
