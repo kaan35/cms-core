@@ -23,6 +23,7 @@ export * from "./components/ui/switch-field";
 export * from "./components/ui/table";
 export * from "./components/ui/tabs";
 export * from "./components/ui/textarea";
+export * from "./components/ui/tag-list";
 export * from "./components/ui/tooltip";
 
 // Layout & Core Shell Components

@@ -30,6 +30,7 @@ export interface CreateApiTokenData {
 export interface ApiTokenFilter {
   search?: string | undefined;
   scope?: "all" | "full" | "scoped" | undefined;
+  status?: "all" | "active" | "revoked" | "expired" | undefined;
 }
 
 export class ApiTokensRepository {
@@ -58,19 +59,41 @@ export class ApiTokensRepository {
     filter?: ApiTokenFilter,
   ): Promise<{ items: ApiTokenDoc[]; total: number }> {
     const query: Record<string, unknown> = { userId };
+
     if (filter?.scope === "full") {
       query["scopes"] = "*";
     } else if (filter?.scope === "scoped") {
       query["scopes"] = { $ne: "*" };
     }
+
+    if (filter?.status === "active") {
+      const now = new Date();
+      query["revokedAt"] = null;
+      query["$or"] = [{ expiresAt: null }, { expiresAt: { $gt: now } }];
+    } else if (filter?.status === "revoked") {
+      query["revokedAt"] = { $ne: null };
+    } else if (filter?.status === "expired") {
+      const now = new Date();
+      query["revokedAt"] = null;
+      query["expiresAt"] = { $ne: null, $lt: now };
+    }
+
     if (filter?.search?.trim()) {
       const s = filter.search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      query["$or"] = [
+      const searchCondition = [
         { name: { $regex: s, $options: "i" } },
         { tokenPrefix: { $regex: s, $options: "i" } },
         { scopes: { $regex: s, $options: "i" } },
       ];
+      if (query["$or"]) {
+        const existingOr = query["$or"];
+        delete query["$or"];
+        query["$and"] = [{ $or: existingOr }, { $or: searchCondition }];
+      } else {
+        query["$or"] = searchCondition;
+      }
     }
+
     const skip = Math.max(0, (page - 1) * limit);
     const [items, total] = await Promise.all([
       this.collection.find(query, { skip, limit, sort: { createdAt: -1 } }),
@@ -103,6 +126,13 @@ export class ApiTokensRepository {
 
   async delete(id: string): Promise<void> {
     await this.collection.deleteOne({ id });
+  }
+
+  async revokeById(id: string, reason = "user_revoked"): Promise<void> {
+    await this.collection.updateOne(
+      { id },
+      { $set: { revokedAt: new Date(), revokeReason: reason } },
+    );
   }
 
   async revokeByUserId(userId: string, reason = "user_deleted"): Promise<void> {

@@ -261,8 +261,10 @@ describe("ApiTokenService", () => {
       service.revokeToken(token.id, { id: "admin-user", permissions: ["*"] }),
     );
 
-    // Token should now be deleted
-    assert.strictEqual(await repo.findById(token.id), null);
+    // Token should now be soft-revoked
+    const revoked1 = await repo.findById(token.id);
+    assert.ok(revoked1?.revokedAt);
+    assert.strictEqual(revoked1?.revokeReason, "user_revoked");
 
     // Revoking non-existent token throws NotFoundError
     await assert.rejects(
@@ -275,14 +277,16 @@ describe("ApiTokenService", () => {
     await assert.doesNotReject(async () =>
       service.revokeToken(token2.id, { id: "manager-user", permissions: ["users:write"] }),
     );
-    assert.strictEqual(await repo.findById(token2.id), null);
+    const revoked2 = await repo.findById(token2.id);
+    assert.ok(revoked2?.revokedAt);
 
     // Owner can revoke their own token
     const { token: token3 } = await service.createToken("user-owner-3", "My Token 3");
     await assert.doesNotReject(async () =>
       service.revokeToken(token3.id, { id: "user-owner-3", permissions: [] }),
     );
-    assert.strictEqual(await repo.findById(token3.id), null);
+    const revoked3 = await repo.findById(token3.id);
+    assert.ok(revoked3?.revokedAt);
 
     // API token session cannot revoke tokens even if user.id matches
     const { token: token4 } = await service.createToken("user-owner-4", "My Token 4");
@@ -409,5 +413,60 @@ describe("ApiTokenService", () => {
     // Prefix without trailing underscore is automatically normalized
     const unnormalizedService = new ApiTokenService(repo, undefined, "myshop");
     assert.strictEqual(unnormalizedService.getPrefix(), "myshop_");
+  });
+
+  it("supports status filtering (active, revoked, expired) and returns revokedAt in paginated list", async () => {
+    const { InMemoryDatabase } = await import("@cms/db");
+    const db = new InMemoryDatabase();
+    const repo = new ApiTokensRepository(db);
+    const service = new ApiTokenService(repo);
+
+    // 1. Active token
+    await service.createToken("user-filter", "Active Key", ["*"]);
+    // 2. Revoked token
+    const { token: revokedToken } = await service.createToken("user-filter", "Revoked Key", [
+      "pages:read",
+    ]);
+    await repo.revokeById(revokedToken.id, "Security cycle");
+    // 3. Expired token
+    const pastDate = new Date(Date.now() - 3600 * 1000);
+    await repo.create({
+      userId: "user-filter",
+      name: "Expired Key",
+      tokenHash: "hash-expired",
+      tokenPrefix: "cms_token_...exp1",
+      scopes: ["blog:read"],
+      expiresAt: pastDate,
+    });
+
+    // Test active filter
+    const activeResult = await service.listUserTokensPaginated("user-filter", 1, 10, {
+      status: "active",
+    });
+    assert.strictEqual(activeResult.data.length, 1);
+    assert.strictEqual(activeResult.data[0]?.name, "Active Key");
+    assert.strictEqual(activeResult.data[0]?.revokedAt, null);
+
+    // Test revoked filter
+    const revokedResult = await service.listUserTokensPaginated("user-filter", 1, 10, {
+      status: "revoked",
+    });
+    assert.strictEqual(revokedResult.data.length, 1);
+    assert.strictEqual(revokedResult.data[0]?.name, "Revoked Key");
+    assert.ok(revokedResult.data[0]?.revokedAt);
+    assert.strictEqual(revokedResult.data[0]?.revokeReason, "Security cycle");
+
+    // Test expired filter
+    const expiredResult = await service.listUserTokensPaginated("user-filter", 1, 10, {
+      status: "expired",
+    });
+    assert.strictEqual(expiredResult.data.length, 1);
+    assert.strictEqual(expiredResult.data[0]?.name, "Expired Key");
+
+    // Test all
+    const allResult = await service.listUserTokensPaginated("user-filter", 1, 10, {
+      status: "all",
+    });
+    assert.strictEqual(allResult.data.length, 3);
   });
 });

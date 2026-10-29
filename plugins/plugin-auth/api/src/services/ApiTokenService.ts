@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import {
   ForbiddenError,
   NotFoundError,
@@ -6,7 +5,12 @@ import {
   ValidationError,
   buildPaginatedResult,
 } from "@cms/core";
-import type { ApiTokenDoc, ApiTokensRepository } from "../repositories/apiTokensRepository.js";
+import crypto from "node:crypto";
+import type {
+  ApiTokenDoc,
+  ApiTokenFilter,
+  ApiTokensRepository,
+} from "../repositories/apiTokensRepository.js";
 import { decryptTokenString, encryptTokenString } from "./tokenCipher.js";
 
 const MS_PER_DAY = 86_400_000;
@@ -98,13 +102,7 @@ export class ApiTokenService {
     }));
   }
 
-  async listUserTokensPaginated(
-    userId: string,
-    page = 1,
-    limit = 20,
-    filter?:
-      { search?: string | undefined; scope?: "all" | "full" | "scoped" | undefined } | undefined,
-  ) {
+  async listUserTokensPaginated(userId: string, page = 1, limit = 20, filter?: ApiTokenFilter) {
     const { items, total } = await this.tokensRepo.findPaginatedByUserId(
       userId,
       page,
@@ -119,6 +117,8 @@ export class ApiTokenService {
       expiresAt: t.expiresAt,
       lastUsedAt: t.lastUsedAt,
       createdAt: t.createdAt,
+      revokedAt: t.revokedAt,
+      revokeReason: t.revokeReason,
     }));
     return buildPaginatedResult(masked, total, page, limit);
   }
@@ -142,7 +142,7 @@ export class ApiTokenService {
       throw new ForbiddenError("You do not have permission to revoke this token");
     }
 
-    await this.tokensRepo.delete(id);
+    await this.tokensRepo.revokeById(id, "user_revoked");
   }
 
   async revealToken(id: string, user: AuthenticatedUserContext): Promise<string> {

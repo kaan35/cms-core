@@ -20,6 +20,7 @@ import {
   TableHeader,
   TablePagination,
   TableRow,
+  TagList,
   toast,
   Tooltip,
   useApi,
@@ -91,6 +92,9 @@ export function ApiTokensList() {
   const [isRevoking, setIsRevoking] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [scopeFilter, setScopeFilter] = React.useState<"all" | "full" | "scoped">("all");
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "revoked" | "expired">(
+    "all",
+  );
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(10);
 
@@ -99,6 +103,7 @@ export function ApiTokensList() {
   queryParams.set("limit", String(limit));
   if (search.trim()) queryParams.set("search", search.trim());
   if (scopeFilter !== "all") queryParams.set("scope", scopeFilter);
+  if (statusFilter !== "all") queryParams.set("status", statusFilter);
   const endpoint = `/auth/tokens?${queryParams.toString()}`;
 
   const {
@@ -201,6 +206,24 @@ export function ApiTokensList() {
                 className="h-8 text-xs min-w-36 w-full bg-card"
               />
             </div>
+
+            <div className="w-36">
+              <SelectFilter
+                value={statusFilter}
+                onValueChange={(val) => {
+                  setStatusFilter(val as "all" | "active" | "revoked" | "expired");
+                  setPage(1);
+                }}
+                options={[
+                  { value: "all", label: "All Statuses" },
+                  { value: "active", label: "Active" },
+                  { value: "revoked", label: "Revoked" },
+                  { value: "expired", label: "Expired" },
+                ]}
+                placeholder="All Statuses"
+                className="h-8 text-xs min-w-36 w-full bg-card"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -281,11 +304,12 @@ export function ApiTokensList() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40 text-[11px]">
-                    <TableHead className="w-[35%]">Token & Key</TableHead>
-                    <TableHead>Permissions</TableHead>
-                    <TableHead>Last Used</TableHead>
-                    <TableHead>Created & Expires</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-[30%]">Token & Key</TableHead>
+                    <TableHead className="w-[12%]">Status</TableHead>
+                    <TableHead className="w-[24%]">Permissions</TableHead>
+                    <TableHead className="w-[14%]">Last Used</TableHead>
+                    <TableHead className="w-[12%]">Created & Expires</TableHead>
+                    <TableHead className="w-[8%] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -335,25 +359,6 @@ export function ApiTokensList() {
                                     {agentMeta.label}
                                   </Badge>
                                 )}
-                                {isRevoked ? (
-                                  <Badge
-                                    variant="destructive"
-                                    className="text-[10px] px-1.5 py-0 bg-destructive/15 text-destructive border-destructive/30"
-                                  >
-                                    Revoked
-                                  </Badge>
-                                ) : isExpired ? (
-                                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                                    Expired
-                                  </Badge>
-                                ) : (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] px-1.5 py-0 text-emerald-600 bg-emerald-500/10 border-emerald-500/20"
-                                  >
-                                    Active
-                                  </Badge>
-                                )}
                               </div>
                               <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
                                 <span>{token.tokenPrefix || "cms_token_••••"}</span>
@@ -362,30 +367,46 @@ export function ApiTokensList() {
                           </div>
                         </TableCell>
 
-                        {/* Permissions / Scopes */}
+                        {/* Status */}
+                        <TableCell className="py-3.5 whitespace-nowrap">
+                          {isRevoked ? (
+                            <Badge
+                              variant="destructive"
+                              className="text-[10px] px-2 py-0.5 bg-destructive/15 text-destructive border-destructive/30"
+                            >
+                              Revoked
+                            </Badge>
+                          ) : isExpired ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 bg-amber-500/15 text-amber-600 border-amber-500/30 dark:text-amber-400"
+                            >
+                              Expired
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 text-emerald-600 bg-emerald-500/10 border-emerald-500/20"
+                            >
+                              Active
+                            </Badge>
+                          )}
+                        </TableCell>
+
+                        {/* Permissions / Scopes (Compact TagList) */}
                         <TableCell className="py-3.5">
-                          <div className="flex flex-wrap gap-1">
-                            {!token.scopes ||
-                            token.scopes.length === 0 ||
-                            token.scopes.includes("*") ? (
-                              <Badge
-                                variant="secondary"
-                                className="text-[11px] px-2 py-0.5 font-medium bg-primary/10 text-primary border border-primary/20"
-                              >
-                                Full Access (*)
-                              </Badge>
-                            ) : (
-                              token.scopes.map((scope) => (
-                                <Badge
-                                  key={scope}
-                                  variant="outline"
-                                  className="text-[10px] px-1.5 py-0.5 font-mono text-muted-foreground"
-                                >
-                                  {scope}
-                                </Badge>
-                              ))
-                            )}
-                          </div>
+                          {!token.scopes ||
+                          token.scopes.length === 0 ||
+                          token.scopes.includes("*") ? (
+                            <Badge
+                              variant="secondary"
+                              className="text-[11px] px-2 py-0.5 font-medium bg-primary/10 text-primary border border-primary/20"
+                            >
+                              Full Access (*)
+                            </Badge>
+                          ) : (
+                            <TagList tags={token.scopes} max={1} tooltipTitle="All Permissions" />
+                          )}
                         </TableCell>
 
                         {/* Last Used */}
@@ -427,7 +448,7 @@ export function ApiTokensList() {
                         </TableCell>
 
                         {/* Actions Cell */}
-                        <TableCell className="py-3.5 text-right">
+                        <TableCell className="py-3.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
                             <Button
                               variant="outline"
@@ -440,7 +461,7 @@ export function ApiTokensList() {
                               tooltip="View IDE Setup & Decrypted Raw Key"
                               className="font-medium"
                             >
-                              Setup & Copy
+                              Setup
                             </Button>
                             {token.revokedAt ? (
                               <Button

@@ -142,6 +142,9 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
     }
 
     return Object.entries(filter).every(([key, value]) => {
+      if (key === "$and" && Array.isArray(value)) {
+        return value.every((subFilter) => this.matchDoc(doc, subFilter as Record<string, unknown>));
+      }
       if (key === "$or" && Array.isArray(value)) {
         return value.some((subFilter) => this.matchDoc(doc, subFilter as Record<string, unknown>));
       }
@@ -153,7 +156,35 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
       }
       if (value && typeof value === "object" && "$ne" in value) {
         const val = this.getProp(doc, key);
-        return val !== (value as { $ne: unknown }).$ne;
+        const neTarget = (value as { $ne: unknown }).$ne;
+        if (neTarget === null) {
+          return val !== null && val !== undefined;
+        }
+        return val !== neTarget;
+      }
+      if (value && typeof value === "object" && "$gt" in value) {
+        const val = this.getProp(doc, key);
+        if (val == null) return false;
+        const target = (value as { $gt: unknown }).$gt;
+        if (val instanceof Date || target instanceof Date) {
+          const vTime = val instanceof Date ? val.getTime() : new Date(val as string).getTime();
+          const tTime =
+            target instanceof Date ? target.getTime() : new Date(target as string).getTime();
+          return vTime > tTime;
+        }
+        return (val as number) > (target as number);
+      }
+      if (value && typeof value === "object" && "$lt" in value) {
+        const val = this.getProp(doc, key);
+        if (val == null) return false;
+        const target = (value as { $lt: unknown }).$lt;
+        if (val instanceof Date || target instanceof Date) {
+          const vTime = val instanceof Date ? val.getTime() : new Date(val as string).getTime();
+          const tTime =
+            target instanceof Date ? target.getTime() : new Date(target as string).getTime();
+          return vTime < tTime;
+        }
+        return (val as number) < (target as number);
       }
       if (
         value &&
