@@ -7,6 +7,7 @@ import swaggerUi from "@fastify/swagger-ui";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import Fastify from "fastify";
 import { AppError } from "./errors/AppError.js";
+import { registerZodValidation, zodSchemaToOpenApi } from "./http/zodValidation.js";
 import { coreMigrations } from "./migrations/index.js";
 import { PLUGIN_MANIFEST, resolvePluginManifest } from "./pluginManifest.js";
 import { ConfigService } from "./services/ConfigService.js";
@@ -39,6 +40,8 @@ export async function createServer(
     forceCloseConnections: true,
   });
 
+  registerZodValidation(app);
+
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cookie);
 
@@ -52,8 +55,8 @@ export async function createServer(
       },
       servers: [
         {
-          url: "http://localhost:3001",
-          description: "Local Development Server",
+          url: config.getOrDefault("PUBLIC_API_URL", "http://localhost:3001"),
+          description: "Public API Server",
         },
       ],
       tags: [
@@ -63,6 +66,8 @@ export async function createServer(
         { name: "Blog", description: "Editorial blog articles and publication workflows" },
         { name: "Forms", description: "Form schemas, submissions, and challenge anti-spam" },
         { name: "Media", description: "S3/MinIO assets, uploads, and media library management" },
+        { name: "Vault", description: "Encrypted secrets vault" },
+        { name: "MCP", description: "Model Context Protocol agent endpoints" },
       ],
       components: {
         securitySchemes: {
@@ -78,18 +83,27 @@ export async function createServer(
             name: "x-csrf-token",
             description: "Double Submit Cookie CSRF token header for mutation requests",
           },
+          bearerAuth: {
+            type: "http",
+            scheme: "bearer",
+            description: "API token (Authorization: Bearer <token>)",
+          },
         },
       },
     },
+    transform: ({ schema, url }) => ({ schema: zodSchemaToOpenApi(schema), url }),
   });
 
-  await app.register(swaggerUi, {
-    routePrefix: "/docs",
-    uiConfig: {
-      docExpansion: "list",
-      deepLinking: true,
-    },
-  });
+  const isProduction = config.getOrDefault("NODE_ENV", "development") === "production";
+  if (!isProduction || config.getOrDefault("SWAGGER_ENABLED", "false") === "true") {
+    await app.register(swaggerUi, {
+      routePrefix: "/docs",
+      uiConfig: {
+        docExpansion: "list",
+        deepLinking: true,
+      },
+    });
+  }
 
   const rateLimitMax = config.getInt("RATE_LIMIT_GLOBAL_MAX", 100);
   const rateLimitTimeWindow = config.getOrDefault("RATE_LIMIT_GLOBAL_TIME_WINDOW", "1 minute");
@@ -149,22 +163,34 @@ export async function createServer(
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof AppError) {
-      return reply.status(error.statusCode).send({ error: error.message });
+      return reply.status(error.statusCode).send({
+        error: error.message,
+        code: error.code,
+        statusCode: error.statusCode,
+      });
     }
     const errObj =
       typeof error === "object" && error !== null
-        ? (error as { statusCode?: number; message?: string })
+        ? (error as { statusCode?: number; message?: string; code?: string })
         : null;
     if (
       typeof errObj?.statusCode === "number" &&
       errObj.statusCode >= 400 &&
       errObj.statusCode < 500
     ) {
-      return reply.status(errObj.statusCode).send({ error: errObj.message ?? "Client error" });
+      return reply.status(errObj.statusCode).send({
+        error: errObj.message ?? "Client error",
+        code: errObj.code || (error as { code?: string }).code || "CLIENT_ERROR",
+        statusCode: errObj.statusCode,
+      });
     }
     const message = error instanceof Error ? error.message : String(error);
     logger.error("Unhandled error", { error: message });
-    return reply.status(500).send({ error: "Internal server error" });
+    return reply.status(500).send({
+      error: "Internal server error",
+      code: "INTERNAL_SERVER_ERROR",
+      statusCode: 500,
+    });
   });
 
   const fallbackAuth = async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {

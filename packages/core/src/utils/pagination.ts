@@ -10,9 +10,9 @@ export type PaginatedResult<T> = {
   };
 };
 
-const DEFAULT_PAGE = 1;
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
+export const DEFAULT_PAGE = 1;
+export const DEFAULT_LIMIT = 20;
+export const MAX_LIMIT = 100;
 
 export function parsePaginationQuery(query: unknown): { page: number; limit: number } {
   const raw = typeof query === "object" && query !== null ? (query as Record<string, unknown>) : {};

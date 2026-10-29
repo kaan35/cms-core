@@ -44,6 +44,7 @@ export class VaultRepository {
   }
 
   async bulkCreate(items: CreateVaultItemInput[]): Promise<VaultItemDoc[]> {
+    if (items.length === 0) return [];
     const docs: VaultItemDoc[] = [];
     const now = new Date();
     for (const input of items) {
@@ -70,9 +71,9 @@ export class VaultRepository {
         createdAt: now,
         updatedAt: now,
       };
-      await this.col.insertOne(doc);
       docs.push(doc);
     }
+    await this.col.insertMany(docs);
     return docs;
   }
 

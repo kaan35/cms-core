@@ -30,6 +30,11 @@ export {
   ValidationError,
 } from "./errors/AppError.js";
 
+// HTTP Schemas & Validation
+export { IdParamSchema, SearchPaginationQuerySchema } from "./http/httpSchemas.js";
+export type { IdParam, SearchPaginationQuery } from "./http/httpSchemas.js";
+export { registerZodValidation, zodSchemaToOpenApi } from "./http/zodValidation.js";
+
 // Validation, Pagination & Slugs
 export {
   assertUniqueSlug,
@@ -45,9 +50,15 @@ export {
   matchesDateSearch,
 } from "./utils/date.js";
 export type { DateFormatOptions } from "./utils/date.js";
-export { buildPaginatedResult, parsePaginationQuery } from "./utils/pagination.js";
+export {
+  DEFAULT_LIMIT,
+  DEFAULT_PAGE,
+  MAX_LIMIT,
+  buildPaginatedResult,
+  parsePaginationQuery,
+} from "./utils/pagination.js";
 export type { PaginatedResult } from "./utils/pagination.js";
-export { validateWithSchema } from "./utils/validation.js";
+export { formatZodIssues, validateWithSchema } from "./utils/validation.js";
 
 // Registries
 export { DECORATOR_KEYS } from "./decoratorKeys.js";

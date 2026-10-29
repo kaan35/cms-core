@@ -23,13 +23,16 @@ function makeStubDb(): IDatabase {
     insertOne: async (doc) => {
       store.set(doc["id"] as string, doc as unknown as UserDoc);
     },
+    insertMany: async () => {},
     updateOne: async (filter, update) => {
       const doc = store.get(filter["id"] as string);
       if (doc && update["$set"]) Object.assign(doc, update["$set"]);
     },
+    updateMany: async () => ({ modifiedCount: 0 }),
     deleteOne: async (filter) => {
       if (filter["id"]) store.delete(filter["id"] as string);
     },
+    deleteMany: async () => ({ deletedCount: 0 }),
     countDocuments: async () => store.size,
     createIndex: async () => {},
   };

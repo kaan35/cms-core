@@ -182,7 +182,7 @@ export class ApiTokenService {
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
     const token = await this.tokensRepo.findByHash(tokenHash);
 
-    if (!token || (token.expiresAt && token.expiresAt.getTime() <= Date.now())) {
+    if (!token || token.revokedAt || (token.expiresAt && token.expiresAt.getTime() <= Date.now())) {
       throw new UnauthorizedError("Invalid or expired API token");
     }
 

@@ -13,6 +13,17 @@ describe("exportUtils", () => {
       assert.equal(escapeCsvCell('Hello "World"'), '"Hello ""World"""');
       assert.equal(escapeCsvCell({ a: 1 }), '"{""a"":1}"');
     });
+
+    it("neutralizes CSV formula injection characters (CWE-1236)", () => {
+      assert.equal(escapeCsvCell("=1+1"), '"\'=1+1"');
+      assert.equal(escapeCsvCell("=cmd|' /C calc'!A0"), "\"'=cmd|' /C calc'!A0\"");
+      assert.equal(escapeCsvCell("@calc"), '"\'@calc"');
+      assert.equal(escapeCsvCell("@SUM(A1:A10)"), '"\'@SUM(A1:A10)"');
+      assert.equal(escapeCsvCell("+sum"), '"\'+sum"');
+      assert.equal(escapeCsvCell("-diff"), '"\'-diff"');
+      assert.equal(escapeCsvCell("\tTAB"), '"\'\tTAB"');
+      assert.equal(escapeCsvCell("\rCR"), '"\'\rCR"');
+    });
   });
 
   describe("generateCsv", () => {

@@ -61,8 +61,11 @@ function makeStubDb(): IDatabase {
     insertOne: async (doc) => {
       store.set(doc["id"] as string, doc as unknown as AuditLogDoc);
     },
+    insertMany: async () => {},
     updateOne: async () => {},
+    updateMany: async () => ({ modifiedCount: 0 }),
     deleteOne: async () => {},
+    deleteMany: async () => ({ deletedCount: 0 }),
     countDocuments: async (filter = {}) => {
       return Array.from(store.values()).filter((d) => matchesStubFilter(d, filter)).length;
     },

@@ -13,6 +13,7 @@ import {
   validateUpdateUser,
 } from "../domain/auth.rules.js";
 import { hashPassword, validatePasswordStrength } from "../domain/password.rules.js";
+import type { ApiTokensRepository } from "../repositories/apiTokensRepository.js";
 import type { RolesRepository } from "../repositories/rolesRepository.js";
 import type { SessionsRepository } from "../repositories/sessionsRepository.js";
 import type { UserDoc, UsersRepository } from "../repositories/usersRepository.js";
@@ -24,6 +25,7 @@ export class UserService {
   private readonly hooks: IHookManager;
   private readonly logger: ILogger;
   private readonly saltRounds: number;
+  private readonly apiTokensRepo?: ApiTokensRepository | undefined;
 
   constructor(
     usersRepo: UsersRepository,
@@ -32,6 +34,7 @@ export class UserService {
     hooks: IHookManager,
     logger: ILogger,
     saltRounds = 12,
+    apiTokensRepo?: ApiTokensRepository,
   ) {
     this.usersRepo = usersRepo;
     this.rolesRepo = rolesRepo;
@@ -39,6 +42,7 @@ export class UserService {
     this.hooks = hooks;
     this.logger = logger;
     this.saltRounds = saltRounds;
+    this.apiTokensRepo = apiTokensRepo;
   }
 
   async listUsers(
@@ -296,6 +300,9 @@ export class UserService {
 
     await this.usersRepo.delete(id);
     await this.sessionsRepo.revokeByUserId(id, actorId, "admin_revoked");
+    if (this.apiTokensRepo) {
+      await this.apiTokensRepo.revokeByUserId(id, "user_deleted");
+    }
     await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, {
       userId: id,
       actorId,

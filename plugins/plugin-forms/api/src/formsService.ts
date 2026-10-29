@@ -1,12 +1,16 @@
 import {
+  DEFAULT_LIMIT,
+  DEFAULT_PAGE,
   NotFoundError,
   ValidationError,
   buildPaginatedResult,
-  parsePaginationQuery,
+  type ICache,
   type IHookManager,
   type ILogger,
   type PaginatedResult,
+  type SearchPaginationQuery,
 } from "@cms/core";
+import crypto from "node:crypto";
 import {
   ChallengeCaptchaProvider,
   generateChallenge,
@@ -44,17 +48,20 @@ export class FormsService {
   private captchaRegistry: CaptchaRegistry;
   private hooks: IHookManager;
   private logger: ILogger;
+  private cache?: ICache | undefined;
 
   constructor(
     repo: FormsRepository,
     captchaRegistry: CaptchaRegistry,
     hooks: IHookManager,
     logger: ILogger,
+    cache?: ICache,
   ) {
     this.repo = repo;
     this.captchaRegistry = captchaRegistry;
     this.hooks = hooks;
     this.logger = logger;
+    this.cache = cache;
   }
 
   async createForm(input: unknown): Promise<FormDoc> {
@@ -89,20 +96,20 @@ export class FormsService {
   }
 
   async listForms(
-    pageOrQuery: number | { page?: number; limit?: number; search?: string } = 1,
-    limitParam = 20,
+    queryOrPage: Partial<SearchPaginationQuery> | number = {},
+    limitParam = DEFAULT_LIMIT,
     searchParam?: string,
   ): Promise<PaginatedResult<FormDoc & { submissionCount: number }>> {
-    let page = 1;
+    let page = DEFAULT_PAGE;
     let limit = limitParam;
     let search = searchParam;
 
-    if (typeof pageOrQuery === "object" && pageOrQuery !== null) {
-      page = Number(pageOrQuery.page) || 1;
-      limit = Number(pageOrQuery.limit) || limitParam;
-      search = pageOrQuery.search;
-    } else if (typeof pageOrQuery === "number") {
-      page = pageOrQuery;
+    if (typeof queryOrPage === "object" && queryOrPage !== null) {
+      page = queryOrPage.page ?? DEFAULT_PAGE;
+      limit = queryOrPage.limit ?? DEFAULT_LIMIT;
+      search = queryOrPage.search;
+    } else if (typeof queryOrPage === "number") {
+      page = queryOrPage;
     }
 
     const { items, total } = await this.repo.findPaginated(page, limit, search);
@@ -185,6 +192,20 @@ export class FormsService {
       throw new ValidationError(verifyResult.error || "Captcha validation failed");
     }
 
+    // Atomic Captcha Replay Protection (Single-Use Token)
+    const captchaToken = rawData["captchaToken"];
+    if (this.cache && typeof captchaToken === "string" && captchaToken.length > 0) {
+      const tokenKey =
+        "captcha:spent:" + crypto.createHash("sha256").update(captchaToken).digest("hex");
+      const alreadySpent = await this.cache.get(tokenKey);
+      if (alreadySpent) {
+        throw new ValidationError(
+          "Captcha challenge has already been used. Please request a new challenge.",
+        );
+      }
+      await this.cache.set(tokenKey, "1", 600);
+    }
+
     // 2. Dynamic Field Validation SECOND
     const cleanData = validateSubmission(form, payload);
 
@@ -212,13 +233,11 @@ export class FormsService {
 
   async listSubmissions(
     formId: string,
-    query: unknown,
+    query?: Partial<SearchPaginationQuery>,
   ): Promise<PaginatedResult<FormSubmissionDoc>> {
     await this.getForm(formId);
-    const { page, limit } = parsePaginationQuery(query);
-    const q = (query || {}) as Record<string, string | undefined>;
-    const search = q["search"]?.trim();
-    return this.repo.listSubmissions(formId, page, limit, search);
+    const { page = DEFAULT_PAGE, limit = DEFAULT_LIMIT, search } = query ?? {};
+    return this.repo.listSubmissions(formId, page, limit, search?.trim());
   }
 
   async exportSubmissions(

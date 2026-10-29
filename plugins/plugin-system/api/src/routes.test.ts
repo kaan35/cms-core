@@ -89,6 +89,7 @@ function makeStubDb(): IDatabase {
             String(store.size + 1);
           store.set(id, { ...doc, id });
         },
+        insertMany: async () => {},
         updateOne: async (
           filter: Record<string, unknown>,
           update: Record<string, unknown>,
@@ -120,6 +121,7 @@ function makeStubDb(): IDatabase {
             }
           }
         },
+        updateMany: async () => ({ modifiedCount: 0 }),
         deleteOne: async (filter: Record<string, unknown>) => {
           if (Object.keys(filter).length === 0) {
             store.clear();
@@ -132,6 +134,7 @@ function makeStubDb(): IDatabase {
             }
           }
         },
+        deleteMany: async () => ({ deletedCount: 0 }),
         countDocuments: async (filter: Record<string, unknown> = {}) => {
           return Array.from(store.values()).filter((doc) => matchesStubFilter(doc, filter)).length;
         },

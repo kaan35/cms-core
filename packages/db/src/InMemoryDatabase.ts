@@ -1,4 +1,4 @@
-import type { ICollection, IDatabase } from "@cms/core";
+import type { ICollection, IDatabase, UpdateOptions } from "@cms/core";
 
 export class InMemoryCollection<T extends Record<string, unknown>> implements ICollection<T> {
   private readonly docs: T[] = [];
@@ -9,6 +9,12 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
 
   async insertOne(doc: Record<string, unknown>): Promise<void> {
     this.docs.push(structuredClone(doc as T));
+  }
+
+  async insertMany(docs: Record<string, unknown>[]): Promise<void> {
+    for (const doc of docs) {
+      this.docs.push(structuredClone(doc as T));
+    }
   }
 
   async findOne(filter: Record<string, unknown>): Promise<T | null> {
@@ -68,6 +74,33 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
     }
   }
 
+  async updateMany(
+    filter: Record<string, unknown>,
+    update: Record<string, unknown>,
+    options?: UpdateOptions,
+  ): Promise<{ modifiedCount: number }> {
+    let modifiedCount = 0;
+    for (let i = 0; i < this.docs.length; i++) {
+      if (this.matchDoc(this.docs[i]!, filter)) {
+        if (update["$set"] && typeof update["$set"] === "object") {
+          this.docs[i] = { ...this.docs[i]!, ...update["$set"] };
+        } else {
+          this.docs[i] = { ...this.docs[i]!, ...update };
+        }
+        modifiedCount++;
+      }
+    }
+    if (modifiedCount === 0 && options?.upsert) {
+      const newDoc =
+        update["$set"] && typeof update["$set"] === "object"
+          ? { ...filter, ...update["$set"] }
+          : { ...filter, ...update };
+      this.docs.push(newDoc as T);
+      modifiedCount = 1;
+    }
+    return { modifiedCount };
+  }
+
   async deleteOne(filter: Record<string, unknown>): Promise<void> {
     const idx = this.docs.findIndex((d) => this.matchDoc(d, filter));
     if (idx !== -1) {
@@ -75,11 +108,33 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
     }
   }
 
+  async deleteMany(filter: Record<string, unknown>): Promise<{ deletedCount: number }> {
+    const before = this.docs.length;
+    const remaining = this.docs.filter((d) => !this.matchDoc(d, filter));
+    this.docs.length = 0;
+    this.docs.push(...remaining);
+    return { deletedCount: before - this.docs.length };
+  }
+
   async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {
     return this.docs.filter((d) => this.matchDoc(d, filter)).length;
   }
 
   async createIndex(): Promise<void> {}
+
+  private getProp(doc: T, key: string): unknown {
+    if (key in doc) return doc[key];
+    if (key.includes(".")) {
+      const parts = key.split(".");
+      let curr: unknown = doc;
+      for (const part of parts) {
+        if (curr === null || typeof curr !== "object") return undefined;
+        curr = (curr as Record<string, unknown>)[part];
+      }
+      return curr;
+    }
+    return undefined;
+  }
 
   private matchDoc(doc: T, filter: Record<string, unknown>): boolean {
     if (!filter || Object.keys(filter).length === 0) {
@@ -96,13 +151,18 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
           (v) => typeof v === "string" && v.toLowerCase().includes(searchStr),
         );
       }
+      if (value && typeof value === "object" && "$ne" in value) {
+        const val = this.getProp(doc, key);
+        return val !== (value as { $ne: unknown }).$ne;
+      }
       if (
         value &&
         typeof value === "object" &&
         "$in" in value &&
         Array.isArray((value as { $in: unknown[] }).$in)
       ) {
-        return (value as { $in: unknown[] }).$in.includes(doc[key]);
+        const val = this.getProp(doc, key);
+        return (value as { $in: unknown[] }).$in.includes(val);
       }
       if (
         value &&
@@ -113,9 +173,16 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
         const pattern = (value as { $regex: string }).$regex;
         const options = (value as { $options?: string }).$options || "";
         const reg = new RegExp(pattern, options);
-        return typeof doc[key] === "string" && reg.test(doc[key] as string);
+        const val = this.getProp(doc, key);
+        if (typeof val === "string") return reg.test(val);
+        if (Array.isArray(val)) return val.some((v) => typeof v === "string" && reg.test(v));
+        return false;
       }
-      return doc[key] === value;
+      if (value === null) {
+        const val = this.getProp(doc, key);
+        return val === null || val === undefined;
+      }
+      return this.getProp(doc, key) === value;
     });
   }
 }

@@ -13,6 +13,7 @@ function makeMockCollection<T extends Record<string, unknown>>(
     async insertOne(doc: Record<string, unknown>): Promise<void> {
       docs.push(structuredClone(doc as T));
     },
+    async insertMany(): Promise<void> {},
     async findOne(filter: Record<string, unknown>): Promise<T | null> {
       const match = docs.find((d) => Object.entries(filter).every(([k, v]) => d[k] === v));
       return match ? structuredClone(match) : null;
@@ -49,7 +50,13 @@ function makeMockCollection<T extends Record<string, unknown>>(
       return res.map((d) => structuredClone(d));
     },
     async updateOne(): Promise<void> {},
+    async updateMany(): Promise<{ modifiedCount: number }> {
+      return { modifiedCount: 0 };
+    },
     async deleteOne(): Promise<void> {},
+    async deleteMany(): Promise<{ deletedCount: number }> {
+      return { deletedCount: 0 };
+    },
     async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {
       const matches = (d: T, f: Record<string, unknown>): boolean => {
         return Object.entries(f).every(([k, v]) => {

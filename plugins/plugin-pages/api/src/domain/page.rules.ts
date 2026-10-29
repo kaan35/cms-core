@@ -9,54 +9,56 @@ export const PAGES_PERMISSIONS = {
 // 1. Block Schemas
 export const HeroBlockSchema = z.object({
   type: z.literal("hero"),
-  title: z.string().min(1, "Hero title is required"),
-  subtitle: z.string().optional(),
-  mediaId: z.string().optional(),
+  title: z.string().min(1, "Hero title is required").max(255),
+  subtitle: z.string().max(500).optional(),
+  mediaId: z.string().max(128).optional(),
   mediaLayout: z.enum(["background", "featured", "banner"]).default("background").optional(),
   primaryCta: z
     .object({
-      label: z.string().optional().default(""),
-      url: z.string().optional().default(""),
+      label: z.string().max(64).optional().default(""),
+      url: z.string().max(1000).optional().default(""),
     })
     .optional(),
   secondaryCta: z
     .object({
-      label: z.string().optional().default(""),
-      url: z.string().optional().default(""),
+      label: z.string().max(64).optional().default(""),
+      url: z.string().max(1000).optional().default(""),
     })
     .optional(),
 });
 
 export const GalleryBlockSchema = z.object({
   type: z.literal("gallery"),
-  title: z.string().optional(),
+  title: z.string().max(255).optional(),
   images: z
     .array(
       z.object({
         mediaId: z.string().min(1, "Media ID is required"),
-        caption: z.string().optional(),
+        caption: z.string().max(500).optional(),
       }),
     )
-    .min(1, "Gallery must contain at least 1 image"),
+    .min(1, "Gallery must contain at least 1 image")
+    .max(100),
   layout: z.enum(["grid", "masonry"]).default("grid"),
 });
 
 export const BentoGridBlockSchema = z.object({
   type: z.literal("bento_grid"),
-  title: z.string().optional(),
-  subtitle: z.string().optional(),
+  title: z.string().max(255).optional(),
+  subtitle: z.string().max(255).optional(),
   columns: z.union([z.literal("2"), z.literal("3"), z.literal("4"), z.number()]).optional(),
   cards: z
     .array(
       z.object({
         icon: z.string().optional(),
-        title: z.string().min(1, "Card title is required"),
-        description: z.string(),
+        title: z.string().min(1, "Card title is required").max(255),
+        description: z.string().max(1000),
         badge: z.string().optional(),
         size: z.string().optional(),
       }),
     )
-    .min(1, "Bento grid must contain at least 1 card"),
+    .min(1, "Bento grid must contain at least 1 card")
+    .max(20),
 });
 
 export const CodeShowcaseBlockSchema = z.object({
@@ -64,25 +66,26 @@ export const CodeShowcaseBlockSchema = z.object({
   tabs: z
     .array(
       z.object({
-        label: z.string().min(1, "Tab label is required"),
+        label: z.string().min(1, "Tab label is required").max(64),
         language: z.string().min(1, "Language is required"),
-        code: z.string(),
+        code: z.string().max(50000),
       }),
     )
-    .min(1, "Code showcase must contain at least 1 tab"),
+    .min(1, "Code showcase must contain at least 1 tab")
+    .max(20),
 });
 
 export const InteractiveDemoBlockSchema = z.object({
   type: z.literal("interactive_demo"),
-  widgetType: z.string().min(1, "Widget type is required"),
-  title: z.string().optional(),
-  description: z.string().optional(),
+  widgetType: z.string().min(1, "Widget type is required").max(64),
+  title: z.string().max(255).optional(),
+  description: z.string().max(1000).optional(),
   badge: z.string().optional(),
 });
 
 export const TextBlockSchema = z.object({
   type: z.literal("text"),
-  content: z.string().min(1, "Text content cannot be empty"),
+  content: z.string().min(1, "Text content cannot be empty").max(50000),
 });
 
 export const FormBlockSchema = z.object({
@@ -118,23 +121,30 @@ export const PageStatusSchema = z.enum(["draft", "published"]);
 export const PageTypeSchema = z.enum(["standard", "home"]).default("standard");
 
 export const CreatePageSchema = z.object({
-  title: z.string().min(1, "Page title is required"),
-  slug: z.string().optional(),
+  title: z.string().min(1, "Page title is required").max(255),
+  slug: z.string().max(255).optional(),
   status: PageStatusSchema.default("draft"),
   pageType: PageTypeSchema.optional(),
-  blocks: z.array(PageBlockSchema).min(1, "Page must contain at least 1 block"),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+  blocks: z
+    .array(PageBlockSchema)
+    .min(1, "Page must contain at least 1 block")
+    .max(50, "Page must not contain more than 50 blocks"),
+  metaTitle: z.string().max(255).optional(),
+  metaDescription: z.string().max(500).optional(),
 });
 
 export const UpdatePageSchema = z.object({
-  title: z.string().min(1, "Page title cannot be empty").optional(),
-  slug: z.string().optional(),
+  title: z.string().min(1, "Page title cannot be empty").max(255).optional(),
+  slug: z.string().max(255).optional(),
   status: PageStatusSchema.optional(),
   pageType: PageTypeSchema.optional(),
-  blocks: z.array(PageBlockSchema).min(1, "Page must contain at least 1 block").optional(),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+  blocks: z
+    .array(PageBlockSchema)
+    .min(1, "Page must contain at least 1 block")
+    .max(50, "Page must not contain more than 50 blocks")
+    .optional(),
+  metaTitle: z.string().max(255).optional(),
+  metaDescription: z.string().max(500).optional(),
 });
 
 // Inferred TypeScript types

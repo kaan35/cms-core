@@ -59,6 +59,15 @@ export const CreateFormSchema = z.object({
 
 export const UpdateFormSchema = CreateFormSchema.partial();
 
+export const FormIdParamSchema = z.object({ formId: z.string().min(1).max(128) });
+export type FormIdParam = z.infer<typeof FormIdParamSchema>;
+
+export const ExportQuerySchema = z.object({ format: z.enum(["csv", "xlsx"]).default("xlsx") });
+export type ExportQuery = z.infer<typeof ExportQuerySchema>;
+
+export const SubmissionBodySchema = z.record(z.string(), z.unknown());
+export type SubmissionBody = z.infer<typeof SubmissionBodySchema>;
+
 // 3. Domain Interfaces
 export type FormField = z.infer<typeof FormFieldSchema>;
 export type FormFieldType = z.infer<typeof FormFieldTypeSchema>;
@@ -131,6 +140,22 @@ export function validateSubmission(form: FormDoc, input: unknown): Record<string
         throw new ValidationError(`Field '${field.label}' must be a valid email address`);
       }
       cleanData[field.name] = val.trim();
+    } else if (field.type === "text") {
+      const strVal = String(val);
+      if (strVal.length > 500) {
+        throw new ValidationError(
+          `Field '${field.label}' exceeds maximum length of 500 characters`,
+        );
+      }
+      cleanData[field.name] = strVal;
+    } else if (field.type === "textarea") {
+      const strVal = String(val);
+      if (strVal.length > 10000) {
+        throw new ValidationError(
+          `Field '${field.label}' exceeds maximum length of 10,000 characters`,
+        );
+      }
+      cleanData[field.name] = strVal;
     } else if (field.type === "number") {
       const num = Number(val);
       if (isNaN(num)) {

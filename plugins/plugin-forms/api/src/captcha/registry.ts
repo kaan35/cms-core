@@ -1,5 +1,5 @@
 import type { CaptchaVerifyResult, ICaptchaProvider } from "./captchaProvider.js";
-import { ChallengeCaptchaProvider } from "./challengeProvider.js";
+import { ChallengeCaptchaProvider, verifyChallenge } from "./challengeProvider.js";
 
 class NoneCaptchaProvider implements ICaptchaProvider {
   readonly id = "none";
@@ -31,5 +31,9 @@ export class CaptchaRegistry {
       throw new Error(`Captcha provider '${id}' is not registered`);
     }
     return provider;
+  }
+
+  verifyChallenge(token: string, answer: string, secret?: string, maxAgeMs?: number): boolean {
+    return verifyChallenge(token, answer, secret, maxAgeMs);
   }
 }

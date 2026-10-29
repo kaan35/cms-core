@@ -8,6 +8,7 @@ export const EmailSchema = z
   .trim()
   .toLowerCase()
   .min(1, "Email is required")
+  .max(254, "Email must not exceed 254 characters")
   .email("Invalid email address format");
 
 export const PasswordSchema = z
@@ -48,35 +49,35 @@ export const LoginSchema = z.object({
 
 export const RegisterSchema = z.object({
   email: EmailSchema,
-  name: z.string().trim().optional(),
+  name: z.string().trim().max(128, "Name must not exceed 128 characters").optional(),
   password: PasswordSchema,
 });
 
 export const SetupSchema = z.object({
   email: EmailSchema,
-  name: z.string().trim().optional(),
+  name: z.string().trim().max(128, "Name must not exceed 128 characters").optional(),
   password: PasswordSchema,
-  siteTitle: z.string().trim().optional(),
+  siteTitle: z.string().trim().max(128).optional(),
 });
 
 // 3. User Management Schemas
 export const CreateUserSchema = z.object({
   email: EmailSchema,
-  name: z.string().trim().optional(),
+  name: z.string().trim().max(128, "Name must not exceed 128 characters").optional(),
   password: PasswordSchema,
-  permissions: z.array(z.string()).optional(),
-  role: z.string().trim().optional(),
-  roleIds: z.array(z.string()).default([]),
+  permissions: z.array(z.string().max(64)).max(100).optional(),
+  role: z.string().trim().max(64).optional(),
+  roleIds: z.array(z.string().max(128)).max(50).default([]),
   status: z.enum(["active", "suspended"]).optional().default("active"),
 });
 
 export const UpdateUserSchema = z.object({
   email: EmailSchema.optional(),
-  name: z.string().trim().optional(),
+  name: z.string().trim().max(128, "Name must not exceed 128 characters").optional(),
   password: PasswordSchema.optional(),
-  permissions: z.array(z.string()).optional(),
-  role: z.string().trim().optional(),
-  roleIds: z.array(z.string()).optional(),
+  permissions: z.array(z.string().max(64)).max(100).optional(),
+  role: z.string().trim().max(64).optional(),
+  roleIds: z.array(z.string().max(128)).max(50).optional(),
   status: z.enum(["active", "suspended"]).optional(),
 });
 
@@ -85,15 +86,31 @@ export const updateUserSchema = UpdateUserSchema;
 
 // 4. Role Management Schemas
 export const CreateRoleSchema = z.object({
-  description: z.string().trim().optional(),
-  name: z.string().trim().min(1, "Role name is required"),
-  permissions: z.array(z.string()).min(1, "Role must have at least one permission"),
+  description: z.string().trim().max(500).optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Role name is required")
+    .max(64, "Role name must not exceed 64 characters"),
+  permissions: z
+    .array(z.string().max(64))
+    .min(1, "Role must have at least one permission")
+    .max(100),
 });
 
 export const UpdateRoleSchema = z.object({
-  description: z.string().trim().optional(),
-  name: z.string().trim().min(1, "Role name cannot be empty").optional(),
-  permissions: z.array(z.string()).min(1, "Role must have at least one permission").optional(),
+  description: z.string().trim().max(500).optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Role name cannot be empty")
+    .max(64, "Role name must not exceed 64 characters")
+    .optional(),
+  permissions: z
+    .array(z.string().max(64))
+    .min(1, "Role must have at least one permission")
+    .max(100)
+    .optional(),
 });
 
 // 5. Auth Settings Schema

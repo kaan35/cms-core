@@ -1,4 +1,10 @@
-import { decorateTestAuth, HookManager, stubLogger } from "@cms/core";
+import {
+  decorateTestAuth,
+  HookManager,
+  registerZodValidation,
+  stubLogger,
+  type ICache,
+} from "@cms/core";
 import { createInMemoryDb } from "@cms/db";
 import fastify from "fastify";
 import assert from "node:assert/strict";
@@ -9,20 +15,51 @@ import { FormsService } from "./formsService.js";
 import { FormsRepository } from "./repositories/formsRepository.js";
 import { registerFormsRoutes } from "./routes.js";
 
+function createMockCache(): ICache {
+  const store = new Map<string, string>();
+  return {
+    get: async (key: string) => store.get(key) ?? null,
+    set: async (key: string, value: string) => {
+      store.set(key, value);
+    },
+    del: async (...keys: string[]) => {
+      for (const k of keys) store.delete(k);
+    },
+    isAlive: async () => true,
+    quit: async () => {},
+    getJson: async <T>(key: string) => {
+      const v = store.get(key);
+      return v ? (JSON.parse(v) as T) : null;
+    },
+    setJson: async (key: string, value: unknown) => {
+      store.set(key, JSON.stringify(value));
+    },
+    getOrSet: async <T>(key: string, factory: () => Promise<T>) => {
+      const v = store.get(key);
+      if (v) return JSON.parse(v) as T;
+      const res = await factory();
+      store.set(key, JSON.stringify(res));
+      return res;
+    },
+  };
+}
+
 async function buildTestApp() {
   const app = fastify();
+  registerZodValidation(app);
   const db = createInMemoryDb();
   const repo = new FormsRepository(db);
   const captchaRegistry = new CaptchaRegistry("test-captcha-secret-key-32-chars-minimum");
   const hooks = new HookManager();
-  const service = new FormsService(repo, captchaRegistry, hooks, stubLogger);
+  const cache = createMockCache();
+  const service = new FormsService(repo, captchaRegistry, hooks, stubLogger, cache);
   const controller = new FormsController(service);
 
   decorateTestAuth(app);
 
   registerFormsRoutes(app, controller);
   await app.ready();
-  return { app, repo, service };
+  return { app, repo, service, cache };
 }
 
 describe("plugin-forms routes & workflows", () => {
@@ -103,6 +140,21 @@ describe("plugin-forms routes & workflows", () => {
     const submitBody = JSON.parse(successSubmitRes.body);
     assert.equal(submitBody.success, true);
     assert.ok(submitBody.submissionId);
+
+    // 4b. Replaying the exact same captcha token -> 400 Bad Request (single-use defense)
+    const replaySubmitRes = await app.inject({
+      method: "POST",
+      url: `/forms/${form.id}/submissions`,
+      payload: {
+        name: "Eve",
+        email: "eve@example.com",
+        message: "Replayed attack!",
+        captchaToken: captcha.captchaToken,
+        captchaAnswer: code,
+      },
+    });
+    assert.equal(replaySubmitRes.statusCode, 400);
+    assert.ok(replaySubmitRes.body.includes("Captcha challenge has already been used"));
 
     // 5. Admin lists submissions
     const listSubmissionsRes = await app.inject({
@@ -257,5 +309,69 @@ describe("plugin-forms routes & workflows", () => {
     const subBody = JSON.parse(subRes.body);
     assert.equal(subBody.meta.total, 1);
     assert.equal(subBody.data[0].ip, "192.168.1.50");
+  });
+
+  it("rejects invalid query parameters and exports format with 400 and VALIDATION_ERROR", async () => {
+    const { app, service } = await buildTestApp();
+
+    const form = await service.createForm({
+      title: "Query Test Form",
+      fields: [{ name: "email", label: "Email", type: "email" }],
+      captchaProvider: "none",
+    });
+
+    // 1. Invalid page -> 400 VALIDATION_ERROR
+    const invalidPageRes = await app.inject({
+      method: "GET",
+      url: "/forms?page=abc",
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "forms:read",
+      },
+    });
+    assert.equal(invalidPageRes.statusCode, 400);
+    const pageErr = JSON.parse(invalidPageRes.body);
+    assert.equal(pageErr.code, "VALIDATION_ERROR");
+
+    // 2. Limit exceeds max (101 > 100) -> 400
+    const invalidLimitRes = await app.inject({
+      method: "GET",
+      url: "/forms?limit=101",
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "forms:read",
+      },
+    });
+    assert.equal(invalidLimitRes.statusCode, 400);
+    const limitErr = JSON.parse(invalidLimitRes.body);
+    assert.equal(limitErr.code, "VALIDATION_ERROR");
+
+    // 3. Export format invalid (?format=pdf) -> 400
+    const invalidExportRes = await app.inject({
+      method: "GET",
+      url: `/forms/${form.id}/submissions/export?format=pdf`,
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "forms:read",
+      },
+    });
+    assert.equal(invalidExportRes.statusCode, 400);
+    const exportErr = JSON.parse(invalidExportRes.body);
+    assert.equal(exportErr.code, "VALIDATION_ERROR");
+
+    // 4. Invalid form payload in POST /forms -> 400 with "Invalid form payload"
+    const invalidBodyRes = await app.inject({
+      method: "POST",
+      url: "/forms",
+      headers: {
+        "x-test-user": "admin-1",
+        "x-test-perms": "forms:write",
+      },
+      payload: {
+        // Missing title and fields
+      },
+    });
+    assert.equal(invalidBodyRes.statusCode, 400);
+    assert.ok(invalidBodyRes.body.includes("Invalid form payload"));
   });
 });

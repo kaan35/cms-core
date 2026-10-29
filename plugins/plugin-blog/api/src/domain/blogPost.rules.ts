@@ -17,25 +17,25 @@ export const BLOG_EVENTS = {
 export const BlogPostStatusSchema = z.enum(["draft", "published"]);
 
 export const CreateBlogPostSchema = z.object({
-  title: z.string().min(1, "Post title is required"),
-  slug: z.string().optional(),
-  summary: z.string().min(1, "Summary is required"),
-  content: z.string().min(1, "Content is required"),
-  coverMediaId: z.string().optional(),
+  title: z.string().min(1, "Post title is required").max(255),
+  slug: z.string().max(255).optional(),
+  summary: z.string().min(1, "Summary is required").max(1000),
+  content: z.string().min(1, "Content is required").max(100000),
+  coverMediaId: z.string().max(128).optional(),
   status: BlogPostStatusSchema.default("draft"),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+  metaTitle: z.string().max(255).optional(),
+  metaDescription: z.string().max(500).optional(),
 });
 
 export const UpdateBlogPostSchema = z.object({
-  title: z.string().min(1, "Post title cannot be empty").optional(),
-  slug: z.string().optional(),
-  summary: z.string().min(1, "Summary cannot be empty").optional(),
-  content: z.string().min(1, "Content cannot be empty").optional(),
-  coverMediaId: z.string().optional(),
+  title: z.string().min(1, "Post title cannot be empty").max(255).optional(),
+  slug: z.string().max(255).optional(),
+  summary: z.string().min(1, "Summary cannot be empty").max(1000).optional(),
+  content: z.string().min(1, "Content cannot be empty").max(100000).optional(),
+  coverMediaId: z.string().max(128).optional(),
   status: BlogPostStatusSchema.optional(),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+  metaTitle: z.string().max(255).optional(),
+  metaDescription: z.string().max(500).optional(),
 });
 
 // Inferred TypeScript types

@@ -46,6 +46,11 @@ class MongoCollectionAdapter<T extends Record<string, unknown>> implements IColl
     await this.col.insertOne(doc);
   }
 
+  async insertMany(docs: Record<string, unknown>[]): Promise<void> {
+    if (docs.length === 0) return;
+    await this.col.insertMany(docs as Document[]);
+  }
+
   async updateOne(
     filter: Record<string, unknown>,
     update: Record<string, unknown>,
@@ -56,8 +61,24 @@ class MongoCollectionAdapter<T extends Record<string, unknown>> implements IColl
     });
   }
 
+  async updateMany(
+    filter: Record<string, unknown>,
+    update: Record<string, unknown>,
+    options: UpdateOptions = {},
+  ): Promise<{ modifiedCount: number }> {
+    const res = await this.col.updateMany(filter as Filter<Document>, update, {
+      upsert: options.upsert ?? false,
+    });
+    return { modifiedCount: res.modifiedCount };
+  }
+
   async deleteOne(filter: Record<string, unknown>): Promise<void> {
     await this.col.deleteOne(filter as Filter<Document>);
+  }
+
+  async deleteMany(filter: Record<string, unknown>): Promise<{ deletedCount: number }> {
+    const res = await this.col.deleteMany(filter as Filter<Document>);
+    return { deletedCount: res.deletedCount };
   }
 
   async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {

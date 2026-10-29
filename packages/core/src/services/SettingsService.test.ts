@@ -18,12 +18,15 @@ function makeDb(stored: Record<string, unknown> = {}): {
     },
     find: async () => [],
     insertOne: async () => {},
+    insertMany: async () => {},
     updateOne: async (_filter, update) => {
       const setFields = (update["$set"] ?? {}) as Record<string, unknown>;
       const key = setFields["key"] as string;
       data[key] = setFields["value"];
     },
+    updateMany: async () => ({ modifiedCount: 0 }),
     deleteOne: async () => {},
+    deleteMany: async () => ({ deletedCount: 0 }),
     countDocuments: async () => 0,
     createIndex: async () => {},
   };

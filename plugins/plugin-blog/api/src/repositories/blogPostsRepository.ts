@@ -179,7 +179,10 @@ export class BlogPostsRepository {
     if (!existing) {
       throw new NotFoundError(`Blog post '${id}' not found`);
     }
-    await this.postsCollection.deleteOne({ id });
+    await Promise.all([
+      this.postsCollection.deleteOne({ id }),
+      this.versionsCollection.deleteMany({ postId: id }),
+    ]);
   }
 
   async listVersions(postId: string): Promise<BlogPostVersionDoc[]> {

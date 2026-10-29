@@ -352,10 +352,27 @@ export function TokenDetailDialog({ token, open, onOpenChange }: TokenDetailDial
             <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
               <Key className="size-4" />
             </div>
-            <div className="min-w-0">
-              <DialogTitle className="text-sm font-semibold truncate">
-                {token?.name || "Token Details"}
-              </DialogTitle>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <DialogTitle className="text-sm font-semibold truncate">
+                  {token?.name || "Token Details"}
+                </DialogTitle>
+                {token?.revokedAt ? (
+                  <Badge
+                    variant="destructive"
+                    className="text-[10px] px-1.5 py-0 bg-destructive/15 text-destructive border-destructive/30 shrink-0"
+                  >
+                    Revoked
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] px-1.5 py-0 text-emerald-600 bg-emerald-500/10 border-emerald-500/20 shrink-0"
+                  >
+                    Active
+                  </Badge>
+                )}
+              </div>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5 truncate">
                 Authenticated key configuration, activity audit & 1-click AI IDE setup.
               </DialogDescription>
@@ -365,6 +382,36 @@ export function TokenDetailDialog({ token, open, onOpenChange }: TokenDetailDial
 
         {/* Scrollable Body */}
         <DialogBody>
+          {token?.revokedAt && (
+            <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <span>Status: Revoked</span>
+                    <Badge
+                      variant="destructive"
+                      className="text-[10px] px-1.5 py-0 bg-destructive/20 text-destructive border-destructive/30"
+                    >
+                      Revoked
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-destructive/90">
+                    This token was revoked on{" "}
+                    <span className="font-semibold">{formatDateTime(token.revokedAt)}</span>
+                    {token.revokeReason ? (
+                      <>
+                        {" "}
+                        &bull; Reason:{" "}
+                        <span className="font-mono font-medium">{token.revokeReason}</span>
+                      </>
+                    ) : null}
+                    . Requests made with this key will fail authentication.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <Tabs
             value={mainTab}
             onValueChange={(v) => setMainTab(v as "setup" | "activity")}

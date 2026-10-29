@@ -13,11 +13,14 @@ function makeDb(docs: Array<Record<string, unknown>> = []): IDatabase {
     insertOne: async (doc) => {
       data.push(doc);
     },
+    insertMany: async () => {},
     updateOne: async () => {},
+    updateMany: async () => ({ modifiedCount: 0 }),
     deleteOne: async (filter) => {
       const idx = data.findIndex((d) => d["from"] === filter["from"]);
       if (idx !== -1) data.splice(idx, 1);
     },
+    deleteMany: async () => ({ deletedCount: 0 }),
     countDocuments: async () => data.length,
     createIndex: async () => {},
   };

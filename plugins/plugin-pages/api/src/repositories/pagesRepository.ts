@@ -49,10 +49,10 @@ export class PagesRepository {
 
     if (pageType === "home") {
       // Invariant: demote any other home page to standard
-      const existingHomes = await this.pagesCollection.find({ pageType: "home" });
-      for (const h of existingHomes) {
-        await this.pagesCollection.updateOne({ id: h.id }, { $set: { pageType: "standard" } });
-      }
+      await this.pagesCollection.updateMany(
+        { pageType: "home" },
+        { $set: { pageType: "standard" } },
+      );
     }
 
     const pageDoc: PageDoc = {
@@ -117,12 +117,10 @@ export class PagesRepository {
 
     if (input.pageType === "home") {
       // Invariant: demote any other home page to standard
-      const existingHomes = await this.pagesCollection.find({ pageType: "home" });
-      for (const h of existingHomes) {
-        if (h.id !== id) {
-          await this.pagesCollection.updateOne({ id: h.id }, { $set: { pageType: "standard" } });
-        }
-      }
+      await this.pagesCollection.updateMany(
+        { pageType: "home", id: { $ne: id } },
+        { $set: { pageType: "standard" } },
+      );
     }
 
     const updatedDoc: PageDoc = {
@@ -194,7 +192,7 @@ export class PagesRepository {
 
     await Promise.all([
       this.pagesCollection.deleteOne({ id }),
-      this.versionsCollection.deleteOne({ pageId: id }),
+      this.versionsCollection.deleteMany({ pageId: id }),
     ]);
   }
 

@@ -12,6 +12,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createAuthenticateMiddleware } from "../middleware/authenticate.js";
+import { ApiTokensRepository } from "../repositories/apiTokensRepository.js";
 import { RolesRepository } from "../repositories/rolesRepository.js";
 import {
   SessionsRepository,
@@ -27,6 +28,7 @@ interface TestContext {
   usersRepo: UsersRepository;
   rolesRepo: RolesRepository;
   sessionsRepo: SessionsRepository;
+  apiTokensRepo: ApiTokensRepository;
   settings: SettingsService;
   hooks: HookManager;
   sessionService: SessionService;
@@ -40,6 +42,7 @@ async function setupTestContext(): Promise<TestContext> {
   const usersRepo = new UsersRepository(db);
   const rolesRepo = new RolesRepository(db);
   const sessionsRepo = new SessionsRepository(db);
+  const apiTokensRepo = new ApiTokensRepository(db);
   const settings = new SettingsService(db, stubLogger);
   const hooks = new HookManager();
   const jwtSecret = "super-secure-jwt-secret-minimum-32-chars-long-here";
@@ -48,7 +51,15 @@ async function setupTestContext(): Promise<TestContext> {
   await rolesRepo.create({ name: "admin", permissions: ["*"], isSystem: true });
   await rolesRepo.create({ name: "user", permissions: ["user:read"], isSystem: true });
 
-  const userService = new UserService(usersRepo, rolesRepo, sessionsRepo, hooks, stubLogger, 4);
+  const userService = new UserService(
+    usersRepo,
+    rolesRepo,
+    sessionsRepo,
+    hooks,
+    stubLogger,
+    4,
+    apiTokensRepo,
+  );
 
   const authService = new AuthService(
     usersRepo,
@@ -70,6 +81,7 @@ async function setupTestContext(): Promise<TestContext> {
     usersRepo,
     rolesRepo,
     sessionsRepo,
+    apiTokensRepo,
     settings,
     hooks,
     sessionService,
@@ -528,6 +540,32 @@ describe("User Suspension Specifications and Adversarial QA Suite", () => {
 
       const fetchedAgain = await userService.getUserById(user.id);
       assert.equal(fetchedAgain.status, "suspended");
+    });
+
+    it("deleteUser revokes all active API tokens for the user", async () => {
+      const { userService, apiTokensRepo } = await setupTestContext();
+
+      const user = await userService.createUser({
+        email: "delete.tokens@example.com",
+        password: "Password123",
+      });
+
+      const token = await apiTokensRepo.create({
+        userId: user.id,
+        name: "Test Token",
+        tokenHash: "dummy-hash",
+        tokenPrefix: "cms_token_...1234",
+        scopes: ["*"],
+        expiresAt: null,
+      });
+
+      assert.strictEqual(token.revokedAt, null);
+
+      await userService.deleteUser(user.id, "admin-caller-id", "admin-caller-id");
+
+      const revokedToken = await apiTokensRepo.findById(token.id);
+      assert.ok(revokedToken?.revokedAt);
+      assert.strictEqual(revokedToken?.revokeReason, "user_deleted");
     });
   });
 });

@@ -12,6 +12,8 @@ export interface ApiTokenDoc extends Record<string, unknown> {
   lastUsedAt: Date | null;
   createdAt: Date;
   encryptedToken?: string | undefined;
+  revokedAt?: Date | null | undefined;
+  revokeReason?: string | undefined;
 }
 
 export interface CreateApiTokenData {
@@ -89,6 +91,7 @@ export class ApiTokensRepository {
       lastUsedAt: null,
       createdAt: new Date(),
       encryptedToken: data.encryptedToken || undefined,
+      revokedAt: null,
     };
     await this.collection.insertOne(doc);
     return doc;
@@ -102,8 +105,14 @@ export class ApiTokensRepository {
     await this.collection.deleteOne({ id });
   }
 
+  async revokeByUserId(userId: string, reason = "user_deleted"): Promise<void> {
+    await this.collection.updateMany(
+      { userId, revokedAt: null },
+      { $set: { revokedAt: new Date(), revokeReason: reason } },
+    );
+  }
+
   async deleteByUserId(userId: string): Promise<void> {
-    const tokens = await this.collection.find({ userId });
-    await Promise.all(tokens.map((token) => this.collection.deleteOne({ id: token.id })));
+    await this.collection.deleteMany({ userId });
   }
 }

@@ -129,44 +129,34 @@ export class SessionsRepository {
     revokedBy?: string,
     reason: SessionRevokeReason = "admin_revoked",
   ): Promise<void> {
-    const sessions = await this.findActiveByUserId(userId);
-    const now = new Date();
-    for (const session of sessions) {
-      await this.collection.updateOne(
-        { id: session.id },
-        {
-          $set: {
-            status: "revoked",
-            revokedAt: now,
-            revokedBy,
-            revokeReason: reason,
-          },
+    await this.collection.updateMany(
+      { userId, status: "active" },
+      {
+        $set: {
+          status: "revoked",
+          revokedAt: new Date(),
+          revokedBy,
+          revokeReason: reason,
         },
-      );
-    }
+      },
+    );
   }
 
   async revokeAll(
     revokedBy?: string,
     reason: SessionRevokeReason = "panic_revoke_all",
   ): Promise<void> {
-    const all = await this.collection.find({});
-    const now = new Date();
-    for (const s of all) {
-      if (s.status !== "revoked" && s.status !== "expired") {
-        await this.collection.updateOne(
-          { id: s.id },
-          {
-            $set: {
-              status: "revoked",
-              revokedAt: now,
-              revokedBy,
-              revokeReason: reason,
-            },
-          },
-        );
-      }
-    }
+    await this.collection.updateMany(
+      { status: "active" },
+      {
+        $set: {
+          status: "revoked",
+          revokedAt: new Date(),
+          revokedBy,
+          revokeReason: reason,
+        },
+      },
+    );
   }
 
   async delete(id: string): Promise<void> {

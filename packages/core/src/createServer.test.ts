@@ -11,8 +11,11 @@ function makeStubCollection(): ICollection<Record<string, unknown>> {
     findOne: async () => null,
     find: async () => [],
     insertOne: async () => {},
+    insertMany: async () => {},
     updateOne: async () => {},
+    updateMany: async () => ({ modifiedCount: 0 }),
     deleteOne: async () => {},
+    deleteMany: async () => ({ deletedCount: 0 }),
     countDocuments: async () => 0,
     createIndex: async () => {},
   };

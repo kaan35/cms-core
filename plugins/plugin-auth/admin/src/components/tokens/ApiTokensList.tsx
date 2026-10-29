@@ -51,6 +51,8 @@ export interface ApiTokenItem {
   createdAt: string;
   lastUsedAt?: string | null;
   expiresAt?: string | null;
+  revokedAt?: string | null | undefined;
+  revokeReason?: string | undefined;
 }
 
 function getAgentMeta(name: string) {
@@ -288,6 +290,7 @@ export function ApiTokensList() {
                 </TableHeader>
                 <TableBody>
                   {tokens.map((token) => {
+                    const isRevoked = Boolean(token.revokedAt);
                     const isExpired = token.expiresAt
                       ? new Date(token.expiresAt).getTime() < Date.now()
                       : false;
@@ -332,9 +335,23 @@ export function ApiTokensList() {
                                     {agentMeta.label}
                                   </Badge>
                                 )}
-                                {isExpired && (
+                                {isRevoked ? (
+                                  <Badge
+                                    variant="destructive"
+                                    className="text-[10px] px-1.5 py-0 bg-destructive/15 text-destructive border-destructive/30"
+                                  >
+                                    Revoked
+                                  </Badge>
+                                ) : isExpired ? (
                                   <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                                     Expired
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0 text-emerald-600 bg-emerald-500/10 border-emerald-500/20"
+                                  >
+                                    Active
                                   </Badge>
                                 )}
                               </div>
@@ -390,7 +407,11 @@ export function ApiTokensList() {
                               {formatDate(token.createdAt)}
                             </span>
                             <span className="text-[11px] text-muted-foreground">
-                              {token.expiresAt ? (
+                              {token.revokedAt ? (
+                                <span className="text-destructive font-medium">
+                                  Revoked {formatDate(token.revokedAt)}
+                                </span>
+                              ) : token.expiresAt ? (
                                 isExpired ? (
                                   <span className="text-destructive font-medium">
                                     Expired {formatDate(token.expiresAt)}
@@ -421,16 +442,29 @@ export function ApiTokensList() {
                             >
                               Setup & Copy
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => setTokenToRevoke(token)}
-                              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              tooltip="Revoke API Token"
-                            >
-                              <Trash2 className="size-3.5" />
-                              <span className="sr-only">Revoke</span>
-                            </Button>
+                            {token.revokedAt ? (
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                disabled
+                                className="opacity-40 cursor-not-allowed text-muted-foreground"
+                                tooltip="Token already revoked"
+                              >
+                                <Trash2 className="size-3.5" />
+                                <span className="sr-only">Revoked</span>
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => setTokenToRevoke(token)}
+                                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                tooltip="Revoke API Token"
+                              >
+                                <Trash2 className="size-3.5" />
+                                <span className="sr-only">Revoke</span>
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

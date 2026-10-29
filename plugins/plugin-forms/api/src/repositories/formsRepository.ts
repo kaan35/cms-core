@@ -15,7 +15,35 @@ import type {
   UpdateFormInput,
 } from "../domain/form.rules.js";
 
-export class FormsRepository {
+export interface IFormsRepository {
+  create(input: CreateFormInput): Promise<FormDoc>;
+  findById(id: string): Promise<FormDoc | null>;
+  findBySlug(slug: string): Promise<FormDoc | null>;
+  list(): Promise<FormDoc[]>;
+  findPaginated(
+    page?: number,
+    limit?: number,
+    search?: string,
+  ): Promise<{ items: FormDoc[]; total: number }>;
+  update(id: string, input: UpdateFormInput): Promise<FormDoc>;
+  delete(id: string): Promise<void>;
+  deleteManySubmissions(formId: string): Promise<number>;
+  createSubmission(
+    formId: string,
+    data: Record<string, unknown>,
+    meta?: { ip?: string | undefined; userAgent?: string | undefined },
+  ): Promise<FormSubmissionDoc>;
+  listSubmissions(
+    formId: string,
+    page: number,
+    limit: number,
+    search?: string,
+  ): Promise<PaginatedResult<FormSubmissionDoc>>;
+  getAllSubmissions(formId: string): Promise<FormSubmissionDoc[]>;
+  countSubmissions(formId?: string): Promise<number>;
+}
+
+export class FormsRepository implements IFormsRepository {
   private formsCol: ICollection<FormDoc>;
   private submissionsCol: ICollection<FormSubmissionDoc>;
 
@@ -117,16 +145,23 @@ export class FormsRepository {
     return updated;
   }
 
+  async deleteManySubmissions(formId: string): Promise<number> {
+    if (this.submissionsCol.deleteMany) {
+      const res = await this.submissionsCol.deleteMany({ formId });
+      return res?.deletedCount ?? 0;
+    }
+    const submissions = await this.submissionsCol.find({ formId });
+    await Promise.all(submissions.map((sub) => this.submissionsCol.deleteOne({ id: sub.id })));
+    return submissions.length;
+  }
+
   async delete(id: string): Promise<void> {
     const existing = await this.findById(id);
     if (!existing) {
       throw new NotFoundError(`Form not found: ${id}`);
     }
     await this.formsCol.deleteOne({ id });
-    const submissions = await this.submissionsCol.find({ formId: id });
-    for (const sub of submissions) {
-      await this.submissionsCol.deleteOne({ id: sub.id });
-    }
+    await this.deleteManySubmissions(id);
   }
 
   async createSubmission(
@@ -157,11 +192,26 @@ export class FormsRepository {
     const filter: Record<string, unknown> = { formId };
     if (search && search.trim() !== "") {
       const s = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter["$or"] = [
-        { ip: { $regex: s, $options: "i" } },
-        { userAgent: { $regex: s, $options: "i" } },
-        { id: { $regex: s, $options: "i" } },
+      const regexFilter = { $regex: s, $options: "i" };
+      const orConditions: Record<string, unknown>[] = [
+        { ip: regexFilter },
+        { userAgent: regexFilter },
+        { id: regexFilter },
       ];
+
+      const form = await this.findById(formId);
+      if (form?.fields && form.fields.length > 0) {
+        for (const f of form.fields) {
+          orConditions.push({ [`data.${f.name}`]: regexFilter });
+        }
+      }
+      for (const commonKey of ["name", "email", "message", "subject", "phone"]) {
+        if (!form?.fields?.some((f) => f.name === commonKey)) {
+          orConditions.push({ [`data.${commonKey}`]: regexFilter });
+        }
+      }
+
+      filter["$or"] = orConditions;
     }
     const skip = Math.max(0, (page - 1) * limit);
     const [items, total] = await Promise.all([

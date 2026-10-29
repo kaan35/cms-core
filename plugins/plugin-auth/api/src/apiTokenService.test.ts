@@ -30,11 +30,27 @@ function makeStubDb(): IDatabase {
     insertOne: async (doc) => {
       store.set(doc["id"] as string, doc as unknown as ApiTokenDoc);
     },
+    insertMany: async () => {},
     updateOne: async (filter, update) => {
       const doc = store.get(filter["id"] as string);
       if (doc && update["$set"]) {
         Object.assign(doc, update["$set"]);
       }
+    },
+    updateMany: async (filter, update) => {
+      let modifiedCount = 0;
+      for (const doc of store.values()) {
+        let match = true;
+        if (filter["userId"] && doc.userId !== filter["userId"]) match = false;
+        if (filter["revokedAt"] === null && doc.revokedAt != null) match = false;
+        if (match) {
+          if (update["$set"]) {
+            Object.assign(doc, update["$set"]);
+          }
+          modifiedCount++;
+        }
+      }
+      return { modifiedCount };
     },
     deleteOne: async (filter) => {
       if (filter["id"]) {
@@ -46,6 +62,21 @@ function makeStubDb(): IDatabase {
       } else {
         store.clear();
       }
+    },
+    deleteMany: async (filter) => {
+      let deletedCount = 0;
+      if (filter["userId"]) {
+        for (const [k, v] of store.entries()) {
+          if (v.userId === filter["userId"]) {
+            store.delete(k);
+            deletedCount++;
+          }
+        }
+      } else {
+        deletedCount = store.size;
+        store.clear();
+      }
+      return { deletedCount };
     },
     countDocuments: async () => store.size,
     createIndex: async () => {},
@@ -144,6 +175,55 @@ describe("ApiTokenService", () => {
       .updateOne({ id: token.id }, { $set: { expiresAt: pastDate } });
 
     await assert.rejects(async () => service.validateToken(rawToken), UnauthorizedError);
+  });
+
+  it("rejects revoked tokens with UnauthorizedError", async () => {
+    const db = makeStubDb();
+    const repo = new ApiTokensRepository(db);
+    const service = new ApiTokenService(repo);
+
+    const { rawToken, token } = await service.createToken("user-1", "Revoked Token");
+    await db
+      .collection("cms_api_tokens")
+      .updateOne(
+        { id: token.id },
+        { $set: { revokedAt: new Date(), revokeReason: "user_deleted" } },
+      );
+
+    await assert.rejects(async () => service.validateToken(rawToken), UnauthorizedError);
+  });
+
+  it("revokes all tokens for a user via revokeByUserId and rejects validation", async () => {
+    const db = makeStubDb();
+    const repo = new ApiTokensRepository(db);
+    const service = new ApiTokenService(repo);
+
+    const { rawToken: token1 } = await service.createToken("user-to-delete", "Token 1");
+    const { rawToken: token2 } = await service.createToken("user-to-delete", "Token 2");
+    const { rawToken: otherToken } = await service.createToken("user-kept", "Token Other");
+
+    await repo.revokeByUserId("user-to-delete", "user_deleted");
+
+    await assert.rejects(async () => service.validateToken(token1), UnauthorizedError);
+    await assert.rejects(async () => service.validateToken(token2), UnauthorizedError);
+    await assert.doesNotReject(async () => service.validateToken(otherToken));
+  });
+
+  it("deletes all tokens for a user via deleteByUserId", async () => {
+    const db = makeStubDb();
+    const repo = new ApiTokensRepository(db);
+    const service = new ApiTokenService(repo);
+
+    await service.createToken("user-cleanup", "Token 1");
+    await service.createToken("user-cleanup", "Token 2");
+    await service.createToken("user-preserved", "Token 3");
+
+    await repo.deleteByUserId("user-cleanup");
+
+    const remaining = await repo.findByUserId("user-cleanup");
+    assert.strictEqual(remaining.length, 0);
+    const preserved = await repo.findByUserId("user-preserved");
+    assert.strictEqual(preserved.length, 1);
   });
 
   it("lists user tokens without exposing tokenHash", async () => {

@@ -18,7 +18,7 @@ export async function registerFormsPlugin(
   app: FastifyInstance,
   services: CoreServices,
 ): Promise<void> {
-  const { db, logger, hooks, config } = services;
+  const { db, logger, hooks, config, cache } = services;
   const captchaSecret = config?.getOrDefault("CAPTCHA_SECRET", "") || "";
   if (!captchaSecret || captchaSecret.length < 32) {
     throw new Error(
@@ -29,7 +29,7 @@ export async function registerFormsPlugin(
 
   const repo = new FormsRepository(db);
   const captchaRegistry = new CaptchaRegistry(captchaSecret, captchaMaxAgeMs);
-  const service = new FormsService(repo, captchaRegistry, hooks, logger);
+  const service = new FormsService(repo, captchaRegistry, hooks, logger, cache);
   const controller = new FormsController(service);
 
   const { registerFormsRoutes } = await import("./routes.js");

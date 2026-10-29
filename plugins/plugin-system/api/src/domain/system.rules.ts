@@ -37,32 +37,32 @@ export interface NavigationMenuItem {
 // 1. Zod Ingress Schemas
 export const NavigationMenuItemSchema = z.object({
   id: z.string(),
-  label: z.string().min(1, "Menu label is required"),
-  url: z.string().min(1, "Menu URL is required"),
+  label: z.string().min(1, "Menu label is required").max(80),
+  url: z.string().min(1, "Menu URL is required").max(500),
   type: z.enum(["page", "custom", "blog"]).optional(),
   pageId: z.string().optional(),
   customLabel: z.boolean().optional(),
   external: z.boolean().optional(),
   style: z.enum(["link", "button"]).optional(),
-  badge: z.string().optional(),
-  icon: z.string().optional(),
+  badge: z.string().max(30).optional(),
+  icon: z.string().max(64).optional(),
 });
 
 export const UpdateSettingsSchema = z.object({
-  adminTitle: z.string().trim().min(1, "Admin title cannot be empty").optional(),
-  siteTitle: z.string().trim().min(1, "Site title cannot be empty").optional(),
-  siteDescription: z.string().trim().optional(),
+  adminTitle: z.string().trim().min(1, "Admin title cannot be empty").max(120).optional(),
+  siteTitle: z.string().trim().min(1, "Site title cannot be empty").max(120).optional(),
+  siteDescription: z.string().trim().max(500).optional(),
   brandColor: z
     .string()
     .regex(HEX_COLOR_REGEX, "Invalid hex color format (e.g. #3b82f6)")
     .optional(),
-  brandFont: z.string().trim().optional(),
+  brandFont: z.string().trim().max(80).optional(),
   primaryColor: z.string().regex(HEX_COLOR_REGEX, "Invalid hex color format").optional(),
-  fontFamily: z.string().trim().optional(),
+  fontFamily: z.string().trim().max(80).optional(),
   defaultTheme: z.enum(["dark", "light", "system"]).optional(),
-  footerText: z.string().trim().optional(),
-  headerMenu: z.array(NavigationMenuItemSchema).optional(),
-  footerMenu: z.array(NavigationMenuItemSchema).optional(),
+  footerText: z.string().trim().max(500).optional(),
+  headerMenu: z.array(NavigationMenuItemSchema).max(30).optional(),
+  footerMenu: z.array(NavigationMenuItemSchema).max(30).optional(),
   allowRegistration: z.boolean().optional(),
   sessionTimeoutMinutes: z.number().int().positive().optional(),
 });

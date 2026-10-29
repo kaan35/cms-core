@@ -90,6 +90,7 @@ function makeInMemoryDb(): IDatabase {
           const id = (doc["id"] as string) || (doc["key"] as string) || String(store.size + 1);
           store.set(id, { ...doc, id });
         },
+        insertMany: async () => {},
         updateOne: async (
           filter: Record<string, unknown>,
           update: Record<string, unknown>,
@@ -125,6 +126,27 @@ function makeInMemoryDb(): IDatabase {
             }
           }
         },
+        updateMany: async (filter: Record<string, unknown>, update: Record<string, unknown>) => {
+          let modifiedCount = 0;
+          for (const doc of store.values()) {
+            let match = true;
+            for (const [k, v] of Object.entries(filter)) {
+              if (doc[k] !== v) {
+                match = false;
+                break;
+              }
+            }
+            if (match) {
+              if (update["$set"]) {
+                Object.assign(doc, update["$set"]);
+              } else {
+                Object.assign(doc, update);
+              }
+              modifiedCount++;
+            }
+          }
+          return { modifiedCount };
+        },
         deleteOne: async (filter: Record<string, unknown>) => {
           if (Object.keys(filter).length === 0) {
             store.clear();
@@ -144,6 +166,7 @@ function makeInMemoryDb(): IDatabase {
             }
           }
         },
+        deleteMany: async () => ({ deletedCount: 0 }),
         countDocuments: async (filter: Record<string, unknown> = {}) => {
           if (!filter || Object.keys(filter).length === 0) return store.size;
           let docs = Array.from(store.values());

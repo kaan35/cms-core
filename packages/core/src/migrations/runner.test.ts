@@ -23,8 +23,11 @@ function makeDb(alreadyApplied: string[] = []): {
     insertOne: async (doc) => {
       inserted.push(doc["id"] as string);
     },
+    insertMany: async () => {},
     updateOne: async () => {},
+    updateMany: async () => ({ modifiedCount: 0 }),
     deleteOne: async () => {},
+    deleteMany: async () => ({ deletedCount: 0 }),
     countDocuments: async () => alreadyApplied.length,
     createIndex: async () => {},
   };

@@ -1,4 +1,4 @@
-import { HookManager, ValidationError, stubLogger } from "@cms/core";
+import { HookManager, ValidationError, stubLogger, type ICache } from "@cms/core";
 import { createInMemoryDb } from "@cms/db";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -9,6 +9,35 @@ import { FormsService } from "./formsService.js";
 import { FormsRepository } from "./repositories/formsRepository.js";
 
 const TEST_CAPTCHA_SECRET = "test-captcha-secret-key-32-chars-minimum";
+
+function createMockCache(): ICache {
+  const store = new Map<string, string>();
+  return {
+    get: async (key: string) => store.get(key) ?? null,
+    set: async (key: string, value: string) => {
+      store.set(key, value);
+    },
+    del: async (...keys: string[]) => {
+      for (const k of keys) store.delete(k);
+    },
+    isAlive: async () => true,
+    quit: async () => {},
+    getJson: async <T>(key: string) => {
+      const v = store.get(key);
+      return v ? (JSON.parse(v) as T) : null;
+    },
+    setJson: async (key: string, value: unknown) => {
+      store.set(key, JSON.stringify(value));
+    },
+    getOrSet: async <T>(key: string, factory: () => Promise<T>) => {
+      const v = store.get(key);
+      if (v) return JSON.parse(v) as T;
+      const res = await factory();
+      store.set(key, JSON.stringify(res));
+      return res;
+    },
+  };
+}
 
 describe("FormsService", () => {
   it("submits form successfully with valid challenge captcha and emits form.submitted", async () => {
@@ -240,5 +269,100 @@ describe("FormsService", () => {
     assert.equal(subSearch.data.length, 1);
     assert.equal(subSearch.meta.total, 1);
     assert.equal(subSearch.data[0]?.ip, "192.168.1.1");
+  });
+
+  it("rejects replayed captcha tokens with ValidationError (atomic replay protection)", async () => {
+    const db = createInMemoryDb();
+    const repo = new FormsRepository(db);
+    const registry = new CaptchaRegistry(TEST_CAPTCHA_SECRET);
+    const hooks = new HookManager();
+    const cache = createMockCache();
+    const service = new FormsService(repo, registry, hooks, stubLogger, cache);
+
+    const form = await service.createForm({
+      title: "Secure Challenge Form",
+      fields: [{ name: "email", label: "Email", type: "email", required: true }],
+      captchaProvider: "challenge",
+      challengeType: "alphanumeric",
+    });
+
+    const captchaRes = await service.generateCaptcha(form.id);
+    assert.equal(captchaRes.captchaRequired, true);
+
+    if (captchaRes.captchaRequired) {
+      const code = captchaRes.question.replace("Enter code: ", "");
+
+      // First submission succeeds
+      const firstSubmit = await service.submitForm(form.id, {
+        email: "first@example.com",
+        captchaToken: captchaRes.captchaToken,
+        captchaAnswer: code,
+      });
+      assert.equal(firstSubmit.success, true);
+
+      // Replaying the exact same token fails immediately
+      await assert.rejects(
+        async () => {
+          await service.submitForm(form.id, {
+            email: "second@example.com",
+            captchaToken: captchaRes.captchaToken,
+            captchaAnswer: code,
+          });
+        },
+        (err: Error) =>
+          err instanceof ValidationError &&
+          err.message.includes("Captcha challenge has already been used"),
+      );
+    }
+  });
+
+  it("enforces max length boundaries on text (<=500 chars) and textarea (<=10,000 chars)", async () => {
+    const db = createInMemoryDb();
+    const repo = new FormsRepository(db);
+    const registry = new CaptchaRegistry(TEST_CAPTCHA_SECRET);
+    const hooks = new HookManager();
+    const service = new FormsService(repo, registry, hooks, stubLogger);
+
+    const form = await service.createForm({
+      title: "Boundary Test Form",
+      fields: [
+        { name: "shortText", label: "Summary", type: "text", required: true },
+        { name: "longText", label: "Description", type: "textarea", required: true },
+      ],
+      captchaProvider: "none",
+    });
+
+    // Valid lengths succeed
+    const validSubmit = await service.submitForm(form.id, {
+      shortText: "a".repeat(500),
+      longText: "b".repeat(10000),
+    });
+    assert.equal(validSubmit.success, true);
+
+    // Text exceeding 500 chars fails
+    await assert.rejects(
+      async () => {
+        await service.submitForm(form.id, {
+          shortText: "a".repeat(501),
+          longText: "normal text",
+        });
+      },
+      (err: Error) =>
+        err instanceof ValidationError &&
+        err.message === "Field 'Summary' exceeds maximum length of 500 characters",
+    );
+
+    // Textarea exceeding 10,000 chars fails
+    await assert.rejects(
+      async () => {
+        await service.submitForm(form.id, {
+          shortText: "normal text",
+          longText: "b".repeat(10001),
+        });
+      },
+      (err: Error) =>
+        err instanceof ValidationError &&
+        err.message === "Field 'Description' exceeds maximum length of 10,000 characters",
+    );
   });
 });

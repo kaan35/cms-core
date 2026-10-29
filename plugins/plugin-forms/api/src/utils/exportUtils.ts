@@ -78,7 +78,7 @@ export function createZipArchive(files: ZipEntry[]): Buffer {
 }
 
 /**
- * Escapes values for CSV in compliance with RFC 4180.
+ * Escapes values for CSV in compliance with RFC 4180 and defends against CSV Formula Injection (CWE-1236).
  */
 export function escapeCsvCell(val: unknown): string {
   if (val === null || val === undefined) return '""';
@@ -87,6 +87,10 @@ export function escapeCsvCell(val: unknown): string {
     str = JSON.stringify(val);
   } else {
     str = String(val);
+  }
+  // Formula injection defense (CWE-1236): prefix risky command prefixes with single quote
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
   }
   return `"${str.replace(/"/g, '""')}"`;
 }

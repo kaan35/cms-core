@@ -103,8 +103,8 @@ export function generateStorageKey(filename: string): string {
 
 // Zod Ingress Schemas
 export const UpdateMediaSchema = z.object({
-  alt: z.string().trim().optional(),
-  caption: z.string().trim().optional(),
+  alt: z.string().trim().max(255).optional(),
+  caption: z.string().trim().max(1000).optional(),
 });
 
 export type UpdateMediaInput = z.infer<typeof UpdateMediaSchema>;

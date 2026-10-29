@@ -22,9 +22,23 @@ function makeStubDb(): IDatabase {
     insertOne: async (doc) => {
       store.set(doc["id"] as string, doc as unknown as SessionDoc);
     },
+    insertMany: async () => {},
     updateOne: async (filter, update) => {
       const doc = store.get(filter["id"] as string);
       if (doc && update["$set"]) Object.assign(doc, update["$set"]);
+    },
+    updateMany: async (filter, update) => {
+      let modifiedCount = 0;
+      for (const doc of store.values()) {
+        let match = true;
+        if (filter["userId"] && doc.userId !== filter["userId"]) match = false;
+        if (filter["status"] && doc.status !== filter["status"]) match = false;
+        if (match) {
+          if (update["$set"]) Object.assign(doc, update["$set"]);
+          modifiedCount++;
+        }
+      }
+      return { modifiedCount };
     },
     deleteOne: async (filter) => {
       if (filter["id"]) {
@@ -37,6 +51,7 @@ function makeStubDb(): IDatabase {
         store.clear();
       }
     },
+    deleteMany: async () => ({ deletedCount: 0 }),
     countDocuments: async () => store.size,
     createIndex: async () => {},
   };

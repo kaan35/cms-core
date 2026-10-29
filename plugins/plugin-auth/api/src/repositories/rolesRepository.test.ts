@@ -25,8 +25,11 @@ function makeStubDb(): IDatabase {
     insertOne: async (doc) => {
       store.set(doc["id"] as string, doc as unknown as RoleDoc);
     },
+    insertMany: async () => {},
     updateOne: async () => {},
+    updateMany: async () => ({ modifiedCount: 0 }),
     deleteOne: async () => {},
+    deleteMany: async () => ({ deletedCount: 0 }),
     countDocuments: async () => store.size,
     createIndex: async () => {},
   };

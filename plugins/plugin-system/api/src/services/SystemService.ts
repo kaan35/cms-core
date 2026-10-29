@@ -78,6 +78,7 @@ export class SystemService {
     const q = query.trim().toLowerCase();
     if (!q) return undefined;
 
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const matchedActorIds = new Set<string>();
     const matchedTokenIds = new Set<string>();
 
@@ -85,14 +86,17 @@ export class SystemService {
       const usersCol = this.db.collection<{ id: string; email: string; name?: string }>(
         "cms_users",
       );
-      const users = await usersCol.find();
+      const users = await usersCol.find(
+        {
+          $or: [
+            { email: { $regex: escaped, $options: "i" } },
+            { name: { $regex: escaped, $options: "i" } },
+          ],
+        },
+        { limit: 100 },
+      );
       for (const u of users) {
-        if (
-          (u.email && u.email.toLowerCase().includes(q)) ||
-          (u.name && u.name.toLowerCase().includes(q))
-        ) {
-          if (u.id) matchedActorIds.add(u.id);
-        }
+        if (u.id) matchedActorIds.add(u.id);
       }
     } catch {
       // Inaccessible collection or test stub
@@ -102,16 +106,19 @@ export class SystemService {
       const tokensCol = this.db.collection<{ id: string; name: string; tokenPrefix?: string }>(
         "cms_api_tokens",
       );
-      const tokens = await tokensCol.find();
+      const tokens = await tokensCol.find(
+        {
+          $or: [
+            { name: { $regex: escaped, $options: "i" } },
+            { tokenPrefix: { $regex: escaped, $options: "i" } },
+          ],
+        },
+        { limit: 100 },
+      );
       for (const t of tokens) {
-        if (
-          (t.name && t.name.toLowerCase().includes(q)) ||
-          (t.tokenPrefix && t.tokenPrefix.toLowerCase().includes(q))
-        ) {
-          if (t.id) {
-            matchedTokenIds.add(t.id);
-            matchedTokenIds.add(`api-token:${t.id}`);
-          }
+        if (t.id) {
+          matchedTokenIds.add(t.id);
+          matchedTokenIds.add(`api-token:${t.id}`);
         }
       }
     } catch {
