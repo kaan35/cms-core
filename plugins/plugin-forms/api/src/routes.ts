@@ -6,10 +6,16 @@ import {
 } from "@cms/core";
 import type { FastifyInstance } from "fastify";
 import {
+  CaptchaChallengeResponseSchema,
   CreateFormSchema,
   ExportQuerySchema,
   FORMS_PERMISSIONS,
+  FormDeleteResponseSchema,
   FormIdParamSchema,
+  FormListResponseSchema,
+  FormSingleResponseSchema,
+  FormSubmissionListResponseSchema,
+  FormSubmitResponseSchema,
   SubmissionBodySchema,
   UpdateFormSchema,
   type ExportQuery,
@@ -30,6 +36,7 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
         tags: ["Forms"],
         summary: "Generate SVG challenge captcha for form (public)",
         params: FormIdParamSchema,
+        response: { 200: CaptchaChallengeResponseSchema },
       },
     },
     controller.getCaptcha.bind(controller),
@@ -43,6 +50,7 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
         summary: "Submit form response with captcha verification (public)",
         params: FormIdParamSchema,
         body: SubmissionBodySchema,
+        response: { 201: FormSubmitResponseSchema },
       },
       config: {
         rateLimit: {
@@ -64,6 +72,7 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
         security: [{ cookieAuth: [] }],
         params: FormIdParamSchema,
         querystring: SearchPaginationQuerySchema,
+        response: { 200: FormSubmissionListResponseSchema },
       },
       preHandler: [authenticate, checkPermission(FORMS_PERMISSIONS.READ)],
     },
@@ -79,6 +88,19 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
         security: [{ cookieAuth: [] }],
         params: FormIdParamSchema,
         querystring: ExportQuerySchema,
+        response: {
+          200: {
+            description: "Binary Excel (.xlsx) or CSV (.csv) file export",
+            content: {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                schema: { type: "string", format: "binary" },
+              },
+              "text/csv": {
+                schema: { type: "string" },
+              },
+            },
+          },
+        },
       },
       preHandler: [authenticate, checkPermission(FORMS_PERMISSIONS.READ)],
     },
@@ -93,6 +115,7 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
         tags: ["Forms"],
         summary: "Get form schema by ID or slug (public)",
         params: IdParamSchema,
+        response: { 200: FormSingleResponseSchema },
       },
     },
     controller.getForm.bind(controller),
@@ -107,6 +130,7 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
         summary: "List all forms (Admin)",
         security: [{ cookieAuth: [] }],
         querystring: SearchPaginationQuerySchema,
+        response: { 200: FormListResponseSchema },
       },
       preHandler: [authenticate, checkPermission(FORMS_PERMISSIONS.READ)],
     },
@@ -121,6 +145,7 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
         summary: "Create a new form definition (Admin)",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
         body: CreateFormSchema,
+        response: { 201: FormSingleResponseSchema },
       },
       preHandler: [authenticate, verifyCsrf, checkPermission(FORMS_PERMISSIONS.WRITE)],
     },
@@ -136,6 +161,7 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
         params: IdParamSchema,
         body: UpdateFormSchema,
+        response: { 200: FormSingleResponseSchema },
       },
       preHandler: [authenticate, verifyCsrf, checkPermission(FORMS_PERMISSIONS.WRITE)],
     },
@@ -150,6 +176,7 @@ export function registerFormsRoutes(app: FastifyInstance, controller: FormsContr
         summary: "Delete a form definition (Admin)",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
         params: IdParamSchema,
+        response: { 200: FormDeleteResponseSchema },
       },
       preHandler: [authenticate, verifyCsrf, checkPermission(FORMS_PERMISSIONS.WRITE)],
     },

@@ -7,6 +7,12 @@ import {
   ValidationError,
   parsePaginationQuery,
 } from "@cms/core";
+import {
+  validateCreateApiToken,
+  type ApiTokensQuery,
+  type AuthIdParam,
+  type CreateApiTokenInput,
+} from "../domain/auth.rules.js";
 import type { ApiTokenService } from "../services/ApiTokenService.js";
 
 export class ApiTokenController {
@@ -16,7 +22,10 @@ export class ApiTokenController {
     this.apiTokenService = apiTokenService;
   }
 
-  async createToken(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async createToken(
+    request: FastifyRequest<{ Body: CreateApiTokenInput }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const user = request.user;
     if (!user) {
       throw new UnauthorizedError("Authentication required");
@@ -25,46 +34,14 @@ export class ApiTokenController {
       throw new ForbiddenError("API tokens cannot manage API tokens");
     }
 
-    const body = (request.body || {}) as {
-      name?: unknown;
-      scopes?: unknown;
-      expiresInDays?: unknown;
-    };
-
-    if (
-      typeof body.name !== "string" ||
-      body.name.trim().length === 0 ||
-      body.name.trim().length > 50
-    ) {
-      throw new ValidationError("Token name must be between 1 and 50 characters");
-    }
-
-    const name = body.name.trim();
-
-    let scopes: string[] = ["*"];
-    if (Array.isArray(body.scopes)) {
-      const filtered = body.scopes.filter(
-        (s): s is string => typeof s === "string" && s.trim().length > 0,
-      );
-      if (filtered.length > 0) {
-        scopes = filtered;
-      }
-    }
-
-    let expiresInDays: number | undefined;
-    if (
-      typeof body.expiresInDays === "number" &&
-      !isNaN(body.expiresInDays) &&
-      body.expiresInDays > 0
-    ) {
-      expiresInDays = body.expiresInDays;
-    }
+    const parsed = validateCreateApiToken(request.body);
+    const scopes = parsed.scopes && parsed.scopes.length > 0 ? parsed.scopes : ["*"];
 
     const { rawToken, token } = await this.apiTokenService.createToken(
       user.id,
-      name,
+      parsed.name,
       scopes,
-      expiresInDays,
+      parsed.expiresInDays,
     );
 
     const mcpServerPath = path.resolve(process.cwd(), "packages/mcp-server/dist/index.js");
@@ -83,7 +60,10 @@ export class ApiTokenController {
     });
   }
 
-  async listTokens(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async listTokens(
+    request: FastifyRequest<{ Querystring: ApiTokensQuery }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const user = request.user;
     if (!user) {
       throw new UnauthorizedError("Authentication required");
@@ -93,14 +73,19 @@ export class ApiTokenController {
     }
 
     const { page, limit } = parsePaginationQuery(request.query);
-    const query = (request.query || {}) as Record<string, string | undefined>;
-    const search = query["search"]?.trim();
-    const scopeVal = query["scope"];
+    const search = request.query?.search?.trim();
+    const scopeVal = request.query?.scope;
     const scope = scopeVal === "full" || scopeVal === "scoped" ? scopeVal : undefined;
+    const statusVal = request.query?.status;
+    const status =
+      statusVal === "active" || statusVal === "revoked" || statusVal === "expired"
+        ? statusVal
+        : undefined;
 
     const paginated = await this.apiTokenService.listUserTokensPaginated(user.id, page, limit, {
       search,
       scope,
+      status,
     });
     const mcpServerPath = path.resolve(process.cwd(), "packages/mcp-server/dist/index.js");
     return reply.send({
@@ -111,7 +96,10 @@ export class ApiTokenController {
     });
   }
 
-  async deleteToken(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async deleteToken(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const user = request.user;
     if (!user) {
       throw new UnauthorizedError("Authentication required");
@@ -120,7 +108,7 @@ export class ApiTokenController {
       throw new ForbiddenError("API tokens cannot delete API tokens");
     }
 
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     if (!id) {
       throw new ValidationError("Token ID is required");
     }
@@ -129,7 +117,10 @@ export class ApiTokenController {
     return reply.send({ ok: true });
   }
 
-  async revealToken(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async revealToken(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const user = request.user;
     if (!user) {
       throw new UnauthorizedError("Authentication required");
@@ -138,7 +129,7 @@ export class ApiTokenController {
       throw new ForbiddenError("API tokens cannot reveal API tokens");
     }
 
-    const { id } = request.params as { id: string };
+    const { id } = request.params;
     if (!id) {
       throw new ValidationError("Token ID is required");
     }

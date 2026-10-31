@@ -1,4 +1,11 @@
-import { EVENTS, PERMISSIONS, ValidationError, validateWithSchema } from "@cms/core";
+import {
+  EVENTS,
+  PERMISSIONS,
+  PaginatedMetaSchema,
+  ValidationError,
+  createPaginatedResponseSchema,
+  validateWithSchema,
+} from "@cms/core";
 import { z } from "zod";
 
 // 1. Permissions & Events
@@ -34,7 +41,7 @@ export const FormFieldSchema = z.object({
   type: FormFieldTypeSchema,
   required: z.boolean().default(false),
   placeholder: z.string().max(255).optional(),
-  options: z.array(z.string().min(1)).optional(),
+  options: z.array(z.string().min(1).max(255)).max(100).optional(),
 });
 
 export const CaptchaProviderEnum = z.enum(["none", "challenge"]);
@@ -44,13 +51,14 @@ export const CreateFormSchema = z.object({
   title: z.string().min(1, "Form title is required").max(255),
   slug: z
     .string()
+    .max(128)
     .regex(
       /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       "Slug must be URL-safe (lowercase letters, numbers, hyphens)",
     )
     .optional(),
   description: z.string().max(1000).optional(),
-  fields: z.array(FormFieldSchema).min(1, "Form must have at least one field"),
+  fields: z.array(FormFieldSchema).min(1, "Form must have at least one field").max(100),
   captchaProvider: CaptchaProviderEnum.default("challenge"),
   challengeType: ChallengeTypeEnum.default("alphanumeric"),
   submitButtonText: z.string().max(64).default("Submit"),
@@ -67,6 +75,50 @@ export type ExportQuery = z.infer<typeof ExportQuerySchema>;
 
 export const SubmissionBodySchema = z.record(z.string(), z.unknown());
 export type SubmissionBody = z.infer<typeof SubmissionBodySchema>;
+
+export const FormDocSchema = CreateFormSchema.extend({
+  id: z.string(),
+  slug: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const FormSingleResponseSchema = z.object({
+  form: FormDocSchema,
+});
+
+export const FormListResponseSchema = z.object({
+  forms: z.array(FormDocSchema),
+  data: z.array(FormDocSchema),
+  meta: PaginatedMetaSchema,
+});
+
+export const FormSubmissionDocSchema = z.object({
+  id: z.string(),
+  formId: z.string(),
+  data: z.record(z.string(), z.unknown()),
+  createdAt: z.string(),
+  ip: z.string().optional(),
+  userAgent: z.string().optional(),
+});
+
+export const FormSubmissionListResponseSchema =
+  createPaginatedResponseSchema(FormSubmissionDocSchema);
+
+export const CaptchaChallengeResponseSchema = z.object({
+  token: z.string(),
+  svg: z.string(),
+  expiresAt: z.string().optional(),
+});
+
+export const FormSubmitResponseSchema = z.object({
+  submission: FormSubmissionDocSchema,
+  message: z.string(),
+});
+
+export const FormDeleteResponseSchema = z.object({
+  message: z.string(),
+});
 
 // 3. Domain Interfaces
 export type FormField = z.infer<typeof FormFieldSchema>;

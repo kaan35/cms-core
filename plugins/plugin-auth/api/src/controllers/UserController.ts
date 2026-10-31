@@ -1,5 +1,12 @@
 import { NotFoundError, parsePaginationQuery } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type {
+  AuthIdParam,
+  CreateUserInput,
+  UpdateUserInput,
+  UserSessionParam,
+  UsersQuery,
+} from "../domain/auth.rules.js";
 import type { UserService } from "../services/UserService.js";
 import type { ISessionService } from "../sessionService.js";
 
@@ -12,43 +19,60 @@ export class UserController {
     this.sessionService = sessionService;
   }
 
-  async listUsers(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async listUsers(
+    request: FastifyRequest<{ Querystring: UsersQuery }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const { page, limit } = parsePaginationQuery(request.query);
-    const query = (request.query || {}) as Record<string, string | undefined>;
-    const search = query["search"]?.trim();
-    const statusVal = query["status"];
+    const search = request.query?.search?.trim();
+    const statusVal = request.query?.status;
     const status = statusVal === "active" || statusVal === "suspended" ? statusVal : undefined;
-    const role = query["role"]?.trim();
+    const role = request.query?.role?.trim();
     const result = await this.userService.listUsers(page, limit, { search, status, role });
     return reply.send(result);
   }
 
-  async getUserById(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async getUserById(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     const user = await this.userService.getUserById(id);
     return reply.send({ user });
   }
 
-  async createUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async createUser(
+    request: FastifyRequest<{ Body: CreateUserInput }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const user = await this.userService.createUser(request.body, request.user?.id);
     return reply.status(201).send({ user });
   }
 
-  async updateUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async updateUser(
+    request: FastifyRequest<{ Params: AuthIdParam; Body: UpdateUserInput }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     const user = await this.userService.updateUser(id, request.body, request.user?.id);
     return reply.send({ user });
   }
 
-  async deleteUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async deleteUser(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     const currentUserId = request.user?.id || "";
     await this.userService.deleteUser(id, currentUserId, request.user?.id);
     return reply.send({ ok: true });
   }
 
-  async listUserSessions(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async listUserSessions(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     if (!this.sessionService) {
       return reply.send({ sessions: [] });
     }
@@ -57,8 +81,11 @@ export class UserController {
     return reply.send({ sessions });
   }
 
-  async revokeUserSession(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id, sessionId } = request.params as { id: string; sessionId: string };
+  async revokeUserSession(
+    request: FastifyRequest<{ Params: UserSessionParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id, sessionId } = request.params;
     if (this.sessionService) {
       const session = await this.sessionService.getSession(sessionId);
       if (session && session.userId !== id) {
@@ -69,8 +96,11 @@ export class UserController {
     return reply.send({ ok: true });
   }
 
-  async revokeAllUserSessions(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async revokeAllUserSessions(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     if (this.sessionService) {
       await this.sessionService.revokeUserSessions(id, request.user?.id, "admin_revoked");
     }

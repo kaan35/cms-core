@@ -21,6 +21,13 @@ export function registerZodValidation(app: FastifyInstance): void {
         : { error: new ValidationError(`Invalid ${httpPart}: ${formatZodIssues(result.error)}`) };
     };
   });
+
+  app.setSerializerCompiler(
+    () => (data) =>
+      typeof data === "string" || Buffer.isBuffer(data)
+        ? (data as unknown as string)
+        : JSON.stringify(data),
+  );
 }
 
 export function zodSchemaToOpenApi(schema: FastifySchema): FastifySchema {
@@ -34,6 +41,21 @@ export function zodSchemaToOpenApi(schema: FastifySchema): FastifySchema {
         unrepresentable: "any",
       });
     }
+  }
+  if (converted["response"] && typeof converted["response"] === "object") {
+    const responses: Record<string, unknown> = {
+      ...(converted["response"] as Record<string, unknown>),
+    };
+    for (const [statusCode, resSchema] of Object.entries(responses)) {
+      if (resSchema instanceof z.ZodType) {
+        responses[statusCode] = z.toJSONSchema(resSchema, {
+          target: "openapi-3.0",
+          io: "output",
+          unrepresentable: "any",
+        });
+      }
+    }
+    converted["response"] = responses;
   }
   return converted as FastifySchema;
 }

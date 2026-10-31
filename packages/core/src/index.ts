@@ -31,7 +31,13 @@ export {
 } from "./errors/AppError.js";
 
 // HTTP Schemas & Validation
-export { IdParamSchema, SearchPaginationQuerySchema } from "./http/httpSchemas.js";
+export {
+  IdParamSchema,
+  OkResponseSchema,
+  PaginatedMetaSchema,
+  SearchPaginationQuerySchema,
+  createPaginatedResponseSchema,
+} from "./http/httpSchemas.js";
 export type { IdParam, SearchPaginationQuery } from "./http/httpSchemas.js";
 export { registerZodValidation, zodSchemaToOpenApi } from "./http/zodValidation.js";
 

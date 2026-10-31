@@ -8,8 +8,15 @@ export { BlogPostService } from "./blogPostService.js";
 export {
   BLOG_EVENTS,
   BLOG_PERMISSIONS,
+  BlogPostDocSchema,
+  BlogPostListResponseSchema,
   BlogPostStatusSchema,
+  BlogPostVersionDocSchema,
+  BlogPostVersionsResponseSchema,
+  BlogQuerySchema,
   CreateBlogPostSchema,
+  PostIdParamSchema,
+  PostSlugParamSchema,
   UpdateBlogPostSchema,
   validateCreateBlogPost,
   validateUpdateBlogPost,
@@ -18,7 +25,10 @@ export type {
   BlogPostDoc,
   BlogPostStatus,
   BlogPostVersionDoc,
+  BlogQuery,
   CreateBlogPostInput,
+  PostIdParam,
+  PostSlugParam,
   UpdateBlogPostInput,
 } from "./domain/blogPost.rules.js";
 export { initBlogMigration } from "./migrations/202601050000_init_blog.js";

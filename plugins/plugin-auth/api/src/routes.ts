@@ -1,3 +1,4 @@
+import { registerZodValidation } from "@cms/core";
 import type { FastifyInstance } from "fastify";
 import type { ApiTokenController } from "./controllers/ApiTokenController.js";
 import type { AuthController } from "./controllers/AuthController.js";
@@ -22,6 +23,7 @@ export function registerAuthRoutes(
   controllers: AuthControllers,
   options: AuthRouteOptions = {},
 ): void {
+  registerZodValidation(app);
   registerAuthSessionRoutes(app, controllers.auth, options);
   registerUserRoutes(app, controllers.user, controllers.auth);
   registerRoleRoutes(app, controllers.role);

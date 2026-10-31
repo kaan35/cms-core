@@ -1,7 +1,22 @@
-import { PERMISSIONS, ValidationError, validateWithSchema } from "@cms/core";
+import {
+  IdParamSchema,
+  PERMISSIONS,
+  SearchPaginationQuerySchema,
+  createPaginatedResponseSchema,
+  type IdParam,
+  type SearchPaginationQuery,
+  ValidationError,
+  validateWithSchema,
+} from "@cms/core";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
+
+export const MediaIdParamSchema = IdParamSchema;
+export type MediaIdParam = IdParam;
+
+export const MediaQuerySchema = SearchPaginationQuerySchema;
+export type MediaQuery = SearchPaginationQuery;
 
 export const ALLOWED_MEDIA_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
@@ -108,6 +123,20 @@ export const UpdateMediaSchema = z.object({
 });
 
 export type UpdateMediaInput = z.infer<typeof UpdateMediaSchema>;
+
+export const MediaDocSchema = UpdateMediaSchema.extend({
+  id: z.string(),
+  filename: z.string(),
+  key: z.string(),
+  url: z.string(),
+  mimeType: z.enum(ALLOWED_MEDIA_MIME_TYPES),
+  size: z.number().int().nonnegative(),
+  uploaderId: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const MediaListResponseSchema = createPaginatedResponseSchema(MediaDocSchema);
 
 export function validateUpdateMedia(input: unknown): UpdateMediaInput {
   return validateWithSchema(UpdateMediaSchema, input, "Invalid media update payload");

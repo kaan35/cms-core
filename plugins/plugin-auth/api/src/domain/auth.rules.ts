@@ -1,6 +1,66 @@
-import { validateWithSchema } from "@cms/core";
+import {
+  IdParamSchema,
+  OkResponseSchema,
+  PaginatedMetaSchema,
+  SearchPaginationQuerySchema,
+  createPaginatedResponseSchema,
+  type IdParam,
+  validateWithSchema,
+} from "@cms/core";
 import { z } from "zod";
 import { getDefaultPasswordMinLength, MAX_BCRYPT_PASSWORD_BYTES } from "./password.rules.js";
+
+export { OkResponseSchema };
+
+export const AuthIdParamSchema = IdParamSchema;
+export type AuthIdParam = IdParam;
+
+export const UserSessionParamSchema = z.object({
+  id: z.string().min(1).max(128),
+  sessionId: z.string().min(1).max(128),
+});
+export type UserSessionParam = z.infer<typeof UserSessionParamSchema>;
+
+export const SessionsQuerySchema = z.object({
+  includeHistory: z.string().max(10).optional(),
+});
+export type SessionsQuery = z.infer<typeof SessionsQuerySchema>;
+
+export const UsersQuerySchema = SearchPaginationQuerySchema.extend({
+  status: z.enum(["active", "suspended", "all", ""]).optional(),
+  role: z.string().trim().max(64).optional(),
+});
+export type UsersQuery = z.infer<typeof UsersQuerySchema>;
+
+export const RolesQuerySchema = SearchPaginationQuerySchema.extend({
+  type: z.enum(["system", "custom", "all", ""]).optional(),
+});
+export type RolesQuery = z.infer<typeof RolesQuerySchema>;
+
+export const ApiTokensQuerySchema = SearchPaginationQuerySchema.extend({
+  scope: z.enum(["full", "scoped", "all", ""]).optional(),
+  status: z.enum(["active", "revoked", "expired", "all", ""]).optional(),
+});
+export type ApiTokensQuery = z.infer<typeof ApiTokensQuerySchema>;
+
+export const CreateApiTokenSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Token name must be between 1 and 50 characters")
+    .max(50, "Token name must be between 1 and 50 characters"),
+  scopes: z.array(z.string().trim().min(1).max(64)).max(100).optional(),
+  expiresInDays: z.number().int().min(1).max(3650).optional(),
+});
+export type CreateApiTokenInput = z.infer<typeof CreateApiTokenSchema>;
+
+export function validateCreateApiToken(input: unknown): CreateApiTokenInput {
+  return validateWithSchema(
+    CreateApiTokenSchema,
+    input,
+    "Token name must be between 1 and 50 characters",
+  );
+}
 
 // 1. Core Field Validations
 export const EmailSchema = z
@@ -116,6 +176,97 @@ export const UpdateRoleSchema = z.object({
 // 5. Auth Settings Schema
 export const UpdateAuthSettingsSchema = z.object({
   registrationEnabled: z.boolean(),
+});
+
+// 6. Response Schemas
+export const UserDocSchema = CreateUserSchema.omit({ password: true }).extend({
+  id: z.string(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export const UserSingleResponseSchema = z.object({
+  user: UserDocSchema,
+});
+
+export const UserListResponseSchema = createPaginatedResponseSchema(UserDocSchema);
+
+export const AuthSessionResponseSchema = z.object({
+  user: UserDocSchema,
+  token: z.string(),
+  csrfToken: z.string(),
+});
+
+export const SetupStatusResponseSchema = z.object({
+  needsSetup: z.boolean(),
+});
+
+export const SessionInfoSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  userAgent: z.string().optional(),
+  ip: z.string().optional(),
+  createdAt: z.string(),
+  expiresAt: z.string(),
+  lastActiveAt: z.string().optional(),
+  current: z.boolean().optional(),
+  status: z.enum(["active", "expired", "revoked"]).optional(),
+  revokedAt: z.string().optional(),
+  revokeReason: z.string().optional(),
+});
+
+export const SessionsListResponseSchema = z.object({
+  sessions: z.array(SessionInfoSchema),
+});
+
+export const RevokeCountResponseSchema = z.object({
+  ok: z.boolean(),
+  count: z.number().optional(),
+});
+
+export const RoleDocSchema = CreateRoleSchema.extend({
+  id: z.string(),
+  isSystem: z.boolean().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export const RoleSingleResponseSchema = z.object({
+  role: RoleDocSchema,
+});
+
+export const RoleListResponseSchema = z.object({
+  roles: z.array(RoleDocSchema),
+  data: z.array(RoleDocSchema),
+  meta: PaginatedMetaSchema,
+});
+
+export const ApiTokenInfoSchema = CreateApiTokenSchema.omit({ expiresInDays: true }).extend({
+  id: z.string(),
+  tokenPrefix: z.string(),
+  scopes: z.array(z.string()),
+  lastUsedAt: z.string().nullable().optional(),
+  expiresAt: z.string().nullable().optional(),
+  revokedAt: z.string().nullable().optional(),
+  revokeReason: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
+
+export const CreateApiTokenResponseSchema = z.object({
+  token: z.string(),
+  mcpServerPath: z.string(),
+  tokenInfo: ApiTokenInfoSchema,
+});
+
+export const ApiTokenListResponseSchema = z.object({
+  tokens: z.array(ApiTokenInfoSchema),
+  data: z.array(ApiTokenInfoSchema),
+  meta: PaginatedMetaSchema,
+  mcpServerPath: z.string(),
+});
+
+export const RevealApiTokenResponseSchema = z.object({
+  token: z.string(),
 });
 
 // Inferred TypeScript Types

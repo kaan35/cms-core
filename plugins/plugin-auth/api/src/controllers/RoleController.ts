@@ -1,5 +1,11 @@
 import { parsePaginationQuery } from "@cms/core";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type {
+  AuthIdParam,
+  CreateRoleInput,
+  RolesQuery,
+  UpdateRoleInput,
+} from "../domain/auth.rules.js";
 import type { RoleService } from "../services/RoleService.js";
 
 export class RoleController {
@@ -9,11 +15,13 @@ export class RoleController {
     this.roleService = roleService;
   }
 
-  async listRoles(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const query = (request.query || {}) as Record<string, string | undefined>;
+  async listRoles(
+    request: FastifyRequest<{ Querystring: RolesQuery }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const { page, limit } = parsePaginationQuery(request.query);
-    const search = query["search"]?.trim();
-    const typeVal = query["type"];
+    const search = request.query?.search?.trim();
+    const typeVal = request.query?.type;
     const isSystem = typeVal === "system" ? true : typeVal === "custom" ? false : undefined;
     const paginated = await this.roleService.listRolesPaginated(page, limit, { search, isSystem });
     return reply.send({
@@ -23,25 +31,37 @@ export class RoleController {
     });
   }
 
-  async getRoleById(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async getRoleById(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     const role = await this.roleService.getRoleById(id);
     return reply.send({ role });
   }
 
-  async createRole(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async createRole(
+    request: FastifyRequest<{ Body: CreateRoleInput }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const role = await this.roleService.createRole(request.body, request.user?.id);
     return reply.status(201).send({ role });
   }
 
-  async updateRole(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async updateRole(
+    request: FastifyRequest<{ Params: AuthIdParam; Body: UpdateRoleInput }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     const role = await this.roleService.updateRole(id, request.body, request.user?.id);
     return reply.send({ role });
   }
 
-  async deleteRole(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async deleteRole(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     await this.roleService.deleteRole(id, request.user?.id);
     return reply.send({ ok: true });
   }

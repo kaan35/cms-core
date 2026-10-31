@@ -4,12 +4,16 @@ import {
   SYSTEM_PERMISSIONS,
   validateTogglePlugin,
   validateUpdateSettings,
+  type AuditLogQuery,
+  type PluginNameParam,
+  type TogglePluginInput,
+  type UpdateSettingsInput,
 } from "./domain/system.rules.js";
 import type { AuditLogFilterOptions } from "./repositories/auditLogRepository.js";
 import type { SystemService } from "./services/SystemService.js";
 
 function getActorId(request: FastifyRequest): string | undefined {
-  return (request as unknown as { user?: { id?: string } }).user?.id;
+  return request.user?.id;
 }
 
 export class SystemController {
@@ -24,15 +28,14 @@ export class SystemController {
     return reply.send({ plugins });
   }
 
-  async togglePlugin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const params = request.params as { name: string };
+  async togglePlugin(
+    request: FastifyRequest<{ Params: PluginNameParam; Body: TogglePluginInput }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { name } = request.params;
     const { enabled } = validateTogglePlugin(request.body);
 
-    const updated = await this.systemService.togglePlugin(
-      params.name,
-      enabled,
-      getActorId(request),
-    );
+    const updated = await this.systemService.togglePlugin(name, enabled, getActorId(request));
     return reply.send({ plugin: updated });
   }
 
@@ -41,33 +44,34 @@ export class SystemController {
     return reply.send({ settings });
   }
 
-  async updateSettings(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async updateSettings(
+    request: FastifyRequest<{ Body: UpdateSettingsInput }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const validated = validateUpdateSettings(request.body);
     const updated = await this.systemService.updateSettings(validated, getActorId(request));
     return reply.send({ settings: updated });
   }
 
-  async listAuditLogs(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const user = (
-      request as unknown as { user?: { id?: string; permissions?: string[]; sessionId?: string } }
-    ).user;
+  async listAuditLogs(
+    request: FastifyRequest<{ Querystring: AuditLogQuery }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const user = request.user;
     const permissions = user?.permissions || [];
     const isApiToken = Boolean(user?.sessionId?.startsWith("api-token:"));
     const hasAuditRead =
       (permissions.includes("*") || permissions.includes(SYSTEM_PERMISSIONS.AUDIT_LOG_READ)) &&
       !isApiToken;
 
-    const query = (request.query || {}) as Record<string, unknown>;
+    const query = request.query;
     const { page, limit } = parsePaginationQuery(query);
-    const search = typeof query["search"] === "string" ? query["search"] : undefined;
-    const tz = typeof query["tz"] === "string" ? query["tz"] : undefined;
+    const search = query.search?.trim() || undefined;
+    const tz = query.tz?.trim() || undefined;
 
     let actorId: string | undefined;
     if (hasAuditRead) {
-      actorId =
-        typeof query["actorId"] === "string" && query["actorId"].trim()
-          ? query["actorId"].trim()
-          : undefined;
+      actorId = query.actorId?.trim() || undefined;
     } else {
       if (!user?.id) {
         return reply.status(401).send({ error: "Unauthorized" });
@@ -75,34 +79,11 @@ export class SystemController {
       actorId = user.id;
     }
 
-    const actorType =
-      query["actorType"] === "user" ||
-      query["actorType"] === "agent" ||
-      query["actorType"] === "system"
-        ? query["actorType"]
-        : undefined;
-
-    const status =
-      query["status"] === "success" ||
-      query["status"] === "access_denied" ||
-      query["status"] === "error"
-        ? query["status"]
-        : undefined;
-
-    const tokenId =
-      typeof query["tokenId"] === "string" && query["tokenId"].trim()
-        ? query["tokenId"].trim()
-        : undefined;
-
-    const toolName =
-      typeof query["toolName"] === "string" && query["toolName"].trim()
-        ? query["toolName"].trim()
-        : undefined;
-
-    const event =
-      typeof query["event"] === "string" && query["event"].trim()
-        ? query["event"].trim()
-        : undefined;
+    const actorType = query.actorType;
+    const status = query.status;
+    const tokenId = query.tokenId?.trim() || undefined;
+    const toolName = query.toolName?.trim() || undefined;
+    const event = (query.event || query.action)?.trim() || undefined;
 
     const filter: AuditLogFilterOptions = {
       ...(actorId ? { actorId } : {}),

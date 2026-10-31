@@ -1,4 +1,9 @@
-import { PERMISSIONS, validateWithSchema } from "@cms/core";
+import {
+  PERMISSIONS,
+  SearchPaginationQuerySchema,
+  createPaginatedResponseSchema,
+  validateWithSchema,
+} from "@cms/core";
 import { z } from "zod";
 
 export const PAGES_PERMISSIONS = {
@@ -33,7 +38,7 @@ export const GalleryBlockSchema = z.object({
   images: z
     .array(
       z.object({
-        mediaId: z.string().min(1, "Media ID is required"),
+        mediaId: z.string().min(1, "Media ID is required").max(128),
         caption: z.string().max(500).optional(),
       }),
     )
@@ -50,11 +55,11 @@ export const BentoGridBlockSchema = z.object({
   cards: z
     .array(
       z.object({
-        icon: z.string().optional(),
+        icon: z.string().max(64).optional(),
         title: z.string().min(1, "Card title is required").max(255),
         description: z.string().max(1000),
-        badge: z.string().optional(),
-        size: z.string().optional(),
+        badge: z.string().max(64).optional(),
+        size: z.string().max(32).optional(),
       }),
     )
     .min(1, "Bento grid must contain at least 1 card")
@@ -67,7 +72,7 @@ export const CodeShowcaseBlockSchema = z.object({
     .array(
       z.object({
         label: z.string().min(1, "Tab label is required").max(64),
-        language: z.string().min(1, "Language is required"),
+        language: z.string().min(1, "Language is required").max(64),
         code: z.string().max(50000),
       }),
     )
@@ -80,7 +85,7 @@ export const InteractiveDemoBlockSchema = z.object({
   widgetType: z.string().min(1, "Widget type is required").max(64),
   title: z.string().max(255).optional(),
   description: z.string().max(1000).optional(),
-  badge: z.string().optional(),
+  badge: z.string().max(64).optional(),
 });
 
 export const TextBlockSchema = z.object({
@@ -90,17 +95,17 @@ export const TextBlockSchema = z.object({
 
 export const FormBlockSchema = z.object({
   type: z.literal("form"),
-  formId: z.string().min(1, "Form ID is required"),
+  formId: z.string().min(1, "Form ID is required").max(128),
 });
 
 export const BlogPostsBlockSchema = z.object({
   type: z.literal("blog_posts"),
-  title: z.string().optional(),
-  subtitle: z.string().optional(),
-  badge: z.string().optional(),
-  viewAllLabel: z.string().optional(),
-  viewAllUrl: z.string().optional(),
-  readMoreLabel: z.string().optional(),
+  title: z.string().max(255).optional(),
+  subtitle: z.string().max(500).optional(),
+  badge: z.string().max(64).optional(),
+  viewAllLabel: z.string().max(64).optional(),
+  viewAllUrl: z.string().max(1000).optional(),
+  readMoreLabel: z.string().max(64).optional(),
   limit: z.number().int().positive().default(6),
   layout: z.enum(["grid", "list"]).default("grid"),
 });
@@ -161,6 +166,42 @@ export type PageStatus = z.infer<typeof PageStatusSchema>;
 export type PageType = z.infer<typeof PageTypeSchema>;
 export type CreatePageInput = z.infer<typeof CreatePageSchema>;
 export type UpdatePageInput = z.infer<typeof UpdatePageSchema>;
+
+// 3. Route Parameter & Query Schemas
+export const PageIdParamSchema = z.object({ id: z.string().min(1).max(128) });
+export type PageIdParam = z.infer<typeof PageIdParamSchema>;
+
+export const PageSlugParamSchema = z.object({ slug: z.string().min(1).max(255) });
+export type PageSlugParam = z.infer<typeof PageSlugParamSchema>;
+
+export const PageQuerySchema = SearchPaginationQuerySchema.extend({
+  status: PageStatusSchema.optional(),
+  q: z.string().trim().max(200).optional(),
+});
+export type PageQuery = z.infer<typeof PageQuerySchema>;
+
+export const PageDocSchema = CreatePageSchema.extend({
+  id: z.string(),
+  slug: z.string(),
+  version: z.number().int(),
+  createdBy: z.string().optional(),
+  updatedBy: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const PageListResponseSchema = createPaginatedResponseSchema(PageDocSchema);
+
+export const PageVersionDocSchema = z.object({
+  id: z.string(),
+  pageId: z.string(),
+  version: z.number().int(),
+  data: PageDocSchema.omit({ id: true }),
+  changedBy: z.string().optional(),
+  createdAt: z.string(),
+});
+
+export const PageVersionsResponseSchema = z.array(PageVersionDocSchema);
 
 export interface PageDoc {
   [key: string]: unknown;

@@ -1,4 +1,10 @@
-import { PERMISSIONS, validateWithSchema } from "@cms/core";
+import {
+  IdParamSchema,
+  PERMISSIONS,
+  SearchPaginationQuerySchema,
+  createPaginatedResponseSchema,
+  validateWithSchema,
+} from "@cms/core";
 import { z } from "zod";
 
 export const SYSTEM_PERMISSIONS = {
@@ -8,6 +14,27 @@ export const SYSTEM_PERMISSIONS = {
   SETTINGS_WRITE: PERMISSIONS.SYSTEM.SETTINGS_WRITE,
   AUDIT_LOG_READ: PERMISSIONS.SYSTEM.AUDIT_LOG_READ,
 } as const;
+
+export const PluginNameParamSchema = z.object({
+  name: z.string().min(1, "Plugin name is required").max(128),
+});
+export type PluginNameParam = z.infer<typeof PluginNameParamSchema>;
+
+export const AuditLogQuerySchema = SearchPaginationQuerySchema.extend({
+  entity: z.string().trim().max(128).optional(),
+  action: z.string().trim().max(128).optional(),
+  actorId: z.string().trim().max(128).optional(),
+  actorType: z.enum(["user", "agent", "system"]).optional(),
+  status: z.enum(["success", "access_denied", "error"]).optional(),
+  tokenId: z.string().trim().max(256).optional(),
+  toolName: z.string().trim().max(128).optional(),
+  event: z.string().trim().max(128).optional(),
+  tz: z.string().trim().max(64).optional(),
+});
+export type AuditLogQuery = z.infer<typeof AuditLogQuerySchema>;
+
+export { IdParamSchema };
+export type IdParam = z.infer<typeof IdParamSchema>;
 
 export const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
@@ -36,11 +63,11 @@ export interface NavigationMenuItem {
 
 // 1. Zod Ingress Schemas
 export const NavigationMenuItemSchema = z.object({
-  id: z.string(),
+  id: z.string().max(128),
   label: z.string().min(1, "Menu label is required").max(80),
   url: z.string().min(1, "Menu URL is required").max(500),
   type: z.enum(["page", "custom", "blog"]).optional(),
-  pageId: z.string().optional(),
+  pageId: z.string().max(128).optional(),
   customLabel: z.boolean().optional(),
   external: z.boolean().optional(),
   style: z.enum(["link", "button"]).optional(),
@@ -69,6 +96,51 @@ export const UpdateSettingsSchema = z.object({
 
 export const TogglePluginSchema = z.object({
   enabled: z.boolean(),
+});
+
+export const SettingsResponseSchema = z.object({
+  settings: UpdateSettingsSchema,
+});
+
+export const PluginStateSchema = z.object({
+  name: z.string(),
+  enabled: z.boolean(),
+  priority: z.number().optional(),
+  version: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export const PluginsListResponseSchema = z.object({
+  plugins: z.array(PluginStateSchema),
+});
+
+export const TogglePluginResponseSchema = z.object({
+  plugin: PluginStateSchema,
+});
+
+export const AuditLogItemSchema = z.object({
+  id: z.string(),
+  event: z.string(),
+  actorId: z.string().optional(),
+  actorType: z.enum(["user", "agent", "system"]).optional(),
+  actorEmail: z.string().optional(),
+  tokenId: z.string().optional(),
+  tokenName: z.string().optional(),
+  toolName: z.string().optional(),
+  status: z.enum(["success", "access_denied", "error"]).optional(),
+  durationMs: z.number().optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
+  createdAt: z.string(),
+});
+
+export const AuditLogListResponseSchema = createPaginatedResponseSchema(AuditLogItemSchema);
+
+export const SystemStatsResponseSchema = z.object({
+  pages: z.number(),
+  posts: z.number(),
+  forms: z.number(),
+  users: z.number(),
+  plugins: z.number(),
 });
 
 // Inferred TypeScript Types

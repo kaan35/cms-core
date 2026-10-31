@@ -8,9 +8,19 @@ import { SystemController } from "./systemController.js";
 import { SystemService } from "./systemService.js";
 
 export {
+  AuditLogItemSchema,
+  AuditLogListResponseSchema,
+  AuditLogQuerySchema,
   HEX_COLOR_REGEX,
+  IdParamSchema,
   NavigationMenuItemSchema,
+  PluginNameParamSchema,
+  PluginStateSchema,
+  PluginsListResponseSchema,
   SYSTEM_PERMISSIONS,
+  SettingsResponseSchema,
+  SystemStatsResponseSchema,
+  TogglePluginResponseSchema,
   TogglePluginSchema,
   UpdateSettingsSchema,
   validateHexColor,
@@ -19,7 +29,10 @@ export {
   validateUpdateSettings,
 } from "./domain/system.rules.js";
 export type {
+  AuditLogQuery,
+  IdParam,
   NavigationMenuItem,
+  PluginNameParam,
   SettingsDoc,
   SiteTheme,
   SystemSettingsDoc,

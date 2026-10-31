@@ -1171,4 +1171,189 @@ describe("plugin-auth routes & workflows", () => {
 
     await app.close();
   });
+
+  it("adversarial: schema boundary strictly rejects passwords exceeding 72 bytes (bcrypt DoS & truncation protection)", async () => {
+    const { app } = await setupTestApp();
+
+    // 1. Setup initial admin
+    const setupRes = await app.inject({
+      method: "POST",
+      url: "/auth/setup",
+      payload: { email: "admin@example.com", password: "AdminPassword123" },
+    });
+    assert.equal(setupRes.statusCode, 201);
+
+    // 2. Attempt registration with 73-byte password (70 'A's + '123' = 73 chars)
+    const longPassword = "A".repeat(70) + "123";
+    assert.equal(Buffer.byteLength(longPassword, "utf8"), 73);
+
+    const registerRes = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: {
+        email: "attacker@example.com",
+        password: longPassword,
+      },
+    });
+    assert.equal(registerRes.statusCode, 400);
+    assert.ok(registerRes.body.includes("72"));
+
+    // 3. Attempt login with 73-byte password
+    const loginRes = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: {
+        email: "admin@example.com",
+        password: longPassword,
+      },
+    });
+    assert.equal(loginRes.statusCode, 400);
+    assert.ok(loginRes.body.includes("72"));
+
+    await app.close();
+  });
+
+  it("adversarial: soft-revoked API token fails closed with 401 Unauthorized", async () => {
+    const { app } = await setupTestApp();
+
+    // 1. Setup admin
+    const setupRes = await app.inject({
+      method: "POST",
+      url: "/auth/setup",
+      payload: { email: "admin@example.com", password: "AdminPassword123" },
+    });
+    const adminToken = setupRes.cookies.find((c) => c.name === "token")!.value;
+    const adminCsrf = setupRes.cookies.find((c) => c.name === "csrfToken")!.value;
+
+    // 2. Create API token
+    const createTokenRes = await app.inject({
+      method: "POST",
+      url: "/auth/tokens",
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+      payload: { name: "Audit Token", scopes: ["*"] },
+    });
+    assert.equal(createTokenRes.statusCode, 201);
+    const tokenData = createTokenRes.json() as {
+      token: string;
+      tokenInfo: { id: string };
+    };
+    const rawApiToken = tokenData.token;
+    const tokenId = tokenData.tokenInfo.id;
+
+    // 3. Active token authenticates successfully -> 200 OK
+    const activeReq = await app.inject({
+      method: "GET",
+      url: "/users",
+      headers: {
+        authorization: `Bearer ${rawApiToken}`,
+      },
+    });
+    assert.equal(activeReq.statusCode, 200);
+
+    // 4. Soft-revoke the token
+    const revokeRes = await app.inject({
+      method: "DELETE",
+      url: `/auth/tokens/${tokenId}`,
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+    });
+    assert.equal(revokeRes.statusCode, 200);
+
+    // 5. Subsequent request with the revoked token fails closed -> 401 Unauthorized
+    const revokedReq = await app.inject({
+      method: "GET",
+      url: "/users",
+      headers: {
+        authorization: `Bearer ${rawApiToken}`,
+      },
+    });
+    assert.equal(revokedReq.statusCode, 401);
+
+    await app.close();
+  });
+
+  it("adversarial: IDOR defense: non-owner cannot reveal another user's API token and API token cannot manage tokens", async () => {
+    const { app } = await setupTestApp();
+
+    // 1. Setup admin
+    const setupRes = await app.inject({
+      method: "POST",
+      url: "/auth/setup",
+      payload: { email: "admin@example.com", password: "AdminPassword123" },
+    });
+    const adminToken = setupRes.cookies.find((c) => c.name === "token")!.value;
+    const adminCsrf = setupRes.cookies.find((c) => c.name === "csrfToken")!.value;
+
+    // 2. Admin creates an API token
+    const createTokenRes = await app.inject({
+      method: "POST",
+      url: "/auth/tokens",
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+      payload: { name: "Admin Secret Token", scopes: ["*"] },
+    });
+    assert.equal(createTokenRes.statusCode, 201);
+    const adminApiTokenData = createTokenRes.json() as {
+      token: string;
+      tokenInfo: { id: string };
+    };
+    const adminTokenId = adminApiTokenData.tokenInfo.id;
+    const adminRawToken = adminApiTokenData.token;
+
+    // 3. Admin creates regular user 'charlie'
+    const createUserRes = await app.inject({
+      method: "POST",
+      url: "/users",
+      cookies: { token: adminToken, csrfToken: adminCsrf },
+      headers: { "x-csrf-token": adminCsrf },
+      payload: {
+        email: "charlie@example.com",
+        name: "Charlie",
+        password: "CharliePassword123",
+        role: "user",
+      },
+    });
+    assert.equal(createUserRes.statusCode, 201);
+
+    // 4. Charlie logs in
+    const charlieLoginRes = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { email: "charlie@example.com", password: "CharliePassword123" },
+    });
+    assert.equal(charlieLoginRes.statusCode, 200);
+    const charlieToken = charlieLoginRes.cookies.find((c) => c.name === "token")!.value;
+
+    // 5. Charlie attempts to reveal Admin's API token -> 403 Forbidden (BOLA/IDOR protection)
+    const revealAttackRes = await app.inject({
+      method: "GET",
+      url: `/auth/tokens/${adminTokenId}/reveal`,
+      cookies: { token: charlieToken },
+    });
+    assert.equal(revealAttackRes.statusCode, 403);
+
+    // 6. API token attempts to reveal an API token -> 403 Forbidden
+    const tokenRevealSelfRes = await app.inject({
+      method: "GET",
+      url: `/auth/tokens/${adminTokenId}/reveal`,
+      headers: {
+        authorization: `Bearer ${adminRawToken}`,
+      },
+    });
+    assert.equal(tokenRevealSelfRes.statusCode, 403);
+
+    // 7. API token attempts to create an API token -> 403 Forbidden
+    const tokenCreateTokenRes = await app.inject({
+      method: "POST",
+      url: "/auth/tokens",
+      headers: {
+        authorization: `Bearer ${adminRawToken}`,
+      },
+      payload: { name: "Nested Token", scopes: ["*"] },
+    });
+    assert.equal(tokenCreateTokenRes.statusCode, 403);
+
+    await app.close();
+  });
 });

@@ -1,6 +1,26 @@
 import { PERMISSIONS } from "@cms/core";
 import type { FastifyInstance } from "fastify";
 import type { AuthController } from "../controllers/AuthController.js";
+import {
+  AuthIdParamSchema,
+  AuthSessionResponseSchema,
+  LoginSchema,
+  OkResponseSchema,
+  RegisterSchema,
+  RevokeCountResponseSchema,
+  SessionsListResponseSchema,
+  SessionsQuerySchema,
+  SetupSchema,
+  SetupStatusResponseSchema,
+  UpdateAuthSettingsSchema,
+  UserSingleResponseSchema,
+  type AuthIdParam,
+  type LoginInput,
+  type RegisterInput,
+  type SessionsQuery,
+  type SetupInput,
+  type UpdateAuthSettingsInput,
+} from "../domain/auth.rules.js";
 
 export interface AuthRouteOptions {
   registerRateLimitMax?: number;
@@ -28,17 +48,20 @@ export function registerAuthSessionRoutes(
       schema: {
         tags: ["Auth"],
         summary: "Check if setup wizard is required (public)",
+        response: { 200: SetupStatusResponseSchema },
       },
     },
     authCtrl.getSetupStatus.bind(authCtrl),
   );
 
-  app.post(
+  app.post<{ Body: SetupInput }>(
     "/auth/setup",
     {
       schema: {
         tags: ["Auth"],
         summary: "Initialize root administrator account (public)",
+        body: SetupSchema,
+        response: { 201: AuthSessionResponseSchema },
       },
       config: {
         rateLimit: { max: registerMax, timeWindow: registerWindow },
@@ -48,12 +71,14 @@ export function registerAuthSessionRoutes(
   );
 
   // Public Auth Routes with Rate Limiting
-  app.post(
+  app.post<{ Body: RegisterInput }>(
     "/auth/register",
     {
       schema: {
         tags: ["Auth"],
         summary: "Register a new user account (public)",
+        body: RegisterSchema,
+        response: { 201: AuthSessionResponseSchema },
       },
       config: {
         rateLimit: { max: registerMax, timeWindow: registerWindow },
@@ -62,12 +87,14 @@ export function registerAuthSessionRoutes(
     authCtrl.register.bind(authCtrl),
   );
 
-  app.post(
+  app.post<{ Body: LoginInput }>(
     "/auth/login",
     {
       schema: {
         tags: ["Auth"],
         summary: "Log in with email and password (public)",
+        body: LoginSchema,
+        response: { 200: AuthSessionResponseSchema },
       },
       config: {
         rateLimit: { max: loginMax, timeWindow: loginWindow },
@@ -84,6 +111,7 @@ export function registerAuthSessionRoutes(
         tags: ["Auth"],
         summary: "Log out current session and clear cookies",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
+        response: { 200: OkResponseSchema },
       },
       preHandler: [authenticate, verifyCsrf],
     },
@@ -97,32 +125,37 @@ export function registerAuthSessionRoutes(
         tags: ["Auth"],
         summary: "Get current authenticated user profile and permissions",
         security: [{ cookieAuth: [] }],
+        response: { 200: UserSingleResponseSchema },
       },
       preHandler: [authenticate],
     },
     authCtrl.me.bind(authCtrl),
   );
 
-  app.get(
+  app.get<{ Querystring: SessionsQuery }>(
     "/auth/sessions",
     {
       schema: {
         tags: ["Auth"],
         summary: "List active sessions for current user",
         security: [{ cookieAuth: [] }],
+        querystring: SessionsQuerySchema,
+        response: { 200: SessionsListResponseSchema },
       },
       preHandler: [authenticate],
     },
     authCtrl.listSessions.bind(authCtrl),
   );
 
-  app.delete(
+  app.delete<{ Params: AuthIdParam }>(
     "/auth/sessions/:id",
     {
       schema: {
         tags: ["Auth"],
         summary: "Revoke specific user session",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
+        params: AuthIdParamSchema,
+        response: { 200: OkResponseSchema },
       },
       preHandler: [authenticate, verifyCsrf],
     },
@@ -137,19 +170,22 @@ export function registerAuthSessionRoutes(
         tags: ["Auth"],
         summary: "Get registration enabled/disabled setting",
         security: [{ cookieAuth: [] }],
+        response: { 200: UpdateAuthSettingsSchema },
       },
       preHandler: [authenticate],
     },
     authCtrl.getRegistrationSetting.bind(authCtrl),
   );
 
-  app.put(
+  app.put<{ Body: UpdateAuthSettingsInput }>(
     "/auth/settings",
     {
       schema: {
         tags: ["Auth"],
         summary: "Toggle public registration (Admin)",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
+        body: UpdateAuthSettingsSchema,
+        response: { 200: UpdateAuthSettingsSchema },
       },
       preHandler: [authenticate, verifyCsrf, checkPermission(PERMISSIONS.AUTH.AUTH_SETTINGS_WRITE)],
     },
@@ -164,6 +200,7 @@ export function registerAuthSessionRoutes(
         tags: ["Auth"],
         summary: "Revoke all active sessions across entire platform (Emergency Panic / Admin)",
         security: [{ cookieAuth: [] }, { csrfToken: [] }],
+        response: { 200: RevokeCountResponseSchema },
       },
       preHandler: [
         authenticate,

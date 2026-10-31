@@ -5,8 +5,21 @@ import { MediaService } from "./mediaService.js";
 import { MediaRepository } from "./repositories/mediaRepository.js";
 import { S3StorageAdapter } from "./storageAdapter.js";
 
-export { MEDIA_PERMISSIONS } from "./domain/media.rules.js";
-export type { AllowedMediaMimeType, UpdateMediaInput } from "./domain/media.rules.js";
+export {
+  MEDIA_PERMISSIONS,
+  MediaDocSchema,
+  MediaIdParamSchema,
+  MediaListResponseSchema,
+  MediaQuerySchema,
+  UpdateMediaSchema,
+  validateUpdateMedia,
+} from "./domain/media.rules.js";
+export type {
+  AllowedMediaMimeType,
+  MediaIdParam,
+  MediaQuery,
+  UpdateMediaInput,
+} from "./domain/media.rules.js";
 export { MediaService } from "./mediaService.js";
 export { initMediaMigration } from "./migrations/202601030000_init_media.js";
 export { MediaRepository } from "./repositories/mediaRepository.js";

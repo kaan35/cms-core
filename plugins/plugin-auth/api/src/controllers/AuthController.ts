@@ -1,6 +1,14 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import crypto from "node:crypto";
-import { validateUpdateAuthSettings } from "../domain/auth.rules.js";
+import {
+  validateUpdateAuthSettings,
+  type AuthIdParam,
+  type LoginInput,
+  type RegisterInput,
+  type SessionsQuery,
+  type SetupInput,
+  type UpdateAuthSettingsInput,
+} from "../domain/auth.rules.js";
 import type { AuthService } from "../services/AuthService.js";
 
 export class AuthController {
@@ -75,7 +83,7 @@ export class AuthController {
     return reply.send(status);
   }
 
-  async setup(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async setup(request: FastifyRequest<{ Body: SetupInput }>, reply: FastifyReply): Promise<void> {
     const result = await this.authService.setup(request.body, {
       userAgent: request.headers["user-agent"],
       ip: request.ip,
@@ -95,7 +103,10 @@ export class AuthController {
     });
   }
 
-  async register(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async register(
+    request: FastifyRequest<{ Body: RegisterInput }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const result = await this.authService.register(request.body, {
       userAgent: request.headers["user-agent"],
       ip: request.ip,
@@ -115,7 +126,7 @@ export class AuthController {
     });
   }
 
-  async login(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async login(request: FastifyRequest<{ Body: LoginInput }>, reply: FastifyReply): Promise<void> {
     const result = await this.authService.login(request.body, {
       userAgent: request.headers["user-agent"],
       ip: request.ip,
@@ -166,13 +177,16 @@ export class AuthController {
     return reply.send({ csrfToken });
   }
 
-  async listSessions(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async listSessions(
+    request: FastifyRequest<{ Querystring: SessionsQuery }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const userId = request.user?.id;
     if (!userId) {
       return reply.status(401).send({ message: "Unauthorized" });
     }
     const currentSessionId = request.user?.sessionId;
-    const { includeHistory } = (request.query as { includeHistory?: string }) || {};
+    const { includeHistory } = request.query || {};
     const sessions = await this.authService.listSessions(
       userId,
       currentSessionId,
@@ -181,8 +195,11 @@ export class AuthController {
     return reply.send({ sessions });
   }
 
-  async deleteSession(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async deleteSession(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     const user = request.user;
     if (!user) {
       return reply.status(401).send({ message: "Unauthorized" });
@@ -191,8 +208,11 @@ export class AuthController {
     return reply.send({ ok: true });
   }
 
-  async revokeAllUserSessions(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { id } = request.params as { id: string };
+  async revokeAllUserSessions(
+    request: FastifyRequest<{ Params: AuthIdParam }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const { id } = request.params;
     const count = await this.authService.revokeAllUserSessions(id, request.user?.id);
     return reply.send({ ok: true, count });
   }
@@ -207,7 +227,10 @@ export class AuthController {
     return reply.send({ registrationEnabled: enabled });
   }
 
-  async updateRegistrationSetting(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async updateRegistrationSetting(
+    request: FastifyRequest<{ Body: UpdateAuthSettingsInput }>,
+    reply: FastifyReply,
+  ): Promise<void> {
     const { registrationEnabled } = validateUpdateAuthSettings(request.body);
     await this.authService.setRegistrationSetting(registrationEnabled, request.user?.id);
     return reply.send({ registrationEnabled });

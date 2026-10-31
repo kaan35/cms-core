@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type { MediaIdParam, MediaQuery } from "./domain/media.rules.js";
 import type { MediaService } from "./mediaService.js";
 
 export class MediaController {
@@ -29,7 +30,7 @@ export class MediaController {
   }
 
   async list(
-    request: FastifyRequest<{ Querystring: { page?: string; limit?: string } }>,
+    request: FastifyRequest<{ Querystring: MediaQuery }>,
     reply: FastifyReply,
   ): Promise<FastifyReply> {
     const result = await this.mediaService.listMedia(request.query);
@@ -37,7 +38,7 @@ export class MediaController {
   }
 
   async deleteById(
-    request: FastifyRequest<{ Params: { id: string } }>,
+    request: FastifyRequest<{ Params: MediaIdParam }>,
     reply: FastifyReply,
   ): Promise<FastifyReply> {
     await this.mediaService.deleteMedia(request.params.id, request.user!.id);

@@ -244,15 +244,27 @@ async function handleMcp(
 export async function mcpRoutes(app: FastifyInstance): Promise<void> {
   const handler = (req: FastifyRequest, rep: FastifyReply) => handleMcp(app, req, rep);
 
+  const mcpSchema = {
+    tags: ["MCP"],
+    summary: "Model Context Protocol streamable HTTP transport for AI agents",
+    description: "Stateless JSON-RPC and SSE stream transport for MCP tool execution",
+    security: [{ bearerAuth: [] }],
+    response: {
+      200: {
+        description: "MCP tool execution response or SSE stream",
+      },
+    },
+  };
+
   // Direct root MCP endpoints
-  app.get("/api/mcp", handler);
-  app.post("/api/mcp", handler);
-  app.delete("/api/mcp", handler);
+  app.get("/api/mcp", { schema: mcpSchema }, handler);
+  app.post("/api/mcp", { schema: mcpSchema }, handler);
+  app.delete("/api/mcp", { schema: mcpSchema }, handler);
 
   // Subpath / wildcard endpoints (e.g. /api/mcp/messages, /api/mcp/sse)
-  app.get("/api/mcp/*", handler);
-  app.post("/api/mcp/*", handler);
-  app.delete("/api/mcp/*", handler);
+  app.get("/api/mcp/*", { schema: mcpSchema }, handler);
+  app.post("/api/mcp/*", { schema: mcpSchema }, handler);
+  app.delete("/api/mcp/*", { schema: mcpSchema }, handler);
 }
 
 export default mcpRoutes;

@@ -10,3 +10,21 @@ export const SearchPaginationQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
 });
 export type SearchPaginationQuery = z.infer<typeof SearchPaginationQuerySchema>;
+
+export const PaginatedMetaSchema = z.object({
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  limit: z.number().int().positive(),
+  totalPages: z.number().int().nonnegative(),
+});
+
+export function createPaginatedResponseSchema<T extends z.ZodType>(itemSchema: T) {
+  return z.object({
+    data: z.array(itemSchema),
+    meta: PaginatedMetaSchema,
+  });
+}
+
+export const OkResponseSchema = z.object({
+  ok: z.boolean(),
+});

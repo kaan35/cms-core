@@ -1,4 +1,10 @@
-import { EVENTS, PERMISSIONS, validateWithSchema } from "@cms/core";
+import {
+  EVENTS,
+  PERMISSIONS,
+  SearchPaginationQuerySchema,
+  createPaginatedResponseSchema,
+  validateWithSchema,
+} from "@cms/core";
 import { z } from "zod";
 
 // 1. Permissions & Events
@@ -43,6 +49,41 @@ export type BlogPostStatus = z.infer<typeof BlogPostStatusSchema>;
 export type CreateBlogPostInput = z.infer<typeof CreateBlogPostSchema>;
 export type UpdateBlogPostInput = z.infer<typeof UpdateBlogPostSchema>;
 
+// 3. Route Parameter & Query Schemas
+export const PostIdParamSchema = z.object({ id: z.string().min(1).max(128) });
+export type PostIdParam = z.infer<typeof PostIdParamSchema>;
+
+export const PostSlugParamSchema = z.object({ slug: z.string().min(1).max(255) });
+export type PostSlugParam = z.infer<typeof PostSlugParamSchema>;
+
+export const BlogQuerySchema = SearchPaginationQuerySchema.extend({
+  status: BlogPostStatusSchema.optional(),
+  q: z.string().trim().max(200).optional(),
+});
+export type BlogQuery = z.infer<typeof BlogQuerySchema>;
+
+export const BlogPostDocSchema = CreateBlogPostSchema.extend({
+  id: z.string(),
+  slug: z.string(),
+  version: z.number().int(),
+  actorId: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const BlogPostListResponseSchema = createPaginatedResponseSchema(BlogPostDocSchema);
+
+export const BlogPostVersionDocSchema = z.object({
+  id: z.string(),
+  postId: z.string(),
+  version: z.number().int(),
+  snapshot: BlogPostDocSchema,
+  actorId: z.string().optional(),
+  createdAt: z.string(),
+});
+
+export const BlogPostVersionsResponseSchema = z.array(BlogPostVersionDocSchema);
+
 export interface BlogPostDoc {
   [key: string]: unknown;
   id: string;
@@ -70,7 +111,7 @@ export interface BlogPostVersionDoc {
   actorId?: string | undefined;
 }
 
-// 3. Validation Helpers
+// 4. Validation Helpers
 export function validateCreateBlogPost(input: unknown): CreateBlogPostInput {
   return validateWithSchema(CreateBlogPostSchema, input, "Invalid blog post payload");
 }

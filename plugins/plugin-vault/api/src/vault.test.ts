@@ -1,5 +1,12 @@
 import type { CoreServices } from "@cms/core";
-import { ConfigService, decorateTestAuth, HookManager, PERMISSIONS, stubLogger } from "@cms/core";
+import {
+  ConfigService,
+  decorateTestAuth,
+  HookManager,
+  PERMISSIONS,
+  registerZodValidation,
+  stubLogger,
+} from "@cms/core";
 import { createInMemoryDb } from "@cms/db";
 import Fastify from "fastify";
 import assert from "node:assert/strict";
@@ -183,6 +190,7 @@ describe("Vault Plugin API", () => {
     const db = createInMemoryDb();
     const hooks = new HookManager();
     const app = Fastify();
+    registerZodValidation(app);
 
     // 1. Missing VAULT_SECRET throws on boot
     const emptyConfig = new ConfigService({});
@@ -517,6 +525,7 @@ Line 2 after newline"`;
 
   it("enforces RBAC permissions on vault HTTP routes (vault:read and vault:write)", async () => {
     const app = Fastify();
+    registerZodValidation(app);
     const db = createInMemoryDb();
     await initVaultMigration.up(db);
     const repo = new VaultRepository(db);

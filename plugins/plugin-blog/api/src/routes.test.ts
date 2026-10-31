@@ -1,4 +1,10 @@
-import { decorateTestAuth, HookManager, RedirectsService, stubLogger } from "@cms/core";
+import {
+  decorateTestAuth,
+  HookManager,
+  RedirectsService,
+  registerZodValidation,
+  stubLogger,
+} from "@cms/core";
 import { createInMemoryDb } from "@cms/db";
 import fastify from "fastify";
 import assert from "node:assert/strict";
@@ -10,6 +16,7 @@ import { registerBlogRoutes } from "./routes.js";
 
 async function buildTestApp() {
   const app = fastify();
+  registerZodValidation(app);
   const db = createInMemoryDb();
   const redirects = new RedirectsService(db, stubLogger);
   const repo = new BlogPostsRepository(db, redirects);
