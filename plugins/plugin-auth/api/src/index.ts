@@ -92,6 +92,9 @@ export type {
   UpdateUserInput,
   UserSessionParam,
   UsersQuery,
+  UserStats,
+  RoleStats,
+  ApiTokenStats,
 } from "./domain/auth.rules.js";
 export {
   getDefaultPasswordMinLength,
@@ -200,7 +203,12 @@ export async function registerAuthPlugin(
     jwtSecret;
   const tokenEncryptionKey = deriveTokenKey(tokenSecret);
   const apiTokenPrefix = config.getOrDefault("API_TOKEN_PREFIX", "cms_token_");
-  const apiTokenService = new ApiTokenService(apiTokensRepo, tokenEncryptionKey, apiTokenPrefix);
+  const apiTokenService = new ApiTokenService(
+    apiTokensRepo,
+    tokenEncryptionKey,
+    apiTokenPrefix,
+    services.cache,
+  );
 
   const authenticate = createAuthenticateMiddleware(
     sessionService,

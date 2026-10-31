@@ -43,18 +43,8 @@ import {
 import * as React from "react";
 import { CreateTokenDialog } from "./CreateTokenDialog";
 import { TokenDetailDialog } from "./TokenDetailDialog";
-
-export interface ApiTokenItem {
-  id: string;
-  name: string;
-  tokenPrefix: string;
-  scopes: string[];
-  createdAt: string;
-  lastUsedAt?: string | null;
-  expiresAt?: string | null;
-  revokedAt?: string | null | undefined;
-  revokeReason?: string | undefined;
-}
+import type { ApiTokenItem, ApiTokenStats } from "../../types.js";
+export type { ApiTokenItem, ApiTokenStats } from "../../types.js";
 
 function getAgentMeta(name: string) {
   const lower = name.toLowerCase();
@@ -114,18 +104,16 @@ export function ApiTokensList() {
     tokens?: ApiTokenItem[];
     data?: ApiTokenItem[];
     meta?: PaginatedMeta;
+    stats?: ApiTokenStats;
   }>(endpoint);
 
   const tokens: ApiTokenItem[] = rawData?.data || rawData?.tokens || [];
   const meta = rawData?.meta;
+  const stats = rawData?.stats;
 
-  const activeCount = React.useMemo(() => {
-    return tokens.filter((t) => t.lastUsedAt).length;
-  }, [tokens]);
-
-  const fullAccessCount = React.useMemo(() => {
-    return tokens.filter((t) => t.scopes.includes("*")).length;
-  }, [tokens]);
+  const activeCount = stats?.activeCount ?? tokens.filter((t) => t.lastUsedAt).length;
+  const fullAccessCount =
+    stats?.fullAccessCount ?? tokens.filter((t) => t.scopes.includes("*")).length;
 
   const handleConfirmRevoke = async () => {
     if (!tokenToRevoke) return;
@@ -156,7 +144,7 @@ export function ApiTokensList() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Tokens"
-          value={meta?.total ?? tokens.length}
+          value={stats?.total ?? meta?.total ?? tokens.length}
           description="Configured API & agent keys"
           icon={Key}
         />

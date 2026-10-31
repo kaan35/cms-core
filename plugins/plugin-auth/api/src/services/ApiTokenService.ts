@@ -1,3 +1,4 @@
+import type { ICache } from "@cms/core";
 import {
   ForbiddenError,
   NotFoundError,
@@ -36,13 +37,20 @@ export class ApiTokenService {
   private readonly tokensRepo: ApiTokensRepository;
   private readonly encryptionKey?: Buffer | undefined;
   private readonly prefix: string;
+  private readonly cache?: ICache | undefined;
 
-  constructor(tokensRepo: ApiTokensRepository, encryptionKey?: Buffer, prefix = "cms_token_") {
+  constructor(
+    tokensRepo: ApiTokensRepository,
+    encryptionKey?: Buffer,
+    prefix = "cms_token_",
+    cache?: ICache,
+  ) {
     this.tokensRepo = tokensRepo;
     this.encryptionKey = encryptionKey;
     const cleanPrefix = prefix.trim();
     this.prefix =
       cleanPrefix.endsWith("_") || cleanPrefix.endsWith("-") ? cleanPrefix : `${cleanPrefix}_`;
+    this.cache = cache;
   }
 
   getPrefix(): string {
@@ -103,12 +111,11 @@ export class ApiTokenService {
   }
 
   async listUserTokensPaginated(userId: string, page = 1, limit = 20, filter?: ApiTokenFilter) {
-    const { items, total } = await this.tokensRepo.findPaginatedByUserId(
-      userId,
-      page,
-      limit,
-      filter,
-    );
+    const targetUserId = filter?.userId || userId;
+    const [{ items, total }, stats] = await Promise.all([
+      this.tokensRepo.findPaginatedByUserId(targetUserId, page, limit, filter),
+      this.tokensRepo.getStats(targetUserId),
+    ]);
     const masked = items.map((t) => ({
       id: t.id,
       name: t.name,
@@ -120,7 +127,7 @@ export class ApiTokenService {
       revokedAt: t.revokedAt,
       revokeReason: t.revokeReason,
     }));
-    return buildPaginatedResult(masked, total, page, limit);
+    return buildPaginatedResult(masked, total, page, limit, stats);
   }
 
   async revokeToken(id: string, user: AuthenticatedUserContext): Promise<void> {
@@ -143,6 +150,9 @@ export class ApiTokenService {
     }
 
     await this.tokensRepo.revokeById(id, "user_revoked");
+    if (this.cache && token.tokenHash) {
+      await this.cache.del(`cms:auth:token:${token.tokenHash}`);
+    }
   }
 
   async revealToken(id: string, user: AuthenticatedUserContext): Promise<string> {
@@ -180,20 +190,45 @@ export class ApiTokenService {
     scopes: string[];
   }> {
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-    const token = await this.tokensRepo.findByHash(tokenHash);
 
-    if (!token || token.revokedAt || (token.expiresAt && token.expiresAt.getTime() <= Date.now())) {
-      throw new UnauthorizedError("Invalid or expired API token");
-    }
-
-    this.tokensRepo.updateLastUsedAt(token.id, new Date()).catch(() => {});
-
-    return {
-      tokenId: token.id,
-      tokenName: token.name,
-      tokenPrefix: token.tokenPrefix,
-      userId: token.userId,
-      scopes: token.scopes,
+    type ValidatedToken = {
+      tokenId: string;
+      tokenName?: string;
+      tokenPrefix?: string;
+      userId: string;
+      scopes: string[];
     };
+
+    const lookupAndValidate = async (): Promise<ValidatedToken> => {
+      const token = await this.tokensRepo.findByHash(tokenHash);
+
+      if (
+        !token ||
+        token.revokedAt ||
+        (token.expiresAt && token.expiresAt.getTime() <= Date.now())
+      ) {
+        throw new UnauthorizedError("Invalid or expired API token");
+      }
+
+      return {
+        tokenId: token.id,
+        tokenName: token.name,
+        tokenPrefix: token.tokenPrefix,
+        userId: token.userId,
+        scopes: token.scopes,
+      };
+    };
+
+    const tokenData = this.cache
+      ? await this.cache.getOrSet<ValidatedToken>(
+          `cms:auth:token:${tokenHash}`,
+          lookupAndValidate,
+          300,
+        )
+      : await lookupAndValidate();
+
+    this.tokensRepo.updateLastUsedAt(tokenData.tokenId, new Date()).catch(() => {});
+
+    return tokenData;
   }
 }

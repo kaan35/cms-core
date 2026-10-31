@@ -37,15 +37,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import * as React from "react";
-
-interface UserItem {
-  id: string;
-  email: string;
-  role: string;
-  name?: string;
-  status?: string;
-  createdAt?: string;
-}
+import type { UserItem, UserStats } from "../types.js";
 
 export function UserList() {
   const router = useRouter();
@@ -83,17 +75,17 @@ export function UserList() {
   if (statusFilter !== "all") queryParams.set("status", statusFilter);
   const endpoint = `/users?${queryParams.toString()}`;
 
-  const { data: rawData, isLoading, mutate } = useApi<PaginatedResult<UserItem>>(endpoint);
+  const {
+    data: rawData,
+    isLoading,
+    mutate,
+  } = useApi<PaginatedResult<UserItem, UserStats>>(endpoint);
   const users: UserItem[] = rawData?.data || [];
   const meta = rawData?.meta;
+  const stats = rawData?.stats;
 
-  const adminCount = React.useMemo(() => {
-    return users.filter((u) => u.role === "admin").length;
-  }, [users]);
-
-  const activeCount = React.useMemo(() => {
-    return users.filter((u) => u.status !== "suspended").length;
-  }, [users]);
+  const adminCount = stats?.adminCount ?? users.filter((u) => u.role === "admin").length;
+  const activeCount = stats?.activeCount ?? users.filter((u) => u.status !== "suspended").length;
 
   const handleConfirmDelete = async () => {
     if (!deleteModal.target) return;
@@ -145,7 +137,7 @@ export function UserList() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Users"
-          value={meta?.total ?? users.length}
+          value={stats?.total ?? meta?.total ?? users.length}
           description="Registered user accounts"
           icon={Users}
         />

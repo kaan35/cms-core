@@ -97,6 +97,14 @@ export const VaultItemDocSchema = CreateVaultItemSchema.extend({
   updatedAt: z.string(),
 });
 
+export const VaultStatsSchema = z.object({
+  total: z.number().int().nonnegative(),
+  categoriesCount: z.number().int().nonnegative(),
+  recentCount: z.number().int().nonnegative(),
+  staleCount: z.number().int().nonnegative(),
+});
+export type VaultStats = z.infer<typeof VaultStatsSchema>;
+
 export const VaultItemSingleResponseSchema = z.object({
   item: VaultItemDocSchema,
 });
@@ -106,6 +114,7 @@ export const VaultItemListResponseSchema = z.object({
   data: z.array(VaultItemDocSchema),
   meta: PaginatedMetaSchema,
   categories: z.array(z.string()),
+  stats: VaultStatsSchema.optional(),
 });
 
 export const VaultDeleteResponseSchema = z.object({

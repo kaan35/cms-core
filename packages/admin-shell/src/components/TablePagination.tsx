@@ -11,9 +11,10 @@ export interface PaginatedMeta {
   totalPages: number;
 }
 
-export interface PaginatedResult<T> {
+export interface PaginatedResult<T, S = Record<string, unknown>> {
   data: T[];
   meta: PaginatedMeta;
+  stats?: S;
 }
 
 export interface TablePaginationProps {

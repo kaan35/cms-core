@@ -152,6 +152,28 @@ export class VaultRepository {
     return Array.from(set);
   }
 
+  async getStats(): Promise<{
+    total: number;
+    categoriesCount: number;
+    recentCount: number;
+    staleCount: number;
+  }> {
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const [categories, total, recentCount, staleCount] = await Promise.all([
+      this.getCategories(),
+      this.col.countDocuments(),
+      this.col.countDocuments({ passwordChangedAt: { $gte: ninetyDaysAgo } }),
+      this.col.countDocuments({
+        $or: [
+          { passwordChangedAt: { $lt: ninetyDaysAgo } },
+          { passwordChangedAt: { $exists: false } },
+          { passwordChangedAt: null },
+        ],
+      }),
+    ]);
+    return { total, categoriesCount: categories.length, recentCount, staleCount };
+  }
+
   async update(id: string, input: UpdateVaultItemInput): Promise<VaultItemDoc | null> {
     const existing = await this.findById(id);
     if (!existing) return null;

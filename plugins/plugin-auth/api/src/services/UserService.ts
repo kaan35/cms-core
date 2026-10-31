@@ -69,8 +69,18 @@ export class UserService {
       status: filter?.status,
       roleId,
     };
-    const { items, total } = await this.usersRepo.findPaginated(page, limit, repoFilter);
-    const allRoles = await this.rolesRepo.findAll();
+    const [paginated, allRoles, globalTotal, activeCount] = await Promise.all([
+      this.usersRepo.findPaginated(page, limit, repoFilter),
+      this.rolesRepo.findAll(),
+      this.usersRepo.count(),
+      this.usersRepo.countFilter({ status: { $ne: "suspended" } }),
+    ]);
+    const { items, total } = paginated;
+    const adminRole = allRoles.find((r) => r.name === "admin");
+    const adminCount = await this.usersRepo.countFilter(
+      adminRole ? { $or: [{ roleIds: adminRole.id }, { permissions: "*" }] } : { permissions: "*" },
+    );
+
     const roleMap = new Map(allRoles.map((r) => [r.id, r.name]));
 
     const sanitized = items.map((u) => {
@@ -87,7 +97,12 @@ export class UserService {
         createdAt: u.createdAt,
       };
     });
-    return buildPaginatedResult(sanitized, total, page, limit);
+    const stats = {
+      total: globalTotal,
+      adminCount,
+      activeCount,
+    };
+    return buildPaginatedResult(sanitized, total, page, limit, stats);
   }
 
   async getUserById(id: string) {

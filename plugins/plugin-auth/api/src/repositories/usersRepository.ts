@@ -93,6 +93,21 @@ export class UsersRepository {
     return this.collection.countDocuments(filter);
   }
 
+  async getStats(
+    adminRoleId?: string,
+  ): Promise<{ total: number; adminCount: number; activeCount: number }> {
+    const adminFilter: Record<string, unknown> = adminRoleId
+      ? { $or: [{ roleIds: adminRoleId }, { permissions: "*" }] }
+      : { permissions: "*" };
+
+    const [total, activeCount, adminCount] = await Promise.all([
+      this.collection.countDocuments(),
+      this.collection.countDocuments({ status: { $ne: "suspended" } }),
+      this.collection.countDocuments(adminFilter),
+    ]);
+    return { total, activeCount, adminCount };
+  }
+
   async findPaginated(
     page = 1,
     limit = 50,

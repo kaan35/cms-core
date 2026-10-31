@@ -44,8 +44,11 @@ export class RoleService {
     limit = 50,
     filter?: { search?: string | undefined; isSystem?: boolean | undefined } | undefined,
   ) {
-    const { items, total } = await this.rolesRepo.findPaginated(page, limit, filter);
-    return buildPaginatedResult(items, total, page, limit);
+    const [{ items, total }, stats] = await Promise.all([
+      this.rolesRepo.findPaginated(page, limit, filter),
+      this.rolesRepo.getStats(),
+    ]);
+    return buildPaginatedResult(items, total, page, limit, stats);
   }
 
   async getRoleById(id: string): Promise<RoleDoc> {

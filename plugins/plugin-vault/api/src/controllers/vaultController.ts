@@ -42,6 +42,7 @@ export class VaultController {
       data: paginated.data,
       meta: paginated.meta,
       categories,
+      stats: paginated.stats,
     });
   }
 

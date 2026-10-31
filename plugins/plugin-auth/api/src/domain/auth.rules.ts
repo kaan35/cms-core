@@ -179,6 +179,24 @@ export const UpdateAuthSettingsSchema = z.object({
 });
 
 // 6. Response Schemas
+export const UserStatsSchema = z.object({
+  total: z.number().int().nonnegative(),
+  adminCount: z.number().int().nonnegative(),
+  activeCount: z.number().int().nonnegative(),
+});
+
+export const RoleStatsSchema = z.object({
+  total: z.number().int().nonnegative(),
+  systemCount: z.number().int().nonnegative(),
+  customCount: z.number().int().nonnegative(),
+});
+
+export const ApiTokenStatsSchema = z.object({
+  total: z.number().int().nonnegative(),
+  activeCount: z.number().int().nonnegative(),
+  fullAccessCount: z.number().int().nonnegative(),
+});
+
 export const UserDocSchema = CreateUserSchema.omit({ password: true }).extend({
   id: z.string(),
   createdAt: z.string().optional(),
@@ -189,7 +207,9 @@ export const UserSingleResponseSchema = z.object({
   user: UserDocSchema,
 });
 
-export const UserListResponseSchema = createPaginatedResponseSchema(UserDocSchema);
+export const UserListResponseSchema = createPaginatedResponseSchema(UserDocSchema).extend({
+  stats: UserStatsSchema.optional(),
+});
 
 export const AuthSessionResponseSchema = z.object({
   user: UserDocSchema,
@@ -239,6 +259,7 @@ export const RoleListResponseSchema = z.object({
   roles: z.array(RoleDocSchema),
   data: z.array(RoleDocSchema),
   meta: PaginatedMetaSchema,
+  stats: RoleStatsSchema.optional(),
 });
 
 export const ApiTokenInfoSchema = CreateApiTokenSchema.omit({ expiresInDays: true }).extend({
@@ -263,6 +284,7 @@ export const ApiTokenListResponseSchema = z.object({
   data: z.array(ApiTokenInfoSchema),
   meta: PaginatedMetaSchema,
   mcpServerPath: z.string(),
+  stats: ApiTokenStatsSchema.optional(),
 });
 
 export const RevealApiTokenResponseSchema = z.object({
@@ -278,6 +300,9 @@ export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
 export type CreateRoleInput = z.infer<typeof CreateRoleSchema>;
 export type UpdateRoleInput = z.infer<typeof UpdateRoleSchema>;
 export type UpdateAuthSettingsInput = z.infer<typeof UpdateAuthSettingsSchema>;
+export type UserStats = z.infer<typeof UserStatsSchema>;
+export type RoleStats = z.infer<typeof RoleStatsSchema>;
+export type ApiTokenStats = z.infer<typeof ApiTokenStatsSchema>;
 
 // Validation Helpers
 export function validateLogin(input: unknown): LoginInput {

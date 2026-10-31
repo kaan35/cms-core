@@ -60,20 +60,33 @@ export type {
 
 // --- Auth Types ---
 export type {
+  ApiTokenDoc,
+  ApiTokenStats,
   AuthResult,
+  CreateApiTokenInput,
   CreateRoleInput,
   CreateUserInput,
   ISessionInfo,
   LoginInput,
   RegisterInput,
   RoleDoc,
+  RoleStats,
   SessionDoc,
   SetupInput,
   UpdateAuthSettingsInput,
   UpdateRoleInput,
   UpdateUserInput,
   UserDoc,
+  UserStats,
 } from "@cms/plugin-auth-api";
+
+// --- Vault Types ---
+export type {
+  CreateVaultItemInput,
+  UpdateVaultItemInput,
+  VaultItemDoc,
+  VaultStats,
+} from "@cms/plugin-vault-api";
 
 // --- System & Navigation Types ---
 export type {

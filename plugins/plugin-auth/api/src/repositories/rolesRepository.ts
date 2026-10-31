@@ -98,6 +98,15 @@ export class RolesRepository {
     return this.list();
   }
 
+  async getStats(): Promise<{ total: number; systemCount: number; customCount: number }> {
+    const [total, systemCount, customCount] = await Promise.all([
+      this.collection.countDocuments(),
+      this.collection.countDocuments({ isSystem: true }),
+      this.collection.countDocuments({ isSystem: { $ne: true } }),
+    ]);
+    return { total, systemCount, customCount };
+  }
+
   async findPaginated(
     page = 1,
     limit = 50,

@@ -9,3 +9,4 @@ export * from "./components/tokens/ApiTokensList";
 export * from "./components/tokens/CreateTokenDialog";
 export * from "./components/tokens/TokenDetailDialog";
 export * from "./constants/permissions";
+export * from "./types";

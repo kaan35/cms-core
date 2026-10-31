@@ -1,4 +1,4 @@
-import type { ICollection, IDatabase } from "@cms/core";
+import type { ICache, ICollection, IDatabase } from "@cms/core";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "@cms/core";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
@@ -78,7 +78,17 @@ function makeStubDb(): IDatabase {
       }
       return { deletedCount };
     },
-    countDocuments: async () => store.size,
+    countDocuments: async (filter = {}) => {
+      let count = 0;
+      for (const doc of store.values()) {
+        let match = true;
+        if (filter["userId"] && doc.userId !== filter["userId"]) match = false;
+        if (filter["scopes"] && !doc.scopes?.includes(filter["scopes"] as string)) match = false;
+        if (filter["lastUsedAt"] && !doc.lastUsedAt) match = false;
+        if (match) count++;
+      }
+      return count;
+    },
     createIndex: async () => {},
   };
 
@@ -468,5 +478,176 @@ describe("ApiTokenService", () => {
       status: "all",
     });
     assert.strictEqual(allResult.data.length, 3);
+  });
+
+  it("caches validated tokens in distributed cache and invalidates on revokeToken", async () => {
+    const db = makeStubDb();
+    const repo = new ApiTokensRepository(db);
+
+    const store = new Map<string, unknown>();
+    const deletedKeys: string[] = [];
+    const cache: ICache = {
+      get: async (key: string) => (store.has(key) ? String(store.get(key)) : null),
+      set: async (key: string, value: string) => {
+        store.set(key, value);
+      },
+      del: async (...keys: string[]) => {
+        deletedKeys.push(...keys);
+        for (const k of keys) store.delete(k);
+      },
+      isAlive: async () => true,
+      quit: async () => {},
+      getJson: async <T>(key: string) => (store.has(key) ? (store.get(key) as T) : null),
+      setJson: async (key: string, value: unknown) => {
+        store.set(key, value);
+      },
+      getOrSet: async <T>(key: string, factory: () => Promise<T>) => {
+        if (store.has(key)) return store.get(key) as T;
+        const fresh = await factory();
+        if (fresh !== undefined) store.set(key, fresh);
+        return fresh;
+      },
+    };
+
+    const service = new ApiTokenService(repo, undefined, "cms_token_", cache);
+
+    const { rawToken, token } = await service.createToken("user-caching", "Cache Test Key", ["*"]);
+    const expectedCacheKey = `cms:auth:token:${token.tokenHash}`;
+
+    // 1. Initial validation runs factory and populates cache
+    const validated1 = await service.validateToken(rawToken);
+    assert.strictEqual(validated1.tokenId, token.id);
+    assert.ok(store.has(expectedCacheKey));
+
+    // 2. Second validation serves from cache
+    const validated2 = await service.validateToken(rawToken);
+    assert.strictEqual(validated2.tokenId, token.id);
+
+    // 3. Revoke token explicitly invalidates cache key
+    await service.revokeToken(token.id, { id: "user-caching", permissions: [] });
+    assert.ok(deletedKeys.includes(expectedCacheKey));
+    assert.strictEqual(store.has(expectedCacheKey), false);
+
+    // 4. Subsequent validation throws UnauthorizedError
+    await assert.rejects(async () => service.validateToken(rawToken), UnauthorizedError);
+  });
+
+  it("adversarial audit: revokeToken fails closed immediately, rejects unauthorized callers, and forbids recursion", async () => {
+    const db = makeStubDb();
+    const repo = new ApiTokensRepository(db);
+
+    const store = new Map<string, unknown>();
+    const deletedKeys: string[] = [];
+    const cache: ICache = {
+      get: async (key: string) => (store.has(key) ? String(store.get(key)) : null),
+      set: async (key: string, value: string) => {
+        store.set(key, value);
+      },
+      del: async (...keys: string[]) => {
+        deletedKeys.push(...keys);
+        for (const k of keys) store.delete(k);
+      },
+      isAlive: async () => true,
+      quit: async () => {},
+      getJson: async <T>(key: string) => (store.has(key) ? (store.get(key) as T) : null),
+      setJson: async (key: string, value: unknown) => {
+        store.set(key, value);
+      },
+      getOrSet: async <T>(key: string, factory: () => Promise<T>) => {
+        if (store.has(key)) return store.get(key) as T;
+        const fresh = await factory();
+        if (fresh !== undefined && fresh !== null) store.set(key, fresh);
+        return fresh;
+      },
+    };
+
+    const service = new ApiTokenService(repo, undefined, "cms_token_", cache);
+
+    // 1. Create a valid token for user-victim
+    const { rawToken, token } = await service.createToken("user-victim", "Victim Token", ["*"]);
+    const cacheKey = `cms:auth:token:${token.tokenHash}`;
+
+    // Validate once to populate Redis cache
+    const initialValidation = await service.validateToken(rawToken);
+    assert.strictEqual(initialValidation.tokenId, token.id);
+    assert.ok(store.has(cacheKey), "Token must be cached in Redis");
+
+    // 2. Attacker user-evil (without permissions) attempts to revoke user-victim's token
+    await assert.rejects(
+      async () => service.revokeToken(token.id, { id: "user-evil", permissions: [] }),
+      ForbiddenError,
+      "Unauthorized caller must be blocked from revoking another user's token",
+    );
+    // Cache must NOT be cleared by unauthorized attempt
+    assert.ok(store.has(cacheKey), "Cache must NOT be evicted by unauthorized revocation attempt");
+
+    // 3. API token session attempting to revoke must be blocked (recursion prevention)
+    await assert.rejects(
+      async () =>
+        service.revokeToken(token.id, {
+          id: "user-victim",
+          permissions: ["*"],
+          sessionId: `api-token:${token.id}`,
+        }),
+      ForbiddenError,
+      "API token session must not be allowed to revoke tokens",
+    );
+
+    // 4. Legitimate owner revokes token
+    await service.revokeToken(token.id, { id: "user-victim", permissions: [] });
+
+    // Cache key must be evicted immediately
+    assert.strictEqual(
+      store.has(cacheKey),
+      false,
+      "Cache key must be immediately evicted upon revocation",
+    );
+
+    // 5. Subsequent validation must fail closed immediately (OWASP A07 - 401 Unauthorized)
+    await assert.rejects(
+      async () => service.validateToken(rawToken),
+      (err: unknown) => err instanceof UnauthorizedError && err.statusCode === 401,
+      "Revoked token must immediately fail closed with 401 Unauthorized",
+    );
+
+    // Verify cache remains unpolluted (does not store failed token)
+    assert.strictEqual(
+      store.has(cacheKey),
+      false,
+      "Cache must not be repopulated after fail-closed validation rejection",
+    );
+  });
+
+  it("ApiTokensRepository.getStats safely handles empty DB and returns accurate stats without null/undefined crashes", async () => {
+    const db = makeStubDb();
+    const repo = new ApiTokensRepository(db);
+
+    // 1. Empty database must safely return zeros
+    const emptyStats = await repo.getStats();
+    assert.strictEqual(emptyStats.total, 0);
+    assert.strictEqual(emptyStats.activeCount, 0);
+    assert.strictEqual(emptyStats.fullAccessCount, 0);
+
+    // 2. Add tokens with various states
+    await repo.create({
+      userId: "user-stats-1",
+      name: "Token 1",
+      tokenHash: "hash1",
+      tokenPrefix: "cms_token_...1111",
+      scopes: ["*"], // full access
+      expiresAt: null,
+    });
+    await repo.create({
+      userId: "user-stats-1",
+      name: "Token 2",
+      tokenHash: "hash2",
+      tokenPrefix: "cms_token_...2222",
+      scopes: ["read:pages"], // scoped
+      expiresAt: new Date(Date.now() + 86400000),
+    });
+
+    const populatedStats = await repo.getStats("user-stats-1");
+    assert.strictEqual(populatedStats.total, 2);
+    assert.strictEqual(populatedStats.fullAccessCount, 1);
   });
 });

@@ -28,6 +28,7 @@ export class RoleController {
       roles: paginated.data,
       data: paginated.data,
       meta: paginated.meta,
+      stats: paginated.stats,
     });
   }
 

@@ -1,6 +1,6 @@
 import { ValidationError } from "../errors/AppError.js";
 
-export type PaginatedResult<T> = {
+export type PaginatedResult<T, S = unknown> = {
   data: T[];
   meta: {
     page: number;
@@ -8,6 +8,7 @@ export type PaginatedResult<T> = {
     total: number;
     totalPages: number;
   };
+  stats?: S;
 };
 
 export const DEFAULT_PAGE = 1;
@@ -33,13 +34,14 @@ export function parsePaginationQuery(query: unknown): { page: number; limit: num
   return { page, limit };
 }
 
-export function buildPaginatedResult<T>(
+export function buildPaginatedResult<T, S = unknown>(
   data: T[],
   total: number,
   page: number,
   limit: number,
-): PaginatedResult<T> {
-  return {
+  stats?: S,
+): PaginatedResult<T, S> {
+  const result: PaginatedResult<T, S> = {
     data,
     meta: {
       page,
@@ -48,4 +50,8 @@ export function buildPaginatedResult<T>(
       totalPages: Math.ceil(total / limit),
     },
   };
+  if (stats !== undefined) {
+    result.stats = stats;
+  }
+  return result;
 }

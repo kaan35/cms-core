@@ -31,6 +31,7 @@ export interface ApiTokenFilter {
   search?: string | undefined;
   scope?: "all" | "full" | "scoped" | undefined;
   status?: "all" | "active" | "revoked" | "expired" | undefined;
+  userId?: string | undefined;
 }
 
 export class ApiTokensRepository {
@@ -100,6 +101,21 @@ export class ApiTokensRepository {
       this.collection.countDocuments(query),
     ]);
     return { items, total };
+  }
+
+  async getStats(
+    userId?: string,
+  ): Promise<{ total: number; activeCount: number; fullAccessCount: number }> {
+    const baseQuery: Record<string, unknown> = {};
+    if (userId) baseQuery["userId"] = userId;
+
+    const [total, activeCount, fullAccessCount] = await Promise.all([
+      this.collection.countDocuments(baseQuery),
+      this.collection.countDocuments({ ...baseQuery, lastUsedAt: { $exists: true, $ne: null } }),
+      this.collection.countDocuments({ ...baseQuery, scopes: "*" }),
+    ]);
+
+    return { total, activeCount, fullAccessCount };
   }
 
   async create(data: CreateApiTokenData): Promise<ApiTokenDoc> {

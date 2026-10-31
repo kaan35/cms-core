@@ -28,14 +28,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { ALL_FLAT_PERMISSIONS } from "../constants/permissions";
-
-interface RoleItem {
-  id: string;
-  name: string;
-  description?: string;
-  permissions: string[];
-  isSystem?: boolean;
-}
+import type { RoleItem, RoleStats } from "../types.js";
 
 export function RoleList() {
   const router = useRouter();
@@ -68,18 +61,15 @@ export function RoleList() {
     roles?: RoleItem[];
     data?: RoleItem[];
     meta?: PaginatedMeta;
+    stats?: RoleStats;
   }>(endpoint);
 
   const roles: RoleItem[] = rawData?.data || rawData?.roles || [];
   const meta = rawData?.meta;
+  const stats = rawData?.stats;
 
-  const systemCount = React.useMemo(() => {
-    return roles.filter((r) => r.isSystem).length;
-  }, [roles]);
-
-  const customCount = React.useMemo(() => {
-    return roles.filter((r) => !r.isSystem).length;
-  }, [roles]);
+  const systemCount = stats?.systemCount ?? roles.filter((r) => r.isSystem).length;
+  const customCount = stats?.customCount ?? roles.filter((r) => !r.isSystem).length;
 
   const handleConfirmDelete = async () => {
     if (!deleteModal.target) return;
@@ -117,7 +107,7 @@ export function RoleList() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Total Roles"
-          value={meta?.total ?? roles.length}
+          value={stats?.total ?? meta?.total ?? roles.length}
           description="Configured role templates"
           icon={Shield}
         />
