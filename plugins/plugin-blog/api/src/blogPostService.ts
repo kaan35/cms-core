@@ -1,4 +1,4 @@
-import type { IHookManager, ILogger, PaginatedResult } from "@cms/core";
+import type { ICache, IHookManager, ILogger, PaginatedResult } from "@cms/core";
 import { NotFoundError } from "@cms/core";
 import type { BlogPostDoc, BlogPostStatus, BlogPostVersionDoc } from "./domain/blogPost.rules.js";
 import {
@@ -12,16 +12,22 @@ export class BlogPostService {
   private readonly blogRepo: BlogPostsRepository;
   private readonly hooks: IHookManager;
   private readonly logger: ILogger;
+  private readonly cache?: ICache | undefined;
 
-  constructor(blogRepo: BlogPostsRepository, hooks: IHookManager, logger: ILogger) {
+  constructor(blogRepo: BlogPostsRepository, hooks: IHookManager, logger: ILogger, cache?: ICache) {
     this.blogRepo = blogRepo;
     this.hooks = hooks;
     this.logger = logger;
+    this.cache = cache;
   }
 
   async createBlogPost(input: unknown, actorId?: string): Promise<BlogPostDoc> {
     const validated = validateCreateBlogPost(input);
     const post = await this.blogRepo.create(validated, actorId);
+
+    if (this.cache) {
+      await this.cache.del(`cms:blog:slug:${post.slug}`);
+    }
 
     await this.hooks.emit(BLOG_EVENTS.CREATED, { post, actorId });
     this.logger.info("Blog post created", { id: post.id, slug: post.slug, actorId });
@@ -30,8 +36,17 @@ export class BlogPostService {
   }
 
   async updateBlogPost(id: string, input: unknown, actorId?: string): Promise<BlogPostDoc> {
+    const existing = await this.blogRepo.findById(id);
     const validated = validateUpdateBlogPost(input);
     const post = await this.blogRepo.update(id, validated, actorId);
+
+    if (this.cache) {
+      const keysToInvalidate = [`cms:blog:slug:${post.slug}`];
+      if (existing && existing.slug !== post.slug) {
+        keysToInvalidate.push(`cms:blog:slug:${existing.slug}`);
+      }
+      await this.cache.del(...keysToInvalidate);
+    }
 
     await this.hooks.emit(BLOG_EVENTS.UPDATED, { post, actorId });
     this.logger.info("Blog post updated", {
@@ -51,6 +66,11 @@ export class BlogPostService {
     }
 
     await this.blogRepo.deleteById(id);
+
+    if (this.cache) {
+      await this.cache.del(`cms:blog:slug:${existing.slug}`);
+    }
+
     await this.hooks.emit(BLOG_EVENTS.DELETED, { id, slug: existing.slug, actorId });
     this.logger.info("Blog post deleted", { id, slug: existing.slug, actorId });
   }
@@ -60,14 +80,28 @@ export class BlogPostService {
   }
 
   async getBlogPostBySlug(slug: string, canViewDraft = false): Promise<BlogPostDoc | null> {
-    const post = await this.blogRepo.findBySlug(slug);
-    if (!post) {
-      return null;
+    if (canViewDraft || !this.cache) {
+      const post = await this.blogRepo.findBySlug(slug);
+      if (!post) {
+        return null;
+      }
+      if (post.status === "draft" && !canViewDraft) {
+        return null;
+      }
+      return post;
     }
-    if (post.status === "draft" && !canViewDraft) {
-      return null;
-    }
-    return post;
+
+    return this.cache.getOrSet<BlogPostDoc | null>(
+      `cms:blog:slug:${slug}`,
+      async () => {
+        const post = await this.blogRepo.findBySlug(slug);
+        if (!post || post.status === "draft") {
+          return null;
+        }
+        return post;
+      },
+      3600,
+    );
   }
 
   async listBlogPosts(

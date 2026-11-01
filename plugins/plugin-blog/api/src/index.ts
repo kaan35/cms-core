@@ -38,10 +38,10 @@ export async function registerBlogPlugin(
   app: FastifyInstance,
   services: CoreServices,
 ): Promise<void> {
-  const { db, logger, hooks, redirects } = services;
+  const { db, logger, hooks, redirects, cache } = services;
 
   const blogRepo = new BlogPostsRepository(db, redirects);
-  const blogService = new BlogPostService(blogRepo, hooks, logger);
+  const blogService = new BlogPostService(blogRepo, hooks, logger, cache);
   const controller = new BlogPostController(blogService, redirects);
 
   const { registerBlogRoutes } = await import("./routes.js");

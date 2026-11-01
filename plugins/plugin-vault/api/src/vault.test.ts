@@ -625,4 +625,155 @@ Line 2 after newline"`;
     assert.equal(writeRevealRes.statusCode, 200);
     assert.equal((writeRevealRes.json() as { password: string }).password, "secretpassword123");
   });
+
+  it("VaultRepository.getStats safely handles empty DB, stale password boundaries, and corrupt dates", async () => {
+    const db = createInMemoryDb();
+    await initVaultMigration.up(db);
+    const repo = new VaultRepository(db);
+
+    // 1. Empty database must safely return zeros without NaN or unhandled exceptions
+    const emptyStats = await repo.getStats();
+    assert.deepEqual(emptyStats, {
+      total: 0,
+      categoriesCount: 0,
+      recentCount: 0,
+      staleCount: 0,
+    });
+    assert.equal(Number.isNaN(emptyStats.recentCount), false);
+    assert.equal(Number.isNaN(emptyStats.staleCount), false);
+
+    // 2. Insert items across all boundary conditions:
+    const now = new Date();
+    const hundredDaysAgo = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000);
+
+    // Item A: Recent password (changed today)
+    await db.collection<VaultItemDoc>("cms_vault_items").insertOne({
+      id: "item-recent",
+      title: "Recent Service",
+      username: "userA",
+      password: "enc:v1:00112233445566778899aabb:00112233445566778899aabbccddeeff:1111",
+      category: "CategoryA",
+      passwordChangedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Item B: Stale password (changed 100 days ago)
+    await db.collection<VaultItemDoc>("cms_vault_items").insertOne({
+      id: "item-stale-100d",
+      title: "Old Service",
+      username: "userB",
+      password: "enc:v1:00112233445566778899aabb:00112233445566778899aabbccddeeff:2222",
+      category: "CategoryA",
+      passwordChangedAt: hundredDaysAgo,
+      createdAt: hundredDaysAgo,
+      updatedAt: hundredDaysAgo,
+    });
+
+    // Item C: Missing passwordChangedAt field
+    await db.collection<VaultItemDoc>("cms_vault_items").insertOne({
+      id: "item-no-changed-at",
+      title: "No Date Service",
+      username: "userC",
+      password: "enc:v1:00112233445566778899aabb:00112233445566778899aabbccddeeff:3333",
+      category: "CategoryB",
+      createdAt: hundredDaysAgo,
+      updatedAt: hundredDaysAgo,
+    });
+
+    // Item D: Explicitly null passwordChangedAt
+    await db.collection<VaultItemDoc>("cms_vault_items").insertOne({
+      id: "item-null-changed-at",
+      title: "Null Date Service",
+      username: "userD",
+      password: "enc:v1:00112233445566778899aabb:00112233445566778899aabbccddeeff:4444",
+      category: "CategoryB",
+      passwordChangedAt: null as unknown as Date,
+      createdAt: hundredDaysAgo,
+      updatedAt: hundredDaysAgo,
+    });
+
+    const populatedStats = await repo.getStats();
+    assert.equal(populatedStats.total, 4);
+    assert.equal(populatedStats.categoriesCount, 2);
+    assert.equal(populatedStats.recentCount, 1, "Only Item A is recent (<90 days)");
+    assert.equal(populatedStats.staleCount, 3, "Items B, C, D must all be counted as stale");
+    assert.equal(Number.isNaN(populatedStats.recentCount), false);
+    assert.equal(Number.isNaN(populatedStats.staleCount), false);
+  });
+
+  it("VaultTransferService.exportItems handles corrupt passwords without crashing and escapes formula injection characters", async () => {
+    const db = createInMemoryDb();
+    await initVaultMigration.up(db);
+    const repo = new VaultRepository(db);
+    const hooks = new HookManager();
+    const service = new VaultService(repo, hooks, stubLogger, TEST_VAULT_SECRET);
+
+    // 1. Valid item
+    await service.create({
+      title: "Normal Account",
+      username: "normal@company.com",
+      password: "valid-password-xyz",
+      category: "General",
+    });
+
+    // 2. Corrupt / un-decryptable password directly inserted in DB
+    await db.collection<VaultItemDoc>("cms_vault_items").insertOne({
+      id: "corrupt-pwd-item",
+      title: "Corrupt Service",
+      username: "corrupt@company.com",
+      password: "enc:v1:invalid-hex:invalid-tag:bad-cipher",
+      category: "Legacy",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // 3. Potential formula injection item (=, +, -, @)
+    await service.create({
+      title: "=cmd|' /C calc'!A0",
+      username: "+18005550199",
+      password: "formula-pwd-123",
+      url: "@evil.attacker.com/payload",
+      category: "-Critical",
+      notes: "@finance Check spreadsheet formula execution",
+    });
+
+    // Export CSV
+    const csvExport = await service.exportItems("csv", "qa-auditor");
+    assert.equal(csvExport.mimeType, "text/csv; charset=utf-8");
+    const csvContent = csvExport.data as string;
+
+    // A. Verify corrupt item does NOT crash export and is safely masked
+    assert.ok(csvContent.includes("Corrupt Service"));
+    assert.ok(
+      csvContent.includes("[ENCRYPTED_OR_CORRUPT]"),
+      "Corrupt password must be safely masked as [ENCRYPTED_OR_CORRUPT] without failing export",
+    );
+
+    // B. Verify formula injection characters are escaped with leading ' in CSV
+    assert.ok(
+      csvContent.includes("\"'=cmd|' /C calc'!A0\""),
+      "Title starting with '=' must be escaped with leading apostrophe",
+    );
+    assert.ok(
+      csvContent.includes('"\'+18005550199"'),
+      "Username starting with '+' must be escaped with leading apostrophe",
+    );
+    assert.ok(
+      csvContent.includes('"\'@evil.attacker.com/payload"'),
+      "URL starting with '@' must be escaped with leading apostrophe",
+    );
+    assert.ok(
+      csvContent.includes('"\'-Critical"'),
+      "Category starting with '-' must be escaped with leading apostrophe",
+    );
+
+    // C. Verify parseVaultCsv safely restores unescaped values on re-import
+    const parsed = parseVaultCsv(csvContent);
+    const formulaItem = parsed.find((p) => p["username"] === "+18005550199");
+    assert.ok(formulaItem, "Formula item must be found");
+    assert.equal(formulaItem["title"], "=cmd|' /C calc'!A0");
+    assert.equal(formulaItem["category"], "-Critical");
+    assert.equal(formulaItem["url"], "@evil.attacker.com/payload");
+  });
 });

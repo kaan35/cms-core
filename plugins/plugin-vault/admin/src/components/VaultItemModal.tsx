@@ -16,25 +16,13 @@ import {
   formatDateTime,
   formatRelativeTime,
   generateSecurePassword,
+  isPastThreshold,
   toast,
   useSaveShortcut,
 } from "@cms/admin-shell";
 import { Eye, EyeOff, KeyRound, Loader2, Save, ShieldAlert, Sparkles, X } from "lucide-react";
 import * as React from "react";
-
-export interface VaultItem {
-  id?: string;
-  title: string;
-  username: string;
-  password?: string;
-  url: string;
-  category: string;
-  notes: string;
-  tags?: string[];
-  passwordChangedAt?: string | Date;
-  createdAt?: string | Date;
-  updatedAt?: string | Date;
-}
+import type { VaultItem } from "../types.js";
 
 interface VaultItemModalProps {
   open: boolean;
@@ -42,13 +30,6 @@ interface VaultItemModalProps {
   item: VaultItem | null;
   onSuccess: () => void;
   categories?: string[];
-}
-
-export function isPasswordStale(dateVal?: string | Date | null, thresholdDays = 365): boolean {
-  if (!dateVal) return false;
-  const d = new Date(dateVal);
-  if (isNaN(d.getTime())) return false;
-  return Date.now() - d.getTime() > thresholdDays * 24 * 60 * 60 * 1000;
 }
 
 export function VaultItemModal({
@@ -301,7 +282,7 @@ export function VaultItemModal({
                     {(() => {
                       const pwdDate = item.passwordChangedAt || item.updatedAt || item.createdAt;
                       if (!pwdDate) return null;
-                      if (isPasswordStale(pwdDate)) {
+                      if (isPastThreshold(pwdDate, 365, "days")) {
                         return (
                           <span
                             title={`Password last changed on ${formatDate(pwdDate)}`}

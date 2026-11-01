@@ -58,10 +58,10 @@ export async function registerPagesPlugin(
   app: FastifyInstance,
   services: CoreServices,
 ): Promise<void> {
-  const { db, logger, hooks, redirects } = services;
+  const { db, logger, hooks, redirects, cache } = services;
 
   const pagesRepo = new PagesRepository(db, redirects);
-  const pageService = new PageService(pagesRepo, hooks, logger);
+  const pageService = new PageService(pagesRepo, hooks, logger, cache);
   const controller = new PageController(pageService, redirects);
 
   const { registerPageRoutes } = await import("./routes.js");

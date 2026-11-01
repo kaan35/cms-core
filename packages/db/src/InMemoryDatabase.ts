@@ -154,60 +154,76 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
           (v) => typeof v === "string" && v.toLowerCase().includes(searchStr),
         );
       }
-      if (value && typeof value === "object" && "$ne" in value) {
-        const val = this.getProp(doc, key);
-        const neTarget = (value as { $ne: unknown }).$ne;
-        if (neTarget === null) {
-          return val !== null && val !== undefined;
+      if (value && typeof value === "object" && !(value instanceof Date) && !Array.isArray(value)) {
+        const ops = value as Record<string, unknown>;
+        const knownOps = ["$exists", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$regex", "$text"];
+        const hasKnownOp = Object.keys(ops).some((k) => knownOps.includes(k));
+        if (hasKnownOp) {
+          const val = this.getProp(doc, key);
+          if ("$exists" in ops) {
+            const existsTarget = Boolean(ops["$exists"]);
+            const doesExist = val !== undefined;
+            if (doesExist !== existsTarget) return false;
+          }
+          if ("$ne" in ops) {
+            const neTarget = ops["$ne"];
+            if (neTarget === null) {
+              if (val === null || val === undefined) return false;
+            } else if (val === neTarget) {
+              return false;
+            }
+          }
+          if ("$gt" in ops || "$gte" in ops) {
+            if (val == null) return false;
+            const target = "$gt" in ops ? ops["$gt"] : ops["$gte"];
+            const isGte = "$gte" in ops;
+            if (val instanceof Date || target instanceof Date) {
+              const vTime = val instanceof Date ? val.getTime() : new Date(val as string).getTime();
+              const tTime =
+                target instanceof Date ? target.getTime() : new Date(target as string).getTime();
+              if (Number.isNaN(vTime) || Number.isNaN(tTime)) return false;
+              if (isGte ? vTime < tTime : vTime <= tTime) return false;
+            } else {
+              if (
+                isGte ? (val as number) < (target as number) : (val as number) <= (target as number)
+              )
+                return false;
+            }
+          }
+          if ("$lt" in ops || "$lte" in ops) {
+            if (val == null) return false;
+            const target = "$lt" in ops ? ops["$lt"] : ops["$lte"];
+            const isLte = "$lte" in ops;
+            if (val instanceof Date || target instanceof Date) {
+              const vTime = val instanceof Date ? val.getTime() : new Date(val as string).getTime();
+              const tTime =
+                target instanceof Date ? target.getTime() : new Date(target as string).getTime();
+              if (Number.isNaN(vTime) || Number.isNaN(tTime)) return false;
+              if (isLte ? vTime > tTime : vTime >= tTime) return false;
+            } else {
+              if (
+                isLte ? (val as number) > (target as number) : (val as number) >= (target as number)
+              )
+                return false;
+            }
+          }
+          if ("$in" in ops && Array.isArray(ops["$in"])) {
+            if (!ops["$in"].includes(val)) return false;
+          }
+          if ("$regex" in ops && typeof ops["$regex"] === "string") {
+            const pattern = ops["$regex"];
+            const options = (ops["$options"] as string) || "";
+            const reg = new RegExp(pattern, options);
+            if (typeof val === "string") {
+              if (!reg.test(val)) return false;
+            } else if (Array.isArray(val)) {
+              if (!val.some((v) => typeof v === "string" && reg.test(v))) return false;
+            } else {
+              return false;
+            }
+          }
+          return true;
         }
-        return val !== neTarget;
-      }
-      if (value && typeof value === "object" && "$gt" in value) {
-        const val = this.getProp(doc, key);
-        if (val == null) return false;
-        const target = (value as { $gt: unknown }).$gt;
-        if (val instanceof Date || target instanceof Date) {
-          const vTime = val instanceof Date ? val.getTime() : new Date(val as string).getTime();
-          const tTime =
-            target instanceof Date ? target.getTime() : new Date(target as string).getTime();
-          return vTime > tTime;
-        }
-        return (val as number) > (target as number);
-      }
-      if (value && typeof value === "object" && "$lt" in value) {
-        const val = this.getProp(doc, key);
-        if (val == null) return false;
-        const target = (value as { $lt: unknown }).$lt;
-        if (val instanceof Date || target instanceof Date) {
-          const vTime = val instanceof Date ? val.getTime() : new Date(val as string).getTime();
-          const tTime =
-            target instanceof Date ? target.getTime() : new Date(target as string).getTime();
-          return vTime < tTime;
-        }
-        return (val as number) < (target as number);
-      }
-      if (
-        value &&
-        typeof value === "object" &&
-        "$in" in value &&
-        Array.isArray((value as { $in: unknown[] }).$in)
-      ) {
-        const val = this.getProp(doc, key);
-        return (value as { $in: unknown[] }).$in.includes(val);
-      }
-      if (
-        value &&
-        typeof value === "object" &&
-        "$regex" in value &&
-        typeof (value as { $regex: unknown }).$regex === "string"
-      ) {
-        const pattern = (value as { $regex: string }).$regex;
-        const options = (value as { $options?: string }).$options || "";
-        const reg = new RegExp(pattern, options);
-        const val = this.getProp(doc, key);
-        if (typeof val === "string") return reg.test(val);
-        if (Array.isArray(val)) return val.some((v) => typeof v === "string" && reg.test(v));
-        return false;
       }
       if (value === null) {
         const val = this.getProp(doc, key);

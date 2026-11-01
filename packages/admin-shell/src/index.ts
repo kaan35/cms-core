@@ -22,8 +22,8 @@ export * from "./components/ui/switch";
 export * from "./components/ui/switch-field";
 export * from "./components/ui/table";
 export * from "./components/ui/tabs";
-export * from "./components/ui/textarea";
 export * from "./components/ui/tag-list";
+export * from "./components/ui/textarea";
 export * from "./components/ui/tooltip";
 
 // Layout & Core Shell Components
@@ -49,6 +49,8 @@ export * from "./hooks/useShortcut";
 export * from "./lib/api-client";
 export * from "./lib/csrf";
 export * from "./lib/date";
+export * from "./lib/download";
 export * from "./lib/format";
+export * from "./lib/network";
 export * from "./lib/string";
 export * from "./lib/utils";

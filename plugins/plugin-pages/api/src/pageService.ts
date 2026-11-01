@@ -1,4 +1,4 @@
-import type { IHookManager, ILogger, PaginatedResult } from "@cms/core";
+import type { ICache, IHookManager, ILogger, PaginatedResult } from "@cms/core";
 import { EVENTS, NotFoundError } from "@cms/core";
 import type { PageDoc, PageVersionDoc } from "./domain/page.rules.js";
 import { validateCreatePage, validateUpdatePage } from "./domain/page.rules.js";
@@ -8,16 +8,27 @@ export class PageService {
   private readonly pagesRepo: PagesRepository;
   private readonly hooks: IHookManager;
   private readonly logger: ILogger;
+  private readonly cache?: ICache | undefined;
 
-  constructor(pagesRepo: PagesRepository, hooks: IHookManager, logger: ILogger) {
+  constructor(pagesRepo: PagesRepository, hooks: IHookManager, logger: ILogger, cache?: ICache) {
     this.pagesRepo = pagesRepo;
     this.hooks = hooks;
     this.logger = logger;
+    this.cache = cache;
   }
 
   async createPage(input: unknown, actorId?: string): Promise<PageDoc> {
     const validated = validateCreatePage(input);
     const page = await this.pagesRepo.create(validated, actorId);
+
+    if (this.cache) {
+      await this.cache.del(
+        `cms:pages:slug:${page.slug}`,
+        "cms:pages:home",
+        "cms:pages:slug:home",
+        "cms:pages:slug:index",
+      );
+    }
 
     await this.hooks.emit(EVENTS.PAGE.CREATED, {
       pageId: page.id,
@@ -31,8 +42,22 @@ export class PageService {
   }
 
   async updatePage(id: string, input: unknown, actorId?: string): Promise<PageDoc> {
+    const existing = await this.pagesRepo.findById(id);
     const validated = validateUpdatePage(input);
     const page = await this.pagesRepo.update(id, validated, actorId);
+
+    if (this.cache) {
+      const keysToInvalidate = [
+        `cms:pages:slug:${page.slug}`,
+        "cms:pages:home",
+        "cms:pages:slug:home",
+        "cms:pages:slug:index",
+      ];
+      if (existing && existing.slug !== page.slug) {
+        keysToInvalidate.push(`cms:pages:slug:${existing.slug}`);
+      }
+      await this.cache.del(...keysToInvalidate);
+    }
 
     await this.hooks.emit(EVENTS.PAGE.UPDATED, {
       pageId: page.id,
@@ -54,6 +79,15 @@ export class PageService {
 
     await this.pagesRepo.deleteById(id);
 
+    if (this.cache) {
+      await this.cache.del(
+        `cms:pages:slug:${existing.slug}`,
+        "cms:pages:home",
+        "cms:pages:slug:home",
+        "cms:pages:slug:index",
+      );
+    }
+
     await this.hooks.emit(EVENTS.PAGE.DELETED, {
       pageId: id,
       slug: existing.slug,
@@ -72,29 +106,64 @@ export class PageService {
   }
 
   async getPageBySlug(slug: string, canViewDraft = false): Promise<PageDoc | null> {
-    if (slug === "home" || slug === "index") {
-      const homePage = await this.pagesRepo.findHomePage();
-      if (homePage) {
-        if (homePage.status === "draft" && !canViewDraft) return null;
-        return homePage;
+    if (canViewDraft || !this.cache) {
+      if (slug === "home" || slug === "index") {
+        const homePage = await this.pagesRepo.findHomePage();
+        if (homePage) {
+          if (homePage.status === "draft" && !canViewDraft) return null;
+          return homePage;
+        }
       }
+
+      const page = await this.pagesRepo.findBySlug(slug);
+      if (!page) {
+        return null;
+      }
+      if (page.status === "draft" && !canViewDraft) {
+        return null;
+      }
+      return page;
     }
 
-    const page = await this.pagesRepo.findBySlug(slug);
-    if (!page) {
-      return null;
-    }
-    if (page.status === "draft" && !canViewDraft) {
-      return null;
-    }
-    return page;
+    const key = `cms:pages:slug:${slug}`;
+    return this.cache.getOrSet<PageDoc | null>(
+      key,
+      async () => {
+        if (slug === "home" || slug === "index") {
+          const homePage = await this.pagesRepo.findHomePage();
+          if (homePage) {
+            if (homePage.status === "draft") return null;
+            return homePage;
+          }
+        }
+
+        const page = await this.pagesRepo.findBySlug(slug);
+        if (!page || page.status === "draft") {
+          return null;
+        }
+        return page;
+      },
+      3600,
+    );
   }
 
   async getHomePage(canViewDraft = false): Promise<PageDoc | null> {
-    const page = await this.pagesRepo.findHomePage();
-    if (!page) return null;
-    if (page.status === "draft" && !canViewDraft) return null;
-    return page;
+    if (canViewDraft || !this.cache) {
+      const page = await this.pagesRepo.findHomePage();
+      if (!page) return null;
+      if (page.status === "draft" && !canViewDraft) return null;
+      return page;
+    }
+
+    return this.cache.getOrSet<PageDoc | null>(
+      "cms:pages:home",
+      async () => {
+        const page = await this.pagesRepo.findHomePage();
+        if (!page || page.status === "draft") return null;
+        return page;
+      },
+      3600,
+    );
   }
 
   async listPages(

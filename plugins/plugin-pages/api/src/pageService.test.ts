@@ -1,3 +1,4 @@
+import type { ICache } from "@cms/core";
 import { HookManager, RedirectsService, stubLogger } from "@cms/core";
 import { createInMemoryDb } from "@cms/db";
 import assert from "node:assert/strict";
@@ -115,5 +116,169 @@ describe("PageService", () => {
 
     const currentHome3 = await service.getHomePage(false);
     assert.equal(currentHome3?.id, page3.id);
+  });
+
+  it("caches getPageBySlug and getHomePage and bypasses cache when canViewDraft is true", async () => {
+    const db = createInMemoryDb();
+    const redirects = new RedirectsService(db, stubLogger);
+    const repo = new PagesRepository(db, redirects);
+    const hooks = new HookManager();
+
+    const store = new Map<string, unknown>();
+    const deletedKeys: string[] = [];
+    const cache: ICache = {
+      get: async (key: string) => (store.has(key) ? String(store.get(key)) : null),
+      set: async (key: string, value: string) => {
+        store.set(key, value);
+      },
+      del: async (...keys: string[]) => {
+        deletedKeys.push(...keys);
+        for (const k of keys) store.delete(k);
+      },
+      isAlive: async () => true,
+      quit: async () => {},
+      getJson: async <T>(key: string) => (store.has(key) ? (store.get(key) as T) : null),
+      setJson: async (key: string, value: unknown) => {
+        store.set(key, value);
+      },
+      getOrSet: async <T>(key: string, factory: () => Promise<T>) => {
+        if (store.has(key)) return store.get(key) as T;
+        const fresh = await factory();
+        if (fresh !== undefined) store.set(key, fresh);
+        return fresh;
+      },
+    };
+
+    const service = new PageService(repo, hooks, stubLogger, cache);
+
+    // 1. Create page -> invalidates cache keys
+    const page = await service.createPage({
+      title: "About Us",
+      slug: "about",
+      blocks: [{ type: "text", content: "About content" }],
+      status: "published",
+    });
+
+    assert.ok(deletedKeys.includes("cms:pages:slug:about"));
+    assert.ok(deletedKeys.includes("cms:pages:home"));
+
+    // 2. Query page with canViewDraft = false -> caches under cms:pages:slug:about
+    const fetched1 = await service.getPageBySlug("about", false);
+    assert.equal(fetched1?.id, page.id);
+    assert.ok(store.has("cms:pages:slug:about"));
+
+    // 3. Draft bypass: canViewDraft = true must not use or populate draft key
+    await service.createPage({
+      title: "Draft Secrets",
+      slug: "draft-secrets",
+      blocks: [{ type: "text", content: "Draft" }],
+      status: "draft",
+    });
+
+    const draftPage = await service.getPageBySlug("draft-secrets", true);
+    assert.equal(draftPage?.slug, "draft-secrets");
+    assert.equal(store.has("cms:pages:slug:draft-secrets"), false);
+
+    // 4. Update page and test invalidation including old and new slugs
+    deletedKeys.length = 0;
+    await service.updatePage(page.id, { slug: "about-us" });
+    assert.ok(deletedKeys.includes("cms:pages:slug:about"));
+    assert.ok(deletedKeys.includes("cms:pages:slug:about-us"));
+
+    // 5. Delete page invalidates
+    deletedKeys.length = 0;
+    await service.deletePage(page.id);
+    assert.ok(deletedKeys.includes("cms:pages:slug:about-us"));
+  });
+
+  it("never caches draft content in Redis and immediately invalidates cache when published page is reverted to draft", async () => {
+    const db = createInMemoryDb();
+    const redirects = new RedirectsService(db, stubLogger);
+    const repo = new PagesRepository(db, redirects);
+    const hooks = new HookManager();
+
+    const store = new Map<string, unknown>();
+    const deletedKeys: string[] = [];
+    const cache: ICache = {
+      get: async (key: string) => (store.has(key) ? String(store.get(key)) : null),
+      set: async (key: string, value: string) => {
+        store.set(key, value);
+      },
+      del: async (...keys: string[]) => {
+        deletedKeys.push(...keys);
+        for (const k of keys) store.delete(k);
+      },
+      isAlive: async () => true,
+      quit: async () => {},
+      getJson: async <T>(key: string) => (store.has(key) ? (store.get(key) as T) : null),
+      setJson: async (key: string, value: unknown) => {
+        store.set(key, value);
+      },
+      getOrSet: async <T>(key: string, factory: () => Promise<T>) => {
+        if (store.has(key)) return store.get(key) as T;
+        const fresh = await factory();
+        if (fresh !== undefined && fresh !== null) store.set(key, fresh);
+        return fresh;
+      },
+    };
+
+    const service = new PageService(repo, hooks, stubLogger, cache);
+
+    // 1. Create a published page
+    const page = await service.createPage({
+      title: "Confidential Roadmap",
+      slug: "confidential-roadmap",
+      blocks: [{ type: "text", content: "Secret plans for 2027" }],
+      status: "published",
+    });
+
+    const cacheKey = `cms:pages:slug:${page.slug}`;
+
+    // 2. Public user fetches page -> populated into cache
+    const publicResult = await service.getPageBySlug("confidential-roadmap", false);
+    assert.ok(publicResult);
+    assert.equal(publicResult.title, "Confidential Roadmap");
+    assert.ok(store.has(cacheKey), "Published page should be cached in Redis");
+
+    // 3. Editor updates the page to 'draft' status (unpublishing it)
+    deletedKeys.length = 0;
+    const unpublishUpdate = await service.updatePage(page.id, {
+      status: "draft",
+    });
+    assert.equal(unpublishUpdate.status, "draft");
+
+    // Verify cache was deterministically invalidated
+    assert.ok(
+      deletedKeys.includes(cacheKey),
+      `Expected ${cacheKey} to be in deletedKeys list upon unpublishing`,
+    );
+    assert.equal(
+      store.has(cacheKey),
+      false,
+      "Cache must not hold the un-published page after status update",
+    );
+
+    // 4. Public user attempts to fetch -> must return null (fail closed)
+    const publicFetchAfterDraft = await service.getPageBySlug("confidential-roadmap", false);
+    assert.equal(
+      publicFetchAfterDraft,
+      null,
+      "Public fetch must return null for reverted draft page",
+    );
+    assert.equal(
+      store.has(cacheKey),
+      false,
+      "Draft page must NEVER be cached or leak into public Redis store",
+    );
+
+    // 5. Editor previews the draft with canViewDraft = true
+    const editorPreview = await service.getPageBySlug("confidential-roadmap", true);
+    assert.ok(editorPreview, "Editor must be able to view draft content");
+    assert.equal(editorPreview.status, "draft");
+    assert.equal(
+      store.has(cacheKey),
+      false,
+      "Editor draft preview MUST bypass cache and NEVER write draft to Redis",
+    );
   });
 });

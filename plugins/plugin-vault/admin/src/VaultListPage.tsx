@@ -7,12 +7,13 @@ import {
   api,
   toast,
   useApi,
+  isPastThreshold,
 } from "@cms/admin-shell";
 import { KeyRound } from "lucide-react";
 import * as React from "react";
 import { VaultFilterToolbar } from "./components/VaultFilterToolbar";
 import { VaultImportModal } from "./components/VaultImportModal";
-import { VaultItemModal, isPasswordStale } from "./components/VaultItemModal";
+import { VaultItemModal } from "./components/VaultItemModal";
 import { VaultStatsCards } from "./components/VaultStatsCards";
 import { VaultTable } from "./components/VaultTable";
 import { downloadVaultExport, downloadVaultTemplate } from "./components/vaultExportActions";
@@ -57,11 +58,13 @@ export function VaultListPage() {
   }, [data?.categories, items]);
 
   const staleCount = React.useMemo(() => {
-    return items.filter((it) => isPasswordStale(it.passwordChangedAt || it.createdAt)).length;
+    return items.filter((it) => isPastThreshold(it.passwordChangedAt || it.createdAt, 365, "days"))
+      .length;
   }, [items]);
 
   const recentCount = React.useMemo(() => {
-    return items.filter((it) => !isPasswordStale(it.passwordChangedAt || it.createdAt)).length;
+    return items.filter((it) => !isPastThreshold(it.passwordChangedAt || it.createdAt, 365, "days"))
+      .length;
   }, [items]);
 
   const handleReveal = async (id: string) => {

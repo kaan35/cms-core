@@ -4,3 +4,4 @@ export * from "./FormList";
 export * from "./FormsListPage";
 export * from "./FormSubmissionsTable";
 export * from "./SubmissionsPage";
+export * from "./types";

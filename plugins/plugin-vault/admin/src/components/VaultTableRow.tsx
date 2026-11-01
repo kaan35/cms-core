@@ -1,6 +1,14 @@
 "use client";
 
-import { Badge, Button, TableCell, TableRow, Tooltip, formatDate } from "@cms/admin-shell";
+import {
+  Badge,
+  Button,
+  TableCell,
+  TableRow,
+  Tooltip,
+  formatDate,
+  isPastThreshold,
+} from "@cms/admin-shell";
 import {
   Copy,
   ExternalLink,
@@ -11,7 +19,7 @@ import {
   ShieldAlert,
   Trash2,
 } from "lucide-react";
-import { isPasswordStale, type VaultItem } from "./VaultItemModal";
+import type { VaultItem } from "../types.js";
 
 interface VaultTableRowProps {
   item: VaultItem;
@@ -31,7 +39,7 @@ export function VaultTableRow({
   onDelete,
 }: VaultTableRowProps) {
   const pwdDate = item.passwordChangedAt || item.createdAt;
-  const isStale = isPasswordStale(pwdDate);
+  const isStale = isPastThreshold(pwdDate, 365, "days");
 
   return (
     <TableRow className="text-xs hover:bg-muted/30 transition-colors">

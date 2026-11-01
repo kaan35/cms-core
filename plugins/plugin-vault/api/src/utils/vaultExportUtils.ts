@@ -78,7 +78,8 @@ export function createZipArchive(files: ZipEntry[]): Buffer {
 }
 
 /**
- * Escapes values for CSV in compliance with RFC 4180.
+ * Escapes values for CSV in compliance with RFC 4180 and OWASP CWE-1236 (CSV Formula Injection).
+ * Prefix dangerous formula starter characters (=, +, -, @, \t, \r) with an apostrophe (').
  */
 export function escapeCsvCell(val: unknown): string {
   if (val === null || val === undefined) return '""';
@@ -87,6 +88,9 @@ export function escapeCsvCell(val: unknown): string {
     str = JSON.stringify(val);
   } else {
     str = String(val);
+  }
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
   }
   return `"${str.replace(/"/g, '""')}"`;
 }
@@ -382,7 +386,10 @@ export function parseVaultCsv(csvContent: string): Array<Record<string, string>>
     for (let c = 0; c < headers.length; c++) {
       const key = headers[c];
       if (!key) continue;
-      const val = (row[c] ?? "").trim();
+      let val = (row[c] ?? "").trim();
+      if (val.startsWith("'") && /^[=+\-@\t\r]/.test(val.slice(1))) {
+        val = val.slice(1);
+      }
       if (val) hasValue = true;
       item[key] = val;
     }
@@ -573,7 +580,10 @@ export function parseVaultXlsx(buf: Buffer): Array<Record<string, string>> {
     for (let c = 0; c < headers.length; c++) {
       const key = headers[c];
       if (!key) continue;
-      const val = (row[c] ?? "").trim();
+      let val = (row[c] ?? "").trim();
+      if (val.startsWith("'") && /^[=+\-@\t\r]/.test(val.slice(1))) {
+        val = val.slice(1);
+      }
       if (val) hasValue = true;
       item[key] = val;
     }

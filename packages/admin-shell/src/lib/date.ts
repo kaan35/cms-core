@@ -62,3 +62,43 @@ export function formatRelativeTime(date: string | number | Date | null | undefin
   const diffYear = Math.round(diffDay / 365);
   return relativeTimeFormatter.format(-diffYear, "year");
 }
+
+export type TimeUnit = "milliseconds" | "seconds" | "minutes" | "hours" | "days";
+
+const UNIT_TO_MS: Record<TimeUnit, number> = {
+  milliseconds: 1,
+  seconds: 1000,
+  minutes: 60 * 1000,
+  hours: 60 * 60 * 1000,
+  days: 24 * 60 * 60 * 1000,
+};
+
+/**
+ * Calculates the difference between two timestamps in the specified time unit.
+ * Positive value indicates `to` is in the future relative to `from`.
+ */
+export function getTimeDifference(
+  from: string | number | Date | null | undefined,
+  to: string | number | Date = Date.now(),
+  unit: TimeUnit = "days",
+): number {
+  if (!from) return 0;
+  const fromMs = typeof from === "object" ? from.getTime() : new Date(from).getTime();
+  const toMs = typeof to === "object" ? to.getTime() : new Date(to).getTime();
+
+  if (isNaN(fromMs) || isNaN(toMs)) return 0;
+  return (toMs - fromMs) / UNIT_TO_MS[unit];
+}
+
+/**
+ * Checks whether a given timestamp has exceeded the specified duration threshold.
+ * e.g., isPastThreshold(passwordDate, 365, "days") or isPastThreshold(lastActive, 30, "minutes")
+ */
+export function isPastThreshold(
+  date: string | number | Date | null | undefined,
+  threshold: number,
+  unit: TimeUnit = "days",
+): boolean {
+  if (!date) return false;
+  return getTimeDifference(date, Date.now(), unit) > threshold;
+}
