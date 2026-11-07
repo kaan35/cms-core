@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@cms/admin-shell": "*",
-    "lucide-react": "^1"
+    "lucide-react": "^1.68.0"
   },
   "devDependencies": {
     "@types/node": "^26",
