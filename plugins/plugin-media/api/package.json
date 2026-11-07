@@ -22,7 +22,7 @@
     "@aws-sdk/client-s3": "^3",
     "@cms/core": "*",
     "@cms/db": "*",
-    "@fastify/multipart": "^10"
+    "@fastify/multipart": "^10.1.7"
   },
   "devDependencies": {
     "@types/node": "^26"
