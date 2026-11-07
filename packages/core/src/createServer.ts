@@ -163,10 +163,16 @@ export async function createServer(
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof AppError) {
+      const field =
+        "field" in error && typeof (error as { field?: unknown }).field === "string"
+          ? (error as { field: string }).field
+          : undefined;
       return reply.status(error.statusCode).send({
         error: error.message,
-        code: error.code,
+        message: error.message,
         statusCode: error.statusCode,
+        code: error.code,
+        ...(field ? { field } : {}),
       });
     }
     const errObj =

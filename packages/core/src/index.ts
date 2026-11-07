@@ -24,6 +24,7 @@ export type {
 export {
   AppError,
   ConflictError,
+  DuplicateKeyError,
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,

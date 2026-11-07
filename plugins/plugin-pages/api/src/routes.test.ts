@@ -5,7 +5,7 @@ import {
   registerZodValidation,
   stubLogger,
 } from "@cms/core";
-import { createInMemoryDb } from "@cms/db";
+import { createInMemoryDb } from "@cms/core/testing";
 import fastify from "fastify";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";

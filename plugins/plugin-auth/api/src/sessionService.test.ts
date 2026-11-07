@@ -1,83 +1,18 @@
-import type { ICollection, IDatabase, ILogger } from "@cms/core";
+import type { ILogger } from "@cms/core";
 import { UnauthorizedError } from "@cms/core";
+import { createInMemoryDb } from "@cms/core/testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { SessionDoc } from "./repositories/sessionsRepository.js";
 import { SessionsRepository } from "./repositories/sessionsRepository.js";
 import { SessionService } from "./sessionService.js";
 
 const stubLogger: ILogger = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 
-function makeStubDb(): IDatabase {
-  const store = new Map<string, SessionDoc>();
-  const collection: ICollection<SessionDoc> = {
-    findOne: async (filter) => {
-      if (filter["id"]) return store.get(filter["id"] as string) ?? null;
-      return null;
-    },
-    find: async (filter) => {
-      let all = Array.from(store.values());
-      if (filter && filter["userId"]) {
-        all = all.filter((s) => s.userId === filter["userId"]);
-      }
-      if (filter && filter["status"]) {
-        all = all.filter((s) => s.status === filter["status"]);
-      }
-      return all;
-    },
-    insertOne: async (doc) => {
-      store.set(doc["id"] as string, doc as unknown as SessionDoc);
-    },
-    insertMany: async () => {},
-    updateOne: async (filter, update) => {
-      const doc = store.get(filter["id"] as string);
-      if (doc && update["$set"]) {
-        Object.assign(doc, update["$set"]);
-      }
-    },
-    updateMany: async (filter, update) => {
-      let modifiedCount = 0;
-      for (const doc of store.values()) {
-        let match = true;
-        if (filter["userId"] && doc.userId !== filter["userId"]) match = false;
-        if (filter["status"] && doc.status !== filter["status"]) match = false;
-        if (match) {
-          if (update["$set"]) Object.assign(doc, update["$set"]);
-          modifiedCount++;
-        }
-      }
-      return { modifiedCount };
-    },
-    deleteOne: async (filter) => {
-      if (filter["id"]) {
-        store.delete(filter["id"] as string);
-      } else if (filter["userId"]) {
-        for (const [k, v] of store.entries()) {
-          if (v.userId === filter["userId"]) store.delete(k);
-        }
-      } else {
-        store.clear();
-      }
-    },
-    deleteMany: async () => ({ deletedCount: 0 }),
-    countDocuments: async () => store.size,
-    createIndex: async () => {},
-  };
-
-  return {
-    connect: async () => {},
-    disconnect: async () => {},
-    isAlive: async () => true,
-    collection: <T extends Record<string, unknown>>(): ICollection<T> =>
-      collection as unknown as ICollection<T>,
-  };
-}
-
 describe("SessionService", () => {
   const secret = "test-super-secret-key-32-chars-long";
 
   it("creates session, returns valid token and independent csrfToken", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new SessionsRepository(db);
     const service = new SessionService(repo, secret, stubLogger);
 
@@ -92,7 +27,7 @@ describe("SessionService", () => {
   });
 
   it("throws UnauthorizedError on forged or invalid token", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new SessionsRepository(db);
     const service = new SessionService(repo, secret, stubLogger);
 
@@ -103,7 +38,7 @@ describe("SessionService", () => {
   });
 
   it("throws UnauthorizedError after session is revoked and preserves history", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new SessionsRepository(db);
     const service = new SessionService(repo, secret, stubLogger);
 
@@ -128,7 +63,7 @@ describe("SessionService", () => {
   });
 
   it("panic button: revokeAllSessions invalidates all sessions system-wide", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new SessionsRepository(db);
     const service = new SessionService(repo, secret, stubLogger);
 
@@ -152,7 +87,7 @@ describe("SessionService", () => {
   });
 
   it("sliding expiry: extends session expiresAt when remaining lifetime < slideThreshold", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new SessionsRepository(db);
     // 24 hours TTL, 15 minutes slide threshold
     const service = new SessionService(repo, secret, stubLogger, 24, 15);
@@ -177,7 +112,7 @@ describe("SessionService", () => {
   });
 
   it("getSession retrieves session document by id", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new SessionsRepository(db);
     const service = new SessionService(repo, secret, stubLogger);
 

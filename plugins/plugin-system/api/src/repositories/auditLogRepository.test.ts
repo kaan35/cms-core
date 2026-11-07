@@ -1,89 +1,11 @@
-import type { ICollection, IDatabase } from "@cms/core";
+import { createInMemoryDb } from "@cms/core/testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { AuditLogDoc } from "./auditLogRepository.js";
 import { AuditLogRepository } from "./auditLogRepository.js";
-
-function matchesStubFilter(doc: AuditLogDoc, filter?: Record<string, unknown>): boolean {
-  if (!filter || Object.keys(filter).length === 0) return true;
-
-  if ("$and" in filter && Array.isArray(filter["$and"])) {
-    return (filter["$and"] as Record<string, unknown>[]).every((c) => matchesStubFilter(doc, c));
-  }
-  if ("$or" in filter && Array.isArray(filter["$or"])) {
-    return (filter["$or"] as Record<string, unknown>[]).some((c) => matchesStubFilter(doc, c));
-  }
-
-  for (const [k, v] of Object.entries(filter)) {
-    if (k === "$or" || k === "$and") continue;
-
-    let docVal: unknown;
-    if (k.includes(".")) {
-      const parts = k.split(".");
-      docVal = parts.reduce((acc: unknown, part) => {
-        if (acc && typeof acc === "object") {
-          return (acc as Record<string, unknown>)[part];
-        }
-        return undefined;
-      }, doc);
-    } else {
-      docVal = doc[k];
-    }
-
-    if (v && typeof v === "object" && "$in" in v && Array.isArray((v as { $in: unknown[] }).$in)) {
-      if (!(v as { $in: unknown[] }).$in.includes(docVal)) return false;
-    } else if (docVal !== v) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function makeStubDb(): IDatabase {
-  const store = new Map<string, AuditLogDoc>();
-  const collection: ICollection<AuditLogDoc> = {
-    findOne: async (filter) => {
-      for (const doc of store.values()) {
-        if (matchesStubFilter(doc, filter)) return doc;
-      }
-      return null;
-    },
-    find: async (filter = {}, options = {}) => {
-      let docs = Array.from(store.values()).filter((d) => matchesStubFilter(d, filter));
-      if (options.sort) {
-        docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      }
-      if (options.skip) docs = docs.slice(options.skip);
-      if (options.limit !== undefined) docs = docs.slice(0, options.limit);
-      return docs;
-    },
-    insertOne: async (doc) => {
-      store.set(doc["id"] as string, doc as unknown as AuditLogDoc);
-    },
-    insertMany: async () => {},
-    updateOne: async () => {},
-    updateMany: async () => ({ modifiedCount: 0 }),
-    deleteOne: async () => {},
-    deleteMany: async () => ({ deletedCount: 0 }),
-    countDocuments: async (filter = {}) => {
-      return Array.from(store.values()).filter((d) => matchesStubFilter(d, filter)).length;
-    },
-    createIndex: async () => {},
-  };
-
-  return {
-    connect: async () => {},
-    disconnect: async () => {},
-    isAlive: async () => true,
-    collection: <T extends Record<string, unknown>>(): ICollection<T> =>
-      collection as unknown as ICollection<T>,
-  };
-}
 
 describe("AuditLogRepository", () => {
   it("creates and paginates audit log entries", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new AuditLogRepository(db);
 
     const doc1 = await repo.create({
@@ -110,7 +32,7 @@ describe("AuditLogRepository", () => {
   });
 
   it("filters audit logs by query including colon prefixes and synthesized tool badges", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new AuditLogRepository(db);
 
     await repo.create({
@@ -164,7 +86,7 @@ describe("AuditLogRepository", () => {
   });
 
   it("filters audit logs via AuditLogSearchContext for resolved actor IDs and token IDs", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new AuditLogRepository(db);
 
     await repo.create({
@@ -202,7 +124,7 @@ describe("AuditLogRepository", () => {
   });
 
   it("filters audit logs by timestamp and formatted date in client timezone", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new AuditLogRepository(db);
 
     const doc = await repo.create({
@@ -213,7 +135,11 @@ describe("AuditLogRepository", () => {
 
     // Manually set createdAt to a known UTC timestamp: 2026-10-18T21:44:00.000Z
     // In Europe/Istanbul (UTC+3), this is Oct 19, 2026, 12:44 AM (or 00:44 in 24h)
-    doc.createdAt = new Date("2026-10-18T21:44:00.000Z");
+    const knownDate = new Date("2026-10-18T21:44:00.000Z");
+    doc.createdAt = knownDate;
+    await db
+      .collection("cms_audit_log")
+      .updateOne({ id: doc.id }, { $set: { createdAt: knownDate } });
 
     const tzContext = {
       timeZone: "Europe/Istanbul",
@@ -238,7 +164,7 @@ describe("AuditLogRepository", () => {
   });
 
   it("filters audit logs using DB-level structured filter options", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new AuditLogRepository(db);
 
     const docUser = await repo.create({

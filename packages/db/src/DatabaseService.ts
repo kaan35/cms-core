@@ -1,10 +1,11 @@
-import type {
-  CreateIndexOptions,
-  FindOptions,
-  ICollection,
-  IDatabase,
-  ILogger,
-  UpdateOptions,
+import {
+  DuplicateKeyError,
+  type CreateIndexOptions,
+  type FindOptions,
+  type ICollection,
+  type IDatabase,
+  type ILogger,
+  type UpdateOptions,
 } from "@cms/core";
 import {
   MongoClient,
@@ -22,6 +23,15 @@ class MongoCollectionAdapter<T extends Record<string, unknown>> implements IColl
 
   constructor(col: Collection<Document>) {
     this.col = col;
+  }
+
+  private handleMongoError(err: unknown): never {
+    const e = err as { code?: number; keyPattern?: Record<string, unknown> };
+    if (e && e.code === 11000) {
+      const field = e.keyPattern ? Object.keys(e.keyPattern)[0] : undefined;
+      throw new DuplicateKeyError(field);
+    }
+    throw err;
   }
 
   async findOne(filter: Record<string, unknown>): Promise<T | null> {
@@ -43,12 +53,20 @@ class MongoCollectionAdapter<T extends Record<string, unknown>> implements IColl
   }
 
   async insertOne(doc: Record<string, unknown>): Promise<void> {
-    await this.col.insertOne(doc);
+    try {
+      await this.col.insertOne({ ...doc } as Document);
+    } catch (err: unknown) {
+      this.handleMongoError(err);
+    }
   }
 
   async insertMany(docs: Record<string, unknown>[]): Promise<void> {
     if (docs.length === 0) return;
-    await this.col.insertMany(docs as Document[]);
+    try {
+      await this.col.insertMany(docs.map((d) => ({ ...d })) as Document[]);
+    } catch (err: unknown) {
+      this.handleMongoError(err);
+    }
   }
 
   async updateOne(
@@ -56,9 +74,13 @@ class MongoCollectionAdapter<T extends Record<string, unknown>> implements IColl
     update: Record<string, unknown>,
     options: UpdateOptions = {},
   ): Promise<void> {
-    await this.col.updateOne(filter as Filter<Document>, update, {
-      upsert: options.upsert ?? false,
-    });
+    try {
+      await this.col.updateOne(filter as Filter<Document>, update, {
+        upsert: options.upsert ?? false,
+      });
+    } catch (err: unknown) {
+      this.handleMongoError(err);
+    }
   }
 
   async updateMany(
@@ -66,10 +88,14 @@ class MongoCollectionAdapter<T extends Record<string, unknown>> implements IColl
     update: Record<string, unknown>,
     options: UpdateOptions = {},
   ): Promise<{ modifiedCount: number }> {
-    const res = await this.col.updateMany(filter as Filter<Document>, update, {
-      upsert: options.upsert ?? false,
-    });
-    return { modifiedCount: res.modifiedCount };
+    try {
+      const res = await this.col.updateMany(filter as Filter<Document>, update, {
+        upsert: options.upsert ?? false,
+      });
+      return { modifiedCount: res.modifiedCount };
+    } catch (err: unknown) {
+      this.handleMongoError(err);
+    }
   }
 
   async deleteOne(filter: Record<string, unknown>): Promise<void> {

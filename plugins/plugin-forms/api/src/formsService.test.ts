@@ -1,5 +1,5 @@
-import { HookManager, ValidationError, stubLogger, type ICache } from "@cms/core";
-import { createInMemoryDb } from "@cms/db";
+import { HookManager, ValidationError, stubLogger } from "@cms/core";
+import { createInMemoryCache, createInMemoryDb } from "@cms/core/testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { generateChallenge } from "./captcha/challengeProvider.js";
@@ -9,35 +9,6 @@ import { FormsService } from "./formsService.js";
 import { FormsRepository } from "./repositories/formsRepository.js";
 
 const TEST_CAPTCHA_SECRET = "test-captcha-secret-key-32-chars-minimum";
-
-function createMockCache(): ICache {
-  const store = new Map<string, string>();
-  return {
-    get: async (key: string) => store.get(key) ?? null,
-    set: async (key: string, value: string) => {
-      store.set(key, value);
-    },
-    del: async (...keys: string[]) => {
-      for (const k of keys) store.delete(k);
-    },
-    isAlive: async () => true,
-    quit: async () => {},
-    getJson: async <T>(key: string) => {
-      const v = store.get(key);
-      return v ? (JSON.parse(v) as T) : null;
-    },
-    setJson: async (key: string, value: unknown) => {
-      store.set(key, JSON.stringify(value));
-    },
-    getOrSet: async <T>(key: string, factory: () => Promise<T>) => {
-      const v = store.get(key);
-      if (v) return JSON.parse(v) as T;
-      const res = await factory();
-      store.set(key, JSON.stringify(res));
-      return res;
-    },
-  };
-}
 
 describe("FormsService", () => {
   it("submits form successfully with valid challenge captcha and emits form.submitted", async () => {
@@ -276,7 +247,7 @@ describe("FormsService", () => {
     const repo = new FormsRepository(db);
     const registry = new CaptchaRegistry(TEST_CAPTCHA_SECRET);
     const hooks = new HookManager();
-    const cache = createMockCache();
+    const cache = createInMemoryCache();
     const service = new FormsService(repo, registry, hooks, stubLogger, cache);
 
     const form = await service.createForm({

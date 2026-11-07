@@ -1,5 +1,5 @@
 import { RedirectsService, stubLogger } from "@cms/core";
-import { createInMemoryDb } from "@cms/db";
+import { createInMemoryDb } from "@cms/core/testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BlogPostsRepository } from "./blogPostsRepository.js";

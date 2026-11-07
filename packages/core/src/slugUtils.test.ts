@@ -2,89 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { ValidationError } from "./errors/AppError.js";
 import { assertUniqueSlug, generateSlug, searchPaginated } from "./slugUtils.js";
-import type { ICollection } from "./types/IDatabase.js";
-
-function makeMockCollection<T extends Record<string, unknown>>(
-  initialDocs: T[] = [],
-): ICollection<T> {
-  const docs = [...initialDocs];
-
-  return {
-    async insertOne(doc: Record<string, unknown>): Promise<void> {
-      docs.push(structuredClone(doc as T));
-    },
-    async insertMany(): Promise<void> {},
-    async findOne(filter: Record<string, unknown>): Promise<T | null> {
-      const match = docs.find((d) => Object.entries(filter).every(([k, v]) => d[k] === v));
-      return match ? structuredClone(match) : null;
-    },
-    async find(
-      filter: Record<string, unknown> = {},
-      options?: { skip?: number; limit?: number },
-    ): Promise<T[]> {
-      const matches = (d: T, f: Record<string, unknown>): boolean => {
-        return Object.entries(f).every(([k, v]) => {
-          if (k === "$or" && Array.isArray(v)) {
-            return v.some((sub) => matches(d, sub as Record<string, unknown>));
-          }
-          if (k === "$text" && typeof v === "object" && v !== null) {
-            const search = String((v as { $search: string }).$search).toLowerCase();
-            return Object.values(d).some(
-              (val) => typeof val === "string" && val.toLowerCase().includes(search),
-            );
-          }
-          if (v && typeof v === "object" && "$regex" in v) {
-            const reg = new RegExp(
-              (v as { $regex: string }).$regex,
-              (v as { $options?: string }).$options || "",
-            );
-            return typeof d[k] === "string" && reg.test(d[k] as string);
-          }
-          return d[k] === v;
-        });
-      };
-
-      let res = docs.filter((d) => matches(d, filter));
-      if (options?.skip) res = res.slice(options.skip);
-      if (options?.limit) res = res.slice(0, options.limit);
-      return res.map((d) => structuredClone(d));
-    },
-    async updateOne(): Promise<void> {},
-    async updateMany(): Promise<{ modifiedCount: number }> {
-      return { modifiedCount: 0 };
-    },
-    async deleteOne(): Promise<void> {},
-    async deleteMany(): Promise<{ deletedCount: number }> {
-      return { deletedCount: 0 };
-    },
-    async countDocuments(filter: Record<string, unknown> = {}): Promise<number> {
-      const matches = (d: T, f: Record<string, unknown>): boolean => {
-        return Object.entries(f).every(([k, v]) => {
-          if (k === "$or" && Array.isArray(v)) {
-            return v.some((sub) => matches(d, sub as Record<string, unknown>));
-          }
-          if (k === "$text" && typeof v === "object" && v !== null) {
-            const search = String((v as { $search: string }).$search).toLowerCase();
-            return Object.values(d).some(
-              (val) => typeof val === "string" && val.toLowerCase().includes(search),
-            );
-          }
-          if (v && typeof v === "object" && "$regex" in v) {
-            const reg = new RegExp(
-              (v as { $regex: string }).$regex,
-              (v as { $options?: string }).$options || "",
-            );
-            return typeof d[k] === "string" && reg.test(d[k] as string);
-          }
-          return d[k] === v;
-        });
-      };
-
-      return docs.filter((d) => matches(d, filter)).length;
-    },
-    async createIndex(): Promise<void> {},
-  };
-}
+import { InMemoryCollection } from "./testing/index.js";
 
 describe("slugUtils", () => {
   it("generateSlug converts text, handles Turkish characters and cleans dashes", () => {
@@ -96,18 +14,18 @@ describe("slugUtils", () => {
   });
 
   it("assertUniqueSlug passes when slug is unused or matches excludeId", async () => {
-    const col = makeMockCollection([{ id: "page-1", slug: "about-us" }]);
+    const col = new InMemoryCollection([{ id: "page-1", slug: "about-us" }]);
     await assert.doesNotThrow(() => assertUniqueSlug(col, "contact-us"));
     await assert.doesNotThrow(() => assertUniqueSlug(col, "about-us", "page-1"));
   });
 
   it("assertUniqueSlug throws ValidationError when slug is taken by another record", async () => {
-    const col = makeMockCollection([{ id: "page-1", slug: "about-us" }]);
+    const col = new InMemoryCollection([{ id: "page-1", slug: "about-us" }]);
     await assert.rejects(() => assertUniqueSlug(col, "about-us", "page-2"), ValidationError);
   });
 
   it("searchPaginated returns paginated search results", async () => {
-    const col = makeMockCollection([
+    const col = new InMemoryCollection([
       { id: "1", title: "About Company", status: "published" },
       { id: "2", title: "Products & Pricing", status: "published" },
       { id: "3", title: "Privacy Policy", status: "published" },

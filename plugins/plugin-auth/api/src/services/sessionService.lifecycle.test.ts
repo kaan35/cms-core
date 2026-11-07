@@ -6,7 +6,7 @@ import {
   UnauthorizedError,
   stubLogger,
 } from "@cms/core";
-import { createInMemoryDb } from "@cms/db";
+import { createInMemoryDb } from "@cms/core/testing";
 import jwt from "jsonwebtoken";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";

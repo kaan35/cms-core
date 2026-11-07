@@ -275,6 +275,7 @@ export async function registerAuthPlugin(
     logger,
     saltRounds,
     apiTokensRepo,
+    services.cache,
   );
   const roleService = new RoleService(rolesRepo, usersRepo, hooks, logger);
 

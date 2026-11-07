@@ -1,73 +1,11 @@
-import type { ICollection, IDatabase } from "@cms/core";
+import { createInMemoryDb } from "@cms/core/testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { SessionDoc } from "./sessionsRepository.js";
 import { SessionsRepository } from "./sessionsRepository.js";
-
-function makeStubDb(): IDatabase {
-  const store = new Map<string, SessionDoc>();
-  const collection: ICollection<SessionDoc> = {
-    findOne: async (filter) => {
-      for (const doc of store.values()) {
-        if (filter["id"] && doc.id === filter["id"]) return doc;
-      }
-      return null;
-    },
-    find: async (filter) => {
-      let all = Array.from(store.values());
-      if (filter && filter["userId"]) all = all.filter((s) => s.userId === filter["userId"]);
-      if (filter && filter["status"]) all = all.filter((s) => s.status === filter["status"]);
-      return all;
-    },
-    insertOne: async (doc) => {
-      store.set(doc["id"] as string, doc as unknown as SessionDoc);
-    },
-    insertMany: async () => {},
-    updateOne: async (filter, update) => {
-      const doc = store.get(filter["id"] as string);
-      if (doc && update["$set"]) Object.assign(doc, update["$set"]);
-    },
-    updateMany: async (filter, update) => {
-      let modifiedCount = 0;
-      for (const doc of store.values()) {
-        let match = true;
-        if (filter["userId"] && doc.userId !== filter["userId"]) match = false;
-        if (filter["status"] && doc.status !== filter["status"]) match = false;
-        if (match) {
-          if (update["$set"]) Object.assign(doc, update["$set"]);
-          modifiedCount++;
-        }
-      }
-      return { modifiedCount };
-    },
-    deleteOne: async (filter) => {
-      if (filter["id"]) {
-        store.delete(filter["id"] as string);
-      } else if (filter["userId"]) {
-        for (const [k, v] of store.entries()) {
-          if (v.userId === filter["userId"]) store.delete(k);
-        }
-      } else {
-        store.clear();
-      }
-    },
-    deleteMany: async () => ({ deletedCount: 0 }),
-    countDocuments: async () => store.size,
-    createIndex: async () => {},
-  };
-
-  return {
-    connect: async () => {},
-    disconnect: async () => {},
-    isAlive: async () => true,
-    collection: <T extends Record<string, unknown>>(): ICollection<T> =>
-      collection as unknown as ICollection<T>,
-  };
-}
 
 describe("SessionsRepository", () => {
   it("manages session lifecycle with soft-revocation: create, find, slide, revoke, and history", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new SessionsRepository(db);
 
     const s1 = await repo.create({ userId: "u1", expiresAt: new Date(Date.now() + 10000) });
@@ -78,7 +16,7 @@ describe("SessionsRepository", () => {
     assert.equal(s1.refreshCount, 0);
     assert.ok(s1.lastActiveAt);
 
-    assert.equal(await repo.findById(s1.id), s1);
+    assert.deepEqual(await repo.findById(s1.id), s1);
     assert.equal((await repo.findByUserId("u1")).length, 2);
 
     // Slide session

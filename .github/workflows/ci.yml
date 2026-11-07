@@ -33,3 +33,51 @@ jobs:
 
       - name: Run CI Validation (Build, Typecheck, Lint, Test)
         run: npm run ci
+
+  integration:
+    name: Port Contract & Integration Tests
+    needs: validate
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:8
+        ports:
+          - 27019:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:8
+        ports:
+          - 6381:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js (Node 26)
+        uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Integration Tests
+        env:
+          TEST_MONGO_PORT: "27019"
+          TEST_REDIS_PORT: "6381"
+          TEST_MONGO_URL: "mongodb://127.0.0.1:27019/cms_test"
+          TEST_REDIS_URL: "redis://127.0.0.1:6381"
+        run: npm run test:integration
+

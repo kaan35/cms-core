@@ -1,18 +1,42 @@
-import type { ICollection, IDatabase, UpdateOptions } from "@cms/core";
+import { DuplicateKeyError } from "../errors/AppError.js";
+import type {
+  CreateIndexOptions,
+  FindOptions,
+  ICollection,
+  IDatabase,
+  UpdateOptions,
+} from "../index.js";
 
 export class InMemoryCollection<T extends Record<string, unknown>> implements ICollection<T> {
   private readonly docs: T[] = [];
+  private readonly uniqueIndexes = new Set<string>();
 
   constructor(initialDocs: T[] = []) {
     this.docs = initialDocs.map((d) => structuredClone(d));
   }
 
+  private checkUniqueConstraints(doc: Record<string, unknown>, excludeIndex = -1): void {
+    for (const field of this.uniqueIndexes) {
+      const val = this.getProp(doc as T, field);
+      if (val === undefined || val === null) continue;
+      for (let i = 0; i < this.docs.length; i++) {
+        if (i === excludeIndex) continue;
+        const otherVal = this.getProp(this.docs[i]!, field);
+        if (otherVal === val) {
+          throw new DuplicateKeyError(field);
+        }
+      }
+    }
+  }
+
   async insertOne(doc: Record<string, unknown>): Promise<void> {
+    this.checkUniqueConstraints(doc);
     this.docs.push(structuredClone(doc as T));
   }
 
   async insertMany(docs: Record<string, unknown>[]): Promise<void> {
     for (const doc of docs) {
+      this.checkUniqueConstraints(doc);
       this.docs.push(structuredClone(doc as T));
     }
   }
@@ -22,25 +46,36 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
     return match ? structuredClone(match) : null;
   }
 
-  async find(
-    filter: Record<string, unknown> = {},
-    options?: { skip?: number; limit?: number; sort?: Record<string, 1 | -1> },
-  ): Promise<T[]> {
+  async find(filter: Record<string, unknown> = {}, options?: FindOptions): Promise<T[]> {
     let res = this.docs.filter((d) => this.matchDoc(d, filter));
 
     if (options?.sort) {
-      const [sortKey, sortOrder] = Object.entries(options.sort)[0] ?? [];
-      if (sortKey && sortOrder !== undefined) {
-        res.sort((a, b) => {
-          const valA = a[sortKey];
-          const valB = b[sortKey];
-          if (valA === valB) return 0;
+      const sortEntries = Object.entries(options.sort);
+      res.sort((a, b) => {
+        for (const [sortKey, sortOrder] of sortEntries) {
+          const valA = this.getProp(a, sortKey);
+          const valB = this.getProp(b, sortKey);
+          if (valA === valB) continue;
           if (valA === undefined || valA === null) return 1;
           if (valB === undefined || valB === null) return -1;
-          const cmp = String(valA) > String(valB) ? 1 : -1;
-          return sortOrder === -1 ? -cmp : cmp;
-        });
-      }
+          let cmp: number;
+          if (typeof valA === "number" && typeof valB === "number") {
+            cmp = valA - valB;
+          } else if (valA instanceof Date && valB instanceof Date) {
+            cmp = valA.getTime() - valB.getTime();
+          } else if (valA instanceof Date || valB instanceof Date) {
+            const tA = valA instanceof Date ? valA.getTime() : new Date(valA as string).getTime();
+            const tB = valB instanceof Date ? valB.getTime() : new Date(valB as string).getTime();
+            cmp = tA - tB;
+          } else {
+            cmp = String(valA).localeCompare(String(valB));
+          }
+          if (cmp !== 0) {
+            return sortOrder === -1 ? -cmp : cmp;
+          }
+        }
+        return 0;
+      });
     }
 
     if (options?.skip) {
@@ -60,16 +95,18 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
   ): Promise<void> {
     const idx = this.docs.findIndex((d) => this.matchDoc(d, filter));
     if (idx !== -1) {
-      if (update["$set"] && typeof update["$set"] === "object") {
-        this.docs[idx] = { ...this.docs[idx]!, ...update["$set"] };
-      } else {
-        this.docs[idx] = { ...this.docs[idx]!, ...update };
-      }
+      const updated =
+        update["$set"] && typeof update["$set"] === "object"
+          ? { ...this.docs[idx]!, ...update["$set"] }
+          : { ...this.docs[idx]!, ...update };
+      this.checkUniqueConstraints(updated, idx);
+      this.docs[idx] = updated as T;
     } else if (options?.upsert) {
       const newDoc =
         update["$set"] && typeof update["$set"] === "object"
           ? { ...filter, ...update["$set"] }
           : { ...filter, ...update };
+      this.checkUniqueConstraints(newDoc);
       this.docs.push(newDoc as T);
     }
   }
@@ -82,11 +119,12 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
     let modifiedCount = 0;
     for (let i = 0; i < this.docs.length; i++) {
       if (this.matchDoc(this.docs[i]!, filter)) {
-        if (update["$set"] && typeof update["$set"] === "object") {
-          this.docs[i] = { ...this.docs[i]!, ...update["$set"] };
-        } else {
-          this.docs[i] = { ...this.docs[i]!, ...update };
-        }
+        const updated =
+          update["$set"] && typeof update["$set"] === "object"
+            ? { ...this.docs[i]!, ...update["$set"] }
+            : { ...this.docs[i]!, ...update };
+        this.checkUniqueConstraints(updated, i);
+        this.docs[i] = updated as T;
         modifiedCount++;
       }
     }
@@ -95,6 +133,7 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
         update["$set"] && typeof update["$set"] === "object"
           ? { ...filter, ...update["$set"] }
           : { ...filter, ...update };
+      this.checkUniqueConstraints(newDoc);
       this.docs.push(newDoc as T);
       modifiedCount = 1;
     }
@@ -120,7 +159,13 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
     return this.docs.filter((d) => this.matchDoc(d, filter)).length;
   }
 
-  async createIndex(): Promise<void> {}
+  async createIndex(spec: Record<string, unknown>, options?: CreateIndexOptions): Promise<void> {
+    if (options?.unique) {
+      for (const field of Object.keys(spec)) {
+        this.uniqueIndexes.add(field);
+      }
+    }
+  }
 
   private getProp(doc: T, key: string): unknown {
     if (key in doc) return doc[key];
@@ -141,6 +186,12 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
       return true;
     }
 
+    for (const key of Object.keys(filter)) {
+      if (key.startsWith("$") && key !== "$and" && key !== "$or" && key !== "$text") {
+        throw new Error(`Unsupported operator: ${key}`);
+      }
+    }
+
     return Object.entries(filter).every(([key, value]) => {
       if (key === "$and" && Array.isArray(value)) {
         return value.every((subFilter) => this.matchDoc(doc, subFilter as Record<string, unknown>));
@@ -156,17 +207,35 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
       }
       if (value && typeof value === "object" && !(value instanceof Date) && !Array.isArray(value)) {
         const ops = value as Record<string, unknown>;
-        const knownOps = ["$exists", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$regex", "$text"];
-        const hasKnownOp = Object.keys(ops).some((k) => knownOps.includes(k));
-        if (hasKnownOp) {
-          const val = this.getProp(doc, key);
+        const opKeys = Object.keys(ops);
+        const hasDollarKey = opKeys.some((k) => k.startsWith("$"));
+        if (hasDollarKey) {
+          const knownOps = [
+            "$exists",
+            "$ne",
+            "$gt",
+            "$gte",
+            "$lt",
+            "$lte",
+            "$in",
+            "$regex",
+            "$text",
+            "$options",
+          ];
+          for (const opKey of opKeys) {
+            if (opKey.startsWith("$") && !knownOps.includes(opKey)) {
+              throw new Error(`Unsupported operator: ${opKey}`);
+            }
+          }
           if ("$exists" in ops) {
             const existsTarget = Boolean(ops["$exists"]);
+            const val = this.getProp(doc, key);
             const doesExist = val !== undefined;
             if (doesExist !== existsTarget) return false;
           }
           if ("$ne" in ops) {
             const neTarget = ops["$ne"];
+            const val = this.getProp(doc, key);
             if (neTarget === null) {
               if (val === null || val === undefined) return false;
             } else if (val === neTarget) {
@@ -174,6 +243,7 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
             }
           }
           if ("$gt" in ops || "$gte" in ops) {
+            const val = this.getProp(doc, key);
             if (val == null) return false;
             const target = "$gt" in ops ? ops["$gt"] : ops["$gte"];
             const isGte = "$gte" in ops;
@@ -186,11 +256,13 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
             } else {
               if (
                 isGte ? (val as number) < (target as number) : (val as number) <= (target as number)
-              )
+              ) {
                 return false;
+              }
             }
           }
           if ("$lt" in ops || "$lte" in ops) {
+            const val = this.getProp(doc, key);
             if (val == null) return false;
             const target = "$lt" in ops ? ops["$lt"] : ops["$lte"];
             const isLte = "$lte" in ops;
@@ -203,14 +275,22 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
             } else {
               if (
                 isLte ? (val as number) > (target as number) : (val as number) >= (target as number)
-              )
+              ) {
                 return false;
+              }
             }
           }
           if ("$in" in ops && Array.isArray(ops["$in"])) {
-            if (!ops["$in"].includes(val)) return false;
+            const val = this.getProp(doc, key);
+            const inList = ops["$in"] as unknown[];
+            if (Array.isArray(val)) {
+              if (!val.some((item) => inList.includes(item))) return false;
+            } else {
+              if (!inList.includes(val)) return false;
+            }
           }
           if ("$regex" in ops && typeof ops["$regex"] === "string") {
+            const val = this.getProp(doc, key);
             const pattern = ops["$regex"];
             const options = (ops["$options"] as string) || "";
             const reg = new RegExp(pattern, options);
@@ -229,7 +309,14 @@ export class InMemoryCollection<T extends Record<string, unknown>> implements IC
         const val = this.getProp(doc, key);
         return val === null || val === undefined;
       }
-      return this.getProp(doc, key) === value;
+      const val = this.getProp(doc, key);
+      if (Array.isArray(val) && !Array.isArray(value)) {
+        return val.includes(value);
+      }
+      if (val instanceof Date && value instanceof Date) {
+        return val.getTime() === value.getTime();
+      }
+      return val === value;
     });
   }
 }

@@ -1,109 +1,16 @@
-import type { ICache, ICollection, IDatabase } from "@cms/core";
+import type { ICache } from "@cms/core";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "@cms/core";
+import { createInMemoryCache, createInMemoryDb } from "@cms/core/testing";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { describe, it } from "node:test";
-import type { ApiTokenDoc } from "./repositories/apiTokensRepository.js";
 import { ApiTokensRepository } from "./repositories/apiTokensRepository.js";
 import { ApiTokenService } from "./services/ApiTokenService.js";
 import { deriveTokenKey } from "./services/tokenCipher.js";
 
-function makeStubDb(): IDatabase {
-  const store = new Map<string, ApiTokenDoc>();
-  const collection: ICollection<ApiTokenDoc> = {
-    findOne: async (filter) => {
-      if (filter["id"]) return store.get(filter["id"] as string) ?? null;
-      if (filter["tokenHash"]) {
-        for (const doc of store.values()) {
-          if (doc.tokenHash === filter["tokenHash"]) return doc;
-        }
-      }
-      return null;
-    },
-    find: async (filter) => {
-      const all = Array.from(store.values());
-      if (filter && filter["userId"]) {
-        return all.filter((t) => t.userId === filter["userId"]);
-      }
-      return all;
-    },
-    insertOne: async (doc) => {
-      store.set(doc["id"] as string, doc as unknown as ApiTokenDoc);
-    },
-    insertMany: async () => {},
-    updateOne: async (filter, update) => {
-      const doc = store.get(filter["id"] as string);
-      if (doc && update["$set"]) {
-        Object.assign(doc, update["$set"]);
-      }
-    },
-    updateMany: async (filter, update) => {
-      let modifiedCount = 0;
-      for (const doc of store.values()) {
-        let match = true;
-        if (filter["userId"] && doc.userId !== filter["userId"]) match = false;
-        if (filter["revokedAt"] === null && doc.revokedAt != null) match = false;
-        if (match) {
-          if (update["$set"]) {
-            Object.assign(doc, update["$set"]);
-          }
-          modifiedCount++;
-        }
-      }
-      return { modifiedCount };
-    },
-    deleteOne: async (filter) => {
-      if (filter["id"]) {
-        store.delete(filter["id"] as string);
-      } else if (filter["userId"]) {
-        for (const [k, v] of store.entries()) {
-          if (v.userId === filter["userId"]) store.delete(k);
-        }
-      } else {
-        store.clear();
-      }
-    },
-    deleteMany: async (filter) => {
-      let deletedCount = 0;
-      if (filter["userId"]) {
-        for (const [k, v] of store.entries()) {
-          if (v.userId === filter["userId"]) {
-            store.delete(k);
-            deletedCount++;
-          }
-        }
-      } else {
-        deletedCount = store.size;
-        store.clear();
-      }
-      return { deletedCount };
-    },
-    countDocuments: async (filter = {}) => {
-      let count = 0;
-      for (const doc of store.values()) {
-        let match = true;
-        if (filter["userId"] && doc.userId !== filter["userId"]) match = false;
-        if (filter["scopes"] && !doc.scopes?.includes(filter["scopes"] as string)) match = false;
-        if (filter["lastUsedAt"] && !doc.lastUsedAt) match = false;
-        if (match) count++;
-      }
-      return count;
-    },
-    createIndex: async () => {},
-  };
-
-  return {
-    connect: async () => {},
-    disconnect: async () => {},
-    isAlive: async () => true,
-    collection: <T extends Record<string, unknown>>(): ICollection<T> =>
-      collection as unknown as ICollection<T>,
-  };
-}
-
 describe("ApiTokenService", () => {
   it("generates a valid API token and stores SHA-256 hash at rest", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -132,7 +39,7 @@ describe("ApiTokenService", () => {
   });
 
   it("sets expiration date when expiresInDays is provided", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -143,7 +50,7 @@ describe("ApiTokenService", () => {
   });
 
   it("validates a legitimate token and asynchronously updates lastUsedAt", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -161,7 +68,7 @@ describe("ApiTokenService", () => {
   });
 
   it("rejects non-existent or invalid tokens with UnauthorizedError", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -172,7 +79,7 @@ describe("ApiTokenService", () => {
   });
 
   it("rejects expired tokens with UnauthorizedError", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -188,7 +95,7 @@ describe("ApiTokenService", () => {
   });
 
   it("rejects revoked tokens with UnauthorizedError", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -204,7 +111,7 @@ describe("ApiTokenService", () => {
   });
 
   it("revokes all tokens for a user via revokeByUserId and rejects validation", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -220,7 +127,7 @@ describe("ApiTokenService", () => {
   });
 
   it("deletes all tokens for a user via deleteByUserId", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -237,7 +144,7 @@ describe("ApiTokenService", () => {
   });
 
   it("lists user tokens without exposing tokenHash", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -254,7 +161,7 @@ describe("ApiTokenService", () => {
   });
 
   it("enforces IDOR checks on token revocation", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -312,7 +219,7 @@ describe("ApiTokenService", () => {
   });
 
   it("encrypts token at rest with AES-256-GCM and allows authorized reveal", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const key = deriveTokenKey("super-secret-jwt-key-minimum-32-chars-long");
     const service = new ApiTokenService(repo, key);
@@ -344,7 +251,7 @@ describe("ApiTokenService", () => {
   });
 
   it("enforces IDOR and permission checks on revealToken", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const key = deriveTokenKey("super-secret-jwt-key-minimum-32-chars-long");
     const service = new ApiTokenService(repo, key);
@@ -383,7 +290,7 @@ describe("ApiTokenService", () => {
   });
 
   it("throws error when attempting to reveal a legacy token without encrypted payload", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const key = deriveTokenKey("super-secret-jwt-key-minimum-32-chars-long");
     const unencryptedService = new ApiTokenService(repo);
@@ -401,7 +308,7 @@ describe("ApiTokenService", () => {
   });
 
   it("supports configurable project prefix (e.g. acme_tok_) and isApiToken detection", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const customService = new ApiTokenService(repo, undefined, "acme_tok_");
 
@@ -426,8 +333,7 @@ describe("ApiTokenService", () => {
   });
 
   it("supports status filtering (active, revoked, expired) and returns revokedAt in paginated list", async () => {
-    const { InMemoryDatabase } = await import("@cms/db");
-    const db = new InMemoryDatabase();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
     const service = new ApiTokenService(repo);
 
@@ -481,7 +387,7 @@ describe("ApiTokenService", () => {
   });
 
   it("caches validated tokens in distributed cache and invalidates on revokeToken", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
 
     const store = new Map<string, unknown>();
@@ -533,7 +439,7 @@ describe("ApiTokenService", () => {
   });
 
   it("adversarial audit: revokeToken fails closed immediately, rejects unauthorized callers, and forbids recursion", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
 
     const store = new Map<string, unknown>();
@@ -619,7 +525,7 @@ describe("ApiTokenService", () => {
   });
 
   it("ApiTokensRepository.getStats safely handles empty DB and returns accurate stats without null/undefined crashes", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new ApiTokensRepository(db);
 
     // 1. Empty database must safely return zeros
@@ -649,5 +555,49 @@ describe("ApiTokenService", () => {
     const populatedStats = await repo.getStats("user-stats-1");
     assert.strictEqual(populatedStats.total, 2);
     assert.strictEqual(populatedStats.fullAccessCount, 1);
+  });
+
+  it("bounds Redis cache TTL to token's remaining lifetime when expiresAt is sooner than default TTL", async () => {
+    let simulatedTime = 1_000_000_000_000;
+    const cache = createInMemoryCache(() => simulatedTime);
+    const db = createInMemoryDb();
+    const repo = new ApiTokensRepository(db);
+    const service = new ApiTokenService(repo, undefined, "cms_token_", cache);
+
+    const originalDateNow = Date.now;
+    Date.now = () => simulatedTime;
+
+    try {
+      const { rawToken, token } = await service.createToken(
+        "user-expiry-test",
+        "Short Lived Token",
+      );
+      const expiresAt = new Date(simulatedTime + 5_000);
+      await db.collection("cms_api_tokens").updateOne({ id: token.id }, { $set: { expiresAt } });
+
+      // Validate token at simulatedTime: succeeds, cached in cache
+      const validated = await service.validateToken(rawToken);
+      assert.strictEqual(validated.tokenId, token.id);
+
+      // Verify token is populated in cache
+      const cacheKey = `cms:auth:token:${token.tokenHash}`;
+      const cached = await cache.get(cacheKey);
+      assert.ok(cached, "Token must be cached after first validation");
+
+      // Advance simulatedTime += 6_000 (6 seconds later - token is now expired)
+      simulatedTime += 6_000;
+
+      // Call validateToken: MUST reject with UnauthorizedError ("Invalid or expired API token")
+      await assert.rejects(
+        async () => service.validateToken(rawToken),
+        (err: unknown) => {
+          assert.ok(err instanceof UnauthorizedError);
+          assert.strictEqual(err.message, "Invalid or expired API token");
+          return true;
+        },
+      );
+    } finally {
+      Date.now = originalDateNow;
+    }
   });
 });

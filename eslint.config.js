@@ -57,4 +57,55 @@ export default [
       "no-console": "off",
     },
   },
+  // 5. Test files protection: ban ad-hoc stubs and unauthorized test runners
+  {
+    files: ["**/*.test.{ts,js}", "**/*.integration.{ts,js}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            ":matches(FunctionDeclaration, VariableDeclarator)[id.name=/(stub|mock|fake).*(db|database|collection|cache)|(db|database|collection|cache).*(stub|mock|fake)/i]",
+          message:
+            "Use the shared port fakes from @cms/core/testing instead of defining ad-hoc stubs.",
+        },
+      ],
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            { name: "vitest", message: "Use native node:test." },
+            { name: "jest", message: "Use native node:test." },
+            {
+              name: "sinon",
+              message: "Mock only shared state through port fakes in @cms/core/testing.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // 6. Production code safety: ban importing @cms/core/testing in production code
+  {
+    files: [
+      "packages/*/src/**/*.{ts,js}",
+      "plugins/*/api/src/**/*.{ts,js}",
+      "api/src/**/*.{ts,js}",
+    ],
+    ignores: ["**/*.test.ts", "**/*.integration.ts", "packages/core/src/testing/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@cms/core/testing",
+              message:
+                "Test utilities from @cms/core/testing must not be imported in production code.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

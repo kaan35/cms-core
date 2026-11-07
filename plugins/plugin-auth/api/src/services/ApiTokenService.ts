@@ -190,6 +190,7 @@ export class ApiTokenService {
     scopes: string[];
   }> {
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const cacheKey = `cms:auth:token:${tokenHash}`;
 
     type ValidatedToken = {
       tokenId: string;
@@ -199,33 +200,40 @@ export class ApiTokenService {
       scopes: string[];
     };
 
-    const lookupAndValidate = async (): Promise<ValidatedToken> => {
-      const token = await this.tokensRepo.findByHash(tokenHash);
-
-      if (
-        !token ||
-        token.revokedAt ||
-        (token.expiresAt && token.expiresAt.getTime() <= Date.now())
-      ) {
-        throw new UnauthorizedError("Invalid or expired API token");
+    if (this.cache) {
+      const cached = await this.cache.getJson<ValidatedToken>(cacheKey);
+      if (cached) {
+        this.tokensRepo.updateLastUsedAt(cached.tokenId, new Date()).catch(() => {});
+        return cached;
       }
+    }
 
-      return {
-        tokenId: token.id,
-        tokenName: token.name,
-        tokenPrefix: token.tokenPrefix,
-        userId: token.userId,
-        scopes: token.scopes,
-      };
+    const token = await this.tokensRepo.findByHash(tokenHash);
+
+    if (!token || token.revokedAt || (token.expiresAt && token.expiresAt.getTime() <= Date.now())) {
+      throw new UnauthorizedError("Invalid or expired API token");
+    }
+
+    const tokenData: ValidatedToken = {
+      tokenId: token.id,
+      tokenName: token.name,
+      tokenPrefix: token.tokenPrefix,
+      userId: token.userId,
+      scopes: token.scopes,
     };
 
-    const tokenData = this.cache
-      ? await this.cache.getOrSet<ValidatedToken>(
-          `cms:auth:token:${tokenHash}`,
-          lookupAndValidate,
-          300,
-        )
-      : await lookupAndValidate();
+    if (this.cache) {
+      const defaultTtl = 300;
+      let ttl = defaultTtl;
+      if (token.expiresAt) {
+        const remainingSeconds = Math.max(
+          1,
+          Math.floor((token.expiresAt.getTime() - Date.now()) / 1000),
+        );
+        ttl = Math.min(defaultTtl, remainingSeconds);
+      }
+      await this.cache.setJson(cacheKey, tokenData, ttl);
+    }
 
     this.tokensRepo.updateLastUsedAt(tokenData.tokenId, new Date()).catch(() => {});
 

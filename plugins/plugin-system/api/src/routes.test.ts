@@ -1,150 +1,10 @@
-import type { HookManager, ICache, ICollection, IDatabase, PluginManifestEntry } from "@cms/core";
+import type { HookManager, ICache, PluginManifestEntry } from "@cms/core";
 import { createServer } from "@cms/core";
+import { createInMemoryDb } from "@cms/core/testing";
 import { initAuthMigration, registerAuthPlugin } from "@cms/plugin-auth-api";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { initSystemMigration, registerSystemPlugin } from "./index.js";
-
-function makeStubDb(): IDatabase {
-  const collections = new Map<string, Map<string, Record<string, unknown>>>();
-
-  function getColStore(name: string): Map<string, Record<string, unknown>> {
-    if (!collections.has(name)) {
-      collections.set(name, new Map());
-    }
-    return collections.get(name)!;
-  }
-
-  function matchesStubFilter(
-    doc: Record<string, unknown>,
-    filter: Record<string, unknown>,
-  ): boolean {
-    if (!filter || Object.keys(filter).length === 0) return true;
-
-    if ("$and" in filter && Array.isArray(filter["$and"])) {
-      return (filter["$and"] as Record<string, unknown>[]).every((c) => matchesStubFilter(doc, c));
-    }
-    if ("$or" in filter && Array.isArray(filter["$or"])) {
-      return (filter["$or"] as Record<string, unknown>[]).some((c) => matchesStubFilter(doc, c));
-    }
-
-    for (const [k, v] of Object.entries(filter)) {
-      if (k === "$or" || k === "$and") continue;
-
-      let val: unknown;
-      if (k.includes(".")) {
-        const parts = k.split(".");
-        val = parts.reduce((acc: unknown, part) => {
-          if (acc && typeof acc === "object") {
-            return (acc as Record<string, unknown>)[part];
-          }
-          return undefined;
-        }, doc);
-      } else {
-        val = doc[k];
-      }
-
-      if (
-        v &&
-        typeof v === "object" &&
-        "$in" in v &&
-        Array.isArray((v as { $in: unknown[] }).$in)
-      ) {
-        if (!(v as { $in: unknown[] }).$in.includes(val)) return false;
-      } else if (val !== v) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  const db: IDatabase = {
-    connect: async () => {},
-    disconnect: async () => {},
-    isAlive: async () => true,
-    collection: <T extends Record<string, unknown>>(name: string): ICollection<T> => {
-      const store = getColStore(name);
-
-      return {
-        findOne: async (filter: Record<string, unknown>) => {
-          for (const doc of store.values()) {
-            if (matchesStubFilter(doc, filter)) return { ...doc } as unknown as T;
-          }
-          return null;
-        },
-        find: async (
-          filter: Record<string, unknown> = {},
-          options: { skip?: number; limit?: number; sort?: Record<string, 1 | -1> } = {},
-        ) => {
-          let docs = Array.from(store.values()).filter((doc) => matchesStubFilter(doc, filter));
-          if (options.skip) docs = docs.slice(options.skip);
-          if (options.limit !== undefined) docs = docs.slice(0, options.limit);
-          return docs.map((d) => ({ ...d })) as unknown as T[];
-        },
-        insertOne: async (doc: Record<string, unknown>) => {
-          const id =
-            (doc["id"] as string) ||
-            (doc["key"] as string) ||
-            (doc["name"] as string) ||
-            String(store.size + 1);
-          store.set(id, { ...doc, id });
-        },
-        insertMany: async () => {},
-        updateOne: async (
-          filter: Record<string, unknown>,
-          update: Record<string, unknown>,
-          options = {},
-        ) => {
-          let targetId: string | null = null;
-          for (const [id, doc] of store.entries()) {
-            if (matchesStubFilter(doc, filter)) {
-              targetId = id;
-              break;
-            }
-          }
-
-          if (!targetId && options.upsert) {
-            targetId =
-              (filter["id"] as string) ||
-              (filter["key"] as string) ||
-              (filter["name"] as string) ||
-              String(store.size + 1);
-            store.set(targetId, { ...filter, id: targetId });
-          }
-
-          if (targetId) {
-            const existing = store.get(targetId)!;
-            if (update["$set"]) {
-              Object.assign(existing, update["$set"]);
-            } else {
-              Object.assign(existing, update);
-            }
-          }
-        },
-        updateMany: async () => ({ modifiedCount: 0 }),
-        deleteOne: async (filter: Record<string, unknown>) => {
-          if (Object.keys(filter).length === 0) {
-            store.clear();
-            return;
-          }
-          for (const [id, doc] of store.entries()) {
-            if (matchesStubFilter(doc, filter)) {
-              store.delete(id);
-              return;
-            }
-          }
-        },
-        deleteMany: async () => ({ deletedCount: 0 }),
-        countDocuments: async (filter: Record<string, unknown> = {}) => {
-          return Array.from(store.values()).filter((doc) => matchesStubFilter(doc, filter)).length;
-        },
-        createIndex: async () => {},
-      };
-    },
-  };
-
-  return db;
-}
 
 const stubCache: ICache = {
   get: async () => null,
@@ -158,7 +18,7 @@ const stubCache: ICache = {
 };
 
 async function setupTestApp() {
-  const db = makeStubDb();
+  const db = createInMemoryDb();
   const testManifest: PluginManifestEntry[] = [
     {
       name: "plugin-auth",

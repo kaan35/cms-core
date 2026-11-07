@@ -1,4 +1,4 @@
-import type { IHookManager, ILogger } from "@cms/core";
+import type { ICache, IHookManager, ILogger } from "@cms/core";
 import {
   ConflictError,
   EVENTS,
@@ -26,6 +26,7 @@ export class UserService {
   private readonly logger: ILogger;
   private readonly saltRounds: number;
   private readonly apiTokensRepo?: ApiTokensRepository | undefined;
+  private readonly cache?: ICache | undefined;
 
   constructor(
     usersRepo: UsersRepository,
@@ -35,6 +36,7 @@ export class UserService {
     logger: ILogger,
     saltRounds = 12,
     apiTokensRepo?: ApiTokensRepository,
+    cache?: ICache,
   ) {
     this.usersRepo = usersRepo;
     this.rolesRepo = rolesRepo;
@@ -43,6 +45,7 @@ export class UserService {
     this.logger = logger;
     this.saltRounds = saltRounds;
     this.apiTokensRepo = apiTokensRepo;
+    this.cache = cache;
   }
 
   async listUsers(
@@ -69,17 +72,13 @@ export class UserService {
       status: filter?.status,
       roleId,
     };
-    const [paginated, allRoles, globalTotal, activeCount] = await Promise.all([
+    const [paginated, allRoles] = await Promise.all([
       this.usersRepo.findPaginated(page, limit, repoFilter),
       this.rolesRepo.findAll(),
-      this.usersRepo.count(),
-      this.usersRepo.countFilter({ status: { $ne: "suspended" } }),
     ]);
     const { items, total } = paginated;
     const adminRole = allRoles.find((r) => r.name === "admin");
-    const adminCount = await this.usersRepo.countFilter(
-      adminRole ? { $or: [{ roleIds: adminRole.id }, { permissions: "*" }] } : { permissions: "*" },
-    );
+    const stats = await this.usersRepo.getStats(adminRole?.id);
 
     const roleMap = new Map(allRoles.map((r) => [r.id, r.name]));
 
@@ -97,11 +96,7 @@ export class UserService {
         createdAt: u.createdAt,
       };
     });
-    const stats = {
-      total: globalTotal,
-      adminCount,
-      activeCount,
-    };
+
     return buildPaginatedResult(sanitized, total, page, limit, stats);
   }
 
@@ -261,6 +256,18 @@ export class UserService {
 
     if (validated.status === "suspended") {
       await this.sessionsRepo.revokeByUserId(user.id, actorId, "user_suspended");
+      if (this.apiTokensRepo) {
+        const userTokens = await this.apiTokensRepo.findByUserId(user.id);
+        await this.apiTokensRepo.revokeByUserId(user.id, "user_suspended");
+        if (this.cache && userTokens.length > 0) {
+          const keys = userTokens
+            .filter((t) => t.tokenHash)
+            .map((t) => `cms:auth:token:${t.tokenHash}`);
+          if (keys.length > 0) {
+            await this.cache.del(...keys);
+          }
+        }
+      }
       await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, {
         userId: user.id,
         actorId,
@@ -316,7 +323,16 @@ export class UserService {
     await this.usersRepo.delete(id);
     await this.sessionsRepo.revokeByUserId(id, actorId, "admin_revoked");
     if (this.apiTokensRepo) {
+      const userTokens = await this.apiTokensRepo.findByUserId(id);
       await this.apiTokensRepo.revokeByUserId(id, "user_deleted");
+      if (this.cache && userTokens.length > 0) {
+        const keys = userTokens
+          .filter((t) => t.tokenHash)
+          .map((t) => `cms:auth:token:${t.tokenHash}`);
+        if (keys.length > 0) {
+          await this.cache.del(...keys);
+        }
+      }
     }
     await this.hooks.emit(EVENTS.AUTH.SESSION_REVOKED, {
       userId: id,

@@ -1,54 +1,11 @@
-import type { ICollection, IDatabase } from "@cms/core";
+import { createInMemoryDb } from "@cms/core/testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { UserDoc } from "./usersRepository.js";
 import { UsersRepository } from "./usersRepository.js";
-
-function makeStubDb(): IDatabase {
-  const store = new Map<string, UserDoc>();
-  const collection: ICollection<UserDoc> = {
-    findOne: async (filter) => {
-      for (const doc of store.values()) {
-        if (filter["email"] && doc.email === filter["email"]) return doc;
-        if (filter["id"] && doc.id === filter["id"]) return doc;
-      }
-      return null;
-    },
-    find: async (_filter, options = {}) => {
-      let docs = Array.from(store.values());
-      if (options.skip) docs = docs.slice(options.skip);
-      if (options.limit) docs = docs.slice(0, options.limit);
-      return docs;
-    },
-    insertOne: async (doc) => {
-      store.set(doc["id"] as string, doc as unknown as UserDoc);
-    },
-    insertMany: async () => {},
-    updateOne: async (filter, update) => {
-      const doc = store.get(filter["id"] as string);
-      if (doc && update["$set"]) Object.assign(doc, update["$set"]);
-    },
-    updateMany: async () => ({ modifiedCount: 0 }),
-    deleteOne: async (filter) => {
-      if (filter["id"]) store.delete(filter["id"] as string);
-    },
-    deleteMany: async () => ({ deletedCount: 0 }),
-    countDocuments: async () => store.size,
-    createIndex: async () => {},
-  };
-
-  return {
-    connect: async () => {},
-    disconnect: async () => {},
-    isAlive: async () => true,
-    collection: <T extends Record<string, unknown>>(): ICollection<T> =>
-      collection as unknown as ICollection<T>,
-  };
-}
 
 describe("UsersRepository", () => {
   it("creates, finds by email/id, counts and lists users", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new UsersRepository(db);
 
     assert.equal(await repo.count(), 0);
@@ -73,7 +30,7 @@ describe("UsersRepository", () => {
   });
 
   it("getStats safely handles empty DB and missing/null admin role gracefully", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new UsersRepository(db);
 
     // 1. Empty database must safely return zeros

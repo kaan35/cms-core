@@ -1,3 +1,4 @@
+import type { ICache } from "@cms/core";
 import {
   EVENTS,
   ForbiddenError,
@@ -7,7 +8,7 @@ import {
   ValidationError,
   stubLogger,
 } from "@cms/core";
-import { createInMemoryDb } from "@cms/db";
+import { createInMemoryCache, createInMemoryDb } from "@cms/core/testing";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -20,6 +21,7 @@ import {
 } from "../repositories/sessionsRepository.js";
 import { UsersRepository } from "../repositories/usersRepository.js";
 import { SessionService } from "../sessionService.js";
+import { ApiTokenService } from "./ApiTokenService.js";
 import { AuthService } from "./AuthService.js";
 import { UserService } from "./UserService.js";
 
@@ -35,10 +37,13 @@ interface TestContext {
   userService: UserService;
   authService: AuthService;
   authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  cache: ICache;
+  apiTokenService: ApiTokenService;
 }
 
-async function setupTestContext(): Promise<TestContext> {
+async function setupTestContext(options?: { cache?: ICache }): Promise<TestContext> {
   const db = createInMemoryDb();
+  const cache = options?.cache ?? createInMemoryCache();
   const usersRepo = new UsersRepository(db);
   const rolesRepo = new RolesRepository(db);
   const sessionsRepo = new SessionsRepository(db);
@@ -47,11 +52,12 @@ async function setupTestContext(): Promise<TestContext> {
   const hooks = new HookManager();
   const jwtSecret = "super-secure-jwt-secret-minimum-32-chars-long-here";
   const sessionService = new SessionService(sessionsRepo, jwtSecret, stubLogger, 24, 15);
+  const apiTokenService = new ApiTokenService(apiTokensRepo, undefined, "cms_token_", cache);
 
   await rolesRepo.create({ name: "admin", permissions: ["*"], isSystem: true });
   await rolesRepo.create({ name: "user", permissions: ["user:read"], isSystem: true });
 
-  const userService = new UserService(
+  const userService = new (UserService as unknown as new (...args: unknown[]) => UserService)(
     usersRepo,
     rolesRepo,
     sessionsRepo,
@@ -59,6 +65,7 @@ async function setupTestContext(): Promise<TestContext> {
     stubLogger,
     4,
     apiTokensRepo,
+    cache,
   );
 
   const authService = new AuthService(
@@ -88,6 +95,8 @@ async function setupTestContext(): Promise<TestContext> {
     userService,
     authService,
     authenticate,
+    cache,
+    apiTokenService,
   };
 }
 
@@ -566,6 +575,145 @@ describe("User Suspension Specifications and Adversarial QA Suite", () => {
       const revokedToken = await apiTokensRepo.findById(token.id);
       assert.ok(revokedToken?.revokedAt);
       assert.strictEqual(revokedToken?.revokeReason, "user_deleted");
+    });
+
+    it("suspending or deleting a user revokes their API tokens and evicts them from cache immediately", async () => {
+      const cache = createInMemoryCache();
+      const { userService, apiTokenService } = await setupTestContext({ cache });
+
+      // 1. Suspension Flow:
+      const suspendUser = await userService.createUser({
+        email: "suspend.tokens@example.com",
+        password: "Password123",
+      });
+
+      const { rawToken: suspendRawToken, token: suspendToken } = await apiTokenService.createToken(
+        suspendUser.id,
+        "Suspend Token",
+      );
+      const suspendCacheKey = `cms:auth:token:${suspendToken.tokenHash}`;
+
+      // Validate token so it is cached in cache
+      const validatedSuspend = await apiTokenService.validateToken(suspendRawToken);
+      assert.strictEqual(validatedSuspend.tokenId, suspendToken.id);
+
+      // Verify cache has cms:auth:token:${tokenHash}
+      const cachedBeforeSuspend = await cache.get(suspendCacheKey);
+      assert.ok(cachedBeforeSuspend, "Token must be cached in Redis cache before suspension");
+
+      // Suspend user
+      await userService.updateUser(suspendUser.id, { status: "suspended" });
+
+      // Verify calling apiTokenService.validateToken immediately throws UnauthorizedError
+      await assert.rejects(
+        async () => apiTokenService.validateToken(suspendRawToken),
+        (err: unknown) => {
+          assert.ok(err instanceof UnauthorizedError);
+          assert.strictEqual(err.message, "Invalid or expired API token");
+          return true;
+        },
+        "Suspended user token validation must fail closed with UnauthorizedError",
+      );
+
+      // Verify cache key cms:auth:token:${tokenHash} is evicted immediately
+      const cachedAfterSuspend = await cache.get(suspendCacheKey);
+      assert.strictEqual(
+        cachedAfterSuspend,
+        null,
+        "Token cache key must be evicted immediately upon user suspension",
+      );
+
+      // 2. Deletion Flow:
+      const deleteUser = await userService.createUser({
+        email: "delete.tokens.cache@example.com",
+        password: "Password123",
+      });
+
+      const { rawToken: deleteRawToken, token: deleteToken } = await apiTokenService.createToken(
+        deleteUser.id,
+        "Delete Token",
+      );
+      const deleteCacheKey = `cms:auth:token:${deleteToken.tokenHash}`;
+
+      // Validate token so it is cached in cache
+      const validatedDelete = await apiTokenService.validateToken(deleteRawToken);
+      assert.strictEqual(validatedDelete.tokenId, deleteToken.id);
+
+      // Verify cache has cms:auth:token:${tokenHash}
+      const cachedBeforeDelete = await cache.get(deleteCacheKey);
+      assert.ok(cachedBeforeDelete, "Token must be cached in Redis cache before deletion");
+
+      // Delete user
+      await userService.deleteUser(deleteUser.id, "admin-caller-id", "admin-caller-id");
+
+      // Verify calling apiTokenService.validateToken immediately throws UnauthorizedError
+      await assert.rejects(
+        async () => apiTokenService.validateToken(deleteRawToken),
+        (err: unknown) => {
+          assert.ok(err instanceof UnauthorizedError);
+          assert.strictEqual(err.message, "Invalid or expired API token");
+          return true;
+        },
+        "Deleted user token validation must fail closed with UnauthorizedError",
+      );
+
+      // Verify cache key cms:auth:token:${tokenHash} is evicted immediately
+      const cachedAfterDelete = await cache.get(deleteCacheKey);
+      assert.strictEqual(
+        cachedAfterDelete,
+        null,
+        "Token cache key must be evicted immediately upon user deletion",
+      );
+    });
+
+    it("UserService.listUsers computes global stats matching usersRepo.getStats", async () => {
+      const { userService, rolesRepo, usersRepo } = await setupTestContext();
+
+      const adminRole = await rolesRepo.findByName("admin");
+      assert.ok(adminRole);
+      const userRole = await rolesRepo.findByName("user");
+      assert.ok(userRole);
+
+      // Seed 3 users (1 admin, 1 active regular, 1 suspended)
+      await userService.createUser({
+        email: "admin.stats@example.com",
+        password: "Password123",
+        roleIds: [adminRole.id],
+        status: "active",
+      });
+      await userService.createUser({
+        email: "regular.stats@example.com",
+        password: "Password123",
+        roleIds: [userRole.id],
+        status: "active",
+      });
+      await userService.createUser({
+        email: "suspended.stats@example.com",
+        password: "Password123",
+        roleIds: [userRole.id],
+        status: "suspended",
+      });
+
+      // Track if usersRepo.getStats is called
+      let getStatsCalled = false;
+      const originalGetStats = usersRepo.getStats.bind(usersRepo);
+      usersRepo.getStats = async (adminRoleId?: string) => {
+        getStatsCalled = true;
+        return originalGetStats(adminRoleId);
+      };
+
+      const result = await userService.listUsers(1, 20);
+
+      // Assert result.stats has { total: 3, activeCount: 2, adminCount: 1 }
+      assert.deepStrictEqual(result.stats, { total: 3, activeCount: 2, adminCount: 1 });
+
+      // Assert result.items.length === 3
+      const items = result.data ?? (result as unknown as { items: unknown[] }).items;
+      assert.strictEqual(items.length, 3);
+      assert.strictEqual(result.data.length, 3);
+
+      // Verify usersRepo.getStats was leveraged
+      assert.strictEqual(getStatsCalled, true, "UserService.listUsers must use usersRepo.getStats");
     });
   });
 });

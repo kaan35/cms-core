@@ -33,3 +33,14 @@ export class ConflictError extends AppError {
   readonly statusCode = 409;
   readonly code = "CONFLICT";
 }
+
+export class DuplicateKeyError extends AppError {
+  readonly statusCode = 409;
+  readonly code = "DUPLICATE_KEY";
+  readonly field: string | undefined;
+
+  constructor(field?: string) {
+    super("A record with the same unique value already exists");
+    this.field = field;
+  }
+}

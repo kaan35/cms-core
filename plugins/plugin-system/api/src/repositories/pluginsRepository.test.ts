@@ -1,43 +1,12 @@
-import type { ICollection, IDatabase } from "@cms/core";
+import { createInMemoryDb } from "@cms/core/testing";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PluginDoc } from "./pluginsRepository.js";
 import { PluginsRepository } from "./pluginsRepository.js";
 
-function makeStubDb(): IDatabase {
-  const store = new Map<string, PluginDoc>();
-  const collection: ICollection<PluginDoc> = {
-    findOne: async (filter) => store.get(filter["name"] as string) ?? null,
-    find: async () => Array.from(store.values()),
-    insertOne: async (doc) => {
-      store.set(doc["name"] as string, doc as unknown as PluginDoc);
-    },
-    insertMany: async () => {},
-    updateOne: async (filter, update) => {
-      const doc = store.get(filter["name"] as string);
-      if (doc && update["$set"]) Object.assign(doc, update["$set"]);
-    },
-    updateMany: async () => ({ modifiedCount: 0 }),
-    deleteOne: async (filter) => {
-      store.delete(filter["name"] as string);
-    },
-    deleteMany: async () => ({ deletedCount: 0 }),
-    countDocuments: async () => store.size,
-    createIndex: async () => {},
-  };
-
-  return {
-    connect: async () => {},
-    disconnect: async () => {},
-    isAlive: async () => true,
-    collection: <T extends Record<string, unknown>>(): ICollection<T> =>
-      collection as unknown as ICollection<T>,
-  };
-}
-
 describe("PluginsRepository", () => {
   it("lists, finds, and toggles plugins", async () => {
-    const db = makeStubDb();
+    const db = createInMemoryDb();
     const repo = new PluginsRepository(db);
 
     const col = db.collection<PluginDoc>("cms_plugins");

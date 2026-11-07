@@ -24,6 +24,10 @@ export class RedisCacheService implements ICache {
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
+    if (ttlSeconds !== undefined && ttlSeconds <= 0) {
+      await this.del(key);
+      return;
+    }
     if (ttlSeconds !== undefined) {
       await this.client.set(key, value, { EX: ttlSeconds });
     } else {
@@ -77,7 +81,7 @@ export class RedisCacheService implements ICache {
       return cached;
     }
     const fresh = await factory();
-    if (fresh !== undefined) {
+    if (fresh !== undefined && fresh !== null) {
       await this.setJson(key, fresh, ttlSeconds);
     }
     return fresh;
